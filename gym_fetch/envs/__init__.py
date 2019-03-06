@@ -1,1 +1,2 @@
+from gym_fetch.envs.fetch_LSTM_reward_env import FetchLSTMRewardEnv
 from gym_fetch.envs.fetch_plan_env import FetchPlanEnv
