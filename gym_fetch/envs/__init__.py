@@ -1,0 +1,1 @@
+from gym_fetch.envs.fetch_plan_env import FetchPlanEnv
