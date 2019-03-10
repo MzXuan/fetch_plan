@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+#general import
+import numpy as np
 
 # for gym env
 import gym
@@ -18,25 +20,50 @@ def main():
     env = initialize_env()
     with tf.Session() as sess:
         rnn_model = Predictor(sess, FLAGS)
+        rnn_model.initialize_sess()
 
-    for i in range(0,2):
-        obs, _, done, info = env.step(env.action_space.sample())
-        env.render()
-        time.sleep(0.1)
-        # print("obs: ")
-        # print(obs)
-        # print("done: ")
-        # print(done)
+        x = np.empty([50,3])
+        y = np.empty([1,3])
+        x_len = 0
+        for i in range(0,5000):
 
-        desired_goal = obs['desired_goal']
-        current_state = obs['observation'][0:3]
-        print("current state: ")
-        print(current_state)
+            #todo: get action from rl algorithm
+            #todo: edit env that can return batch data
+            obs, _, done, info = env.step(env.action_space.sample())
+            env.render()
+            time.sleep(0.1)
+            # print("obs: ")
+            # print(obs)
+            # print("done: ")
+            # print(done)
 
-            
-    #todo: get action from rl algorithm
 
-    #todo: send observation to lstm 
+
+            desired_goal = obs['desired_goal']
+            current_state = obs['observation'][0:3]
+            # print("current state: ")
+            # print(current_state)
+            y = desired_goal
+            if(x_len<10):
+                x[x_len] = current_state
+                x_len+=1
+
+            else:
+                x = np.roll(x,-1,axis=0)
+                x[x_len-1] = current_state
+
+
+            # print("x_len: ")
+            # print(x_len)
+            # print("x: ")
+            # print(x)
+            # print("y: ")
+            # print(y)
+
+
+            #todo: send observation to lstm 
+            loss = rnn_model.train_online(x,y,x_len,i)
+
 
     return 0 
 

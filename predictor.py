@@ -164,47 +164,46 @@ class Predictor(object):
 
         return xs, ys, x_lens
 
+    def feed_data_online(self,x,y,x_len):
+        xs, ys, x_lens = [], [], []
+        xs.append(x)
+        ys.append(y)
+        x_lens.append(x_len)
+
+        x_lens = np.asarray(x_lens, dtype=np.int32)
+
+        return xs, ys, x_lens
+
+
+    def initialize_sess(self):
+        ## initialize global variables
+        self.sess.run(tf.global_variables_initializer())
+        print("initialize model training first")
+            
+
  
-    def train_online(self, x, y, x_len):
+    def train_online(self, x, y, x_len,iteration):
+
+        xs,ys,x_lens = self.feed_data_online(x,y,x_len)
         ## run training
         fetches  = [self.train_op, self.merged_summary]
         fetches += [self.loss, self.y_ph, self.mean]
-        feed_dict = {self.x_ph:x, self.y_ph:y, self.x_len_ph: x_len}
+        feed_dict = {self.x_ph:xs, self.y_ph:ys, self.x_len_ph: x_lens}
         _, merged_summary, \
             loss, y, pred = self.sess.run(fetches, feed_dict)
       
         self.file_writer.add_summary(merged_summary, iteration)
-
-    def validate_online(self, x, y, x_len):
-        print('validating ...')
-        rmse_sum = 0
-        traj_nums = len(self.datasets_list)
-        for i in range(traj_nums-self.val_traj_num-1, traj_nums-1):
-            xs, ys, x_lens = [], [], []
-            for _ in range(32):
-                x, y, x_len = self.feed_traj_data(i)
-                xs.append(x)
-                ys.append(y)
-                x_lens.append(x_len)
-
-            x_lens = np.asarray(x_lens, dtype=np.int32)
+        ## save model
+        if (iteration % self.checkpoint_interval) is 0:
+            self.save(iteration)
             
-            fetches = [self.y_ph, self.mean]
-            feed_dict = {self.x_ph: xs, self.y_ph: ys,
-                         self.x_len_ph: x_lens}
-            y, mean = self.sess.run(fetches, feed_dict)
+        ## display information
+        if (iteration % self.display_interval) is 0:
+            print('\n')
+            print('iteration {0}: loss = {1} '.format(
+                iteration, loss))
 
-            print('in_timesteps[{0}] y={1}'.format(i, y[-1]))
-            print('in_timesteps[{0}] mean={1}'.format(i, mean[-1]))
-
-            rmse = np.sqrt(np.square(y - mean).mean())
-            print('validation out_timesteps={0} rmse={1}'.format(self.out_timesteps, rmse))
-
-            rmse_sum += rmse
-
-        rmse_sum = rmse_sum/len(self.datasets_list)
-        print('validation all input time_steps rmse_sem = ', rmse_sum)
-        self.validate_data=rmse_sum
+        return loss
 
 
     def train(self):
