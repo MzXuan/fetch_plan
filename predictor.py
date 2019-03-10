@@ -52,10 +52,10 @@ class Predictor(object):
         self.gen_samples = 32
         
     
-        ## split datasets
-        self.datasets_list = DATASETS
-        print("the length of datasets: ", len(self.datasets_list))
-        self.datasets = []
+        # ## split datasets
+        # self.datasets_list = DATASETS
+        # print("the length of datasets: ", len(self.datasets_list))
+        # self.datasets = []
         
         ## for record dara
         self.validate_data = 0
@@ -163,6 +163,48 @@ class Predictor(object):
         x_lens = np.asarray(x_lens, dtype=np.int32)
 
         return xs, ys, x_lens
+
+ 
+    def train_online(self, x, y, x_len):
+        ## run training
+        fetches  = [self.train_op, self.merged_summary]
+        fetches += [self.loss, self.y_ph, self.mean]
+        feed_dict = {self.x_ph:x, self.y_ph:y, self.x_len_ph: x_len}
+        _, merged_summary, \
+            loss, y, pred = self.sess.run(fetches, feed_dict)
+      
+        self.file_writer.add_summary(merged_summary, iteration)
+
+    def validate_online(self, x, y, x_len):
+        print('validating ...')
+        rmse_sum = 0
+        traj_nums = len(self.datasets_list)
+        for i in range(traj_nums-self.val_traj_num-1, traj_nums-1):
+            xs, ys, x_lens = [], [], []
+            for _ in range(32):
+                x, y, x_len = self.feed_traj_data(i)
+                xs.append(x)
+                ys.append(y)
+                x_lens.append(x_len)
+
+            x_lens = np.asarray(x_lens, dtype=np.int32)
+            
+            fetches = [self.y_ph, self.mean]
+            feed_dict = {self.x_ph: xs, self.y_ph: ys,
+                         self.x_len_ph: x_lens}
+            y, mean = self.sess.run(fetches, feed_dict)
+
+            print('in_timesteps[{0}] y={1}'.format(i, y[-1]))
+            print('in_timesteps[{0}] mean={1}'.format(i, mean[-1]))
+
+            rmse = np.sqrt(np.square(y - mean).mean())
+            print('validation out_timesteps={0} rmse={1}'.format(self.out_timesteps, rmse))
+
+            rmse_sum += rmse
+
+        rmse_sum = rmse_sum/len(self.datasets_list)
+        print('validation all input time_steps rmse_sem = ', rmse_sum)
+        self.validate_data=rmse_sum
 
 
     def train(self):
