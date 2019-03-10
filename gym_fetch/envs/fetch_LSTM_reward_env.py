@@ -85,6 +85,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.forward()
 
     def _set_action(self, action):
+        # todo: rewrite this function
         assert action.shape == (4,)
         action = action.copy()  # ensure that we don't change the action outside of this scope
         pos_ctrl, gripper_ctrl = action[:3], action[3]
@@ -130,6 +131,14 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
             object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
         ])
+        # print("grip_pos:")
+        # print(grip_pos)
+        # print("object_pos:")
+        # print(object_pos)
+        # print("obs:")
+        # print(obs)
+        # print("goal:")
+        # print(self.goal)
 
         return {
             'observation': obs.copy(),
@@ -159,6 +168,9 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # Randomize start position of object.
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
+            print("initial gripper xpos:")
+            print(self.initial_gripper_xpos)
+
             while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                 object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
             object_qpos = self.sim.data.get_joint_qpos('object0:joint')
