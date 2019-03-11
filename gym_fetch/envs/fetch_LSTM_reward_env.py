@@ -84,7 +84,15 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.data.set_joint_qpos('robot0:r_gripper_finger_joint', 0.)
             self.sim.forward()
 
+
     def _set_action(self, action):
+        # assert action.shape == (7,)
+        ctrlrange = self.sim.model.actuator_ctrlrange
+        print("ctrlrange: ")
+        print(ctrlrange)
+
+
+
         # todo: rewrite this function
         assert action.shape == (4,)
         action = action.copy()  # ensure that we don't change the action outside of this scope
@@ -102,8 +110,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
 
+
+
+
+
     def _get_obs(self):
         # positions
+        # todo: add joint observation
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt

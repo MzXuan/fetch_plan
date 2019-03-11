@@ -200,6 +200,7 @@ class Predictor(object):
         ## display information
         if (iteration % self.display_interval) is 0:
             print('\n')
+            print("pred = {0}, true goal = {1}".format(pred, y))
             print('iteration {0}: loss = {1} '.format(
                 iteration, loss))
 
