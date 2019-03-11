@@ -30,14 +30,12 @@ def main():
             #todo: get action from rl algorithm
             #todo: edit env that can return batch data
             obs, _, done, info = env.step(env.action_space.sample())
-            env.render()
+            # env.render()
             time.sleep(0.1)
             # print("obs: ")
             # print(obs)
             # print("done: ")
             # print(done)
-
-
 
             desired_goal = obs['desired_goal']
             current_state = obs['observation'][0:3]
@@ -63,6 +61,7 @@ def main():
 
             #todo: send observation to lstm 
             loss = rnn_model.train_online(x,y,x_len,i)
+            
 
 
     return 0 
