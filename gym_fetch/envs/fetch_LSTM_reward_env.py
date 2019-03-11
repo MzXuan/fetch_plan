@@ -86,29 +86,32 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
 
     def _set_action(self, action):
+        # todo: rewrite this function, control by joint velocity
         # assert action.shape == (7,)
-        ctrlrange = self.sim.model.actuator_ctrlrange
-        print("ctrlrange: ")
-        print(ctrlrange)
+        # ctrlrange = self.sim.model.actuator_ctrlrange
+        # print("ctrlrange: ")
+        # print(ctrlrange)
+        self.sim.data.qpos[9]=2
+        self.sim.data.qvel[9]=0.1
 
 
 
-        # todo: rewrite this function
-        assert action.shape == (4,)
-        action = action.copy()  # ensure that we don't change the action outside of this scope
-        pos_ctrl, gripper_ctrl = action[:3], action[3]
+        
+        # assert action.shape == (4,)
+        # action = action.copy()  # ensure that we don't change the action outside of this scope
+        # pos_ctrl, gripper_ctrl = action[:3], action[3]
 
-        pos_ctrl *= 0.05  # limit maximum change in position
-        rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
-        gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
-        assert gripper_ctrl.shape == (2,)
-        if self.block_gripper:
-            gripper_ctrl = np.zeros_like(gripper_ctrl)
-        action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
+        # pos_ctrl *= 0.05  # limit maximum change in position
+        # rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
+        # gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
+        # assert gripper_ctrl.shape == (2,)
+        # if self.block_gripper:
+        #     gripper_ctrl = np.zeros_like(gripper_ctrl)
+        # action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
 
-        # Apply action to simulation.
-        utils.ctrl_set_action(self.sim, action)
-        utils.mocap_set_action(self.sim, action)
+        # # Apply action to simulation.
+        # utils.ctrl_set_action(self.sim, action)
+        # utils.mocap_set_action(self.sim, action)
 
 
 
@@ -121,6 +124,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
         robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
+        print("robot qpos: ")
+        print(robot_qpos)
+        print("robot qvel: ")
+        print(robot_qvel)
+
         if self.has_object:
             object_pos = self.sim.data.get_site_xpos('object0')
             # rotations
