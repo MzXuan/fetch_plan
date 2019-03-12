@@ -94,42 +94,26 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
 
     def _set_action(self, action):
-        # todo: rewrite this function, control by joint velocity
+        #todo: rewrite this function, control by joint velocity
         #todo: add a limitation of the joint velocity, accerleration and joint position(in xml file)
 
         assert action.shape == (7,)
+        action = action.copy()
         ctrlrange = self.sim.model.actuator_ctrlrange
         print("ctrlrange: ")
         print(ctrlrange)
 
-        # print("bias type: ")
-        # print(self.sim.model.actuator_biastype)
 
+        # for idx,_ in enumerate(action):
+        #     action[idx]=0.9
+        action = np.expand_dims(action,axis=1)
 
-        # print("self.data.ctrl:")
-        # print(self.sim.data.ctrl)
-
-        
-        # assert action.shape == (4,)
-        # action = action.copy()  # ensure that we don't change the action outside of this scope
-        # pos_ctrl, gripper_ctrl = action[:3], action[3]
-        #
-        # pos_ctrl *= 0.05  # limit maximum change in position
-        # rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
-        # gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
-        # assert gripper_ctrl.shape == (2,)
-        # if self.block_gripper:
-        #     gripper_ctrl = np.zeros_like(gripper_ctrl)
-        # action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
-
-        print("action")
-        print(action)
+        # print("action")
+        # print(action)
 
         # Apply action to simulation.
         utils.ctrl_set_action(self.sim, action)
         # utils.mocap_set_action(self.sim, action)
-
-
 
 
 
@@ -160,14 +144,20 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         gripper_state = robot_qpos[-2:]
         gripper_vel = robot_qvel[-2:] * dt  # change to a scalar if the gripper is made symmetric
 
+        joint_angle = robot_qpos[6:13]
+        joint_vel = robot_qvel[6:13]
+
         if not self.has_object:
             achieved_goal = grip_pos.copy()
         else:
             achieved_goal = np.squeeze(object_pos.copy())
         obs = np.concatenate([
-            grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
-            object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
+            grip_pos, joint_angle, joint_vel
         ])
+        # obs = np.concatenate([
+        #     grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
+        #     object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
+        # ])
         # print("grip_pos:")
         # print(grip_pos)
         # print("object_pos:")
