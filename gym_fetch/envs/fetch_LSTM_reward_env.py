@@ -44,7 +44,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.reward_type = reward_type
 
         super(FetchLSTMRewardEnv, self).__init__(
-            model_path=model_path, n_substeps=n_substeps, n_actions=4,
+            model_path=model_path, n_substeps=n_substeps, n_actions=7,
             initial_qpos=initial_qpos)
 
     # GoalEnv methods
@@ -64,10 +64,18 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # RobotEnv methods
     # ----------------------------
     def step(self, action):
+        print("self.action_space.low")
+        print(self.action_space.low)
+        print("self.action_space.high")
+        print(self.action_space.high)
+
         action = np.clip(action, self.action_space.low, self.action_space.high)
+
         self._set_action(action)
         self.sim.step()
         self._step_callback()
+
+
         obs = self._get_obs()
 
         done = False
@@ -87,20 +95,25 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
     def _set_action(self, action):
         # todo: rewrite this function, control by joint velocity
-        # assert action.shape == (7,)
-        # ctrlrange = self.sim.model.actuator_ctrlrange
-        # print("ctrlrange: ")
-        # print(ctrlrange)
-        self.sim.data.qpos[9]=2
-        self.sim.data.qvel[9]=0.1
+        #todo: add a limitation of the joint velocity, accerleration and joint position(in xml file)
+
+        assert action.shape == (7,)
+        ctrlrange = self.sim.model.actuator_ctrlrange
+        print("ctrlrange: ")
+        print(ctrlrange)
+
+        # print("bias type: ")
+        # print(self.sim.model.actuator_biastype)
 
 
+        # print("self.data.ctrl:")
+        # print(self.sim.data.ctrl)
 
         
         # assert action.shape == (4,)
         # action = action.copy()  # ensure that we don't change the action outside of this scope
         # pos_ctrl, gripper_ctrl = action[:3], action[3]
-
+        #
         # pos_ctrl *= 0.05  # limit maximum change in position
         # rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
         # gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
@@ -109,8 +122,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     gripper_ctrl = np.zeros_like(gripper_ctrl)
         # action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
 
-        # # Apply action to simulation.
-        # utils.ctrl_set_action(self.sim, action)
+        print("action")
+        print(action)
+
+        # Apply action to simulation.
+        utils.ctrl_set_action(self.sim, action)
         # utils.mocap_set_action(self.sim, action)
 
 
