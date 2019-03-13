@@ -1,2 +1,1 @@
-copy jointvel.xml to envs/robotics/fetch
-coty utils.py to envs/robotics
+copy jointvel.xml to gym/envs/robotics/assets/fetch
