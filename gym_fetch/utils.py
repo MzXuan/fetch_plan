@@ -13,8 +13,8 @@ def robot_get_obs(sim):
     """
     if sim.data.qpos is not None and sim.model.joint_names:
         names = [n for n in sim.model.joint_names if n.startswith('robot')]
-        print("joint names")
-        print(names)
+        # print("joint names")
+        # print(names)
         return (
             np.array([sim.data.get_joint_qpos(name) for name in names]),
             np.array([sim.data.get_joint_qvel(name) for name in names]),
@@ -28,11 +28,9 @@ def ctrl_set_action(sim, action):
     """
     if sim.data.ctrl is not None:
 
-        print("action")
-        print(action)
+        # print("action")
+        # print(action)
         for i in range(action.shape[0]):
-            # print("sim.model.actuator_biastype[i]")
-            # print(sim.model.actuator_biastype[i])
             if sim.model.actuator_biastype[i] == 0:
                 sim.data.ctrl[i] = action[i]
             elif sim.model.actuator_biastype[i] == 1:

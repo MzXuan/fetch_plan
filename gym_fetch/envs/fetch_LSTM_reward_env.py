@@ -64,10 +64,10 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # RobotEnv methods
     # ----------------------------
     def step(self, action):
-        print("self.action_space.low")
-        print(self.action_space.low)
-        print("self.action_space.high")
-        print(self.action_space.high)
+        # print("self.action_space.low")
+        # print(self.action_space.low)
+        # print("self.action_space.high")
+        # print(self.action_space.high)
 
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
@@ -94,26 +94,24 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
 
     def _set_action(self, action):
-        #todo: rewrite this function, control by joint velocity
-        #todo: add a limitation of the joint velocity, accerleration and joint position(in xml file)
+        #todo: add a limitation of maximum accerleration and joint position(in xml file)
+        # adjust pid
 
         assert action.shape == (7,)
         action = action.copy()
+        # #not use actuator
+        # self.sim.data.qvel[6:13] = action
+
+
+        #use actuator
         ctrlrange = self.sim.model.actuator_ctrlrange
-        print("ctrlrange: ")
-        print(ctrlrange)
-
-
-        # for idx,_ in enumerate(action):
-        #     action[idx]=0.9
+        # print("ctrlrange: ")
+        # print(ctrlrange)
         action = np.expand_dims(action,axis=1)
-
-        # print("action")
-        # print(action)
 
         # Apply action to simulation.
         utils.ctrl_set_action(self.sim, action)
-        # utils.mocap_set_action(self.sim, action)
+
 
 
 
@@ -124,10 +122,10 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
         robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
-        print("robot qpos: ")
-        print(robot_qpos)
-        print("robot qvel: ")
-        print(robot_qvel)
+        # print("robot qpos: ")
+        # print(robot_qpos)
+        # print("robot qvel: ")
+        # print(robot_qvel)
 
         if self.has_object:
             object_pos = self.sim.data.get_site_xpos('object0')
@@ -154,6 +152,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         obs = np.concatenate([
             grip_pos, joint_angle, joint_vel
         ])
+        # ------------------------
+        #   Observation details
+        #   obs[0:3]: end-effector position
+        #   obs[3:10]: joint angle
+        #   obs[10:17]: joint velocity
+        # ------------------------
+
         # obs = np.concatenate([
         #     grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
         #     object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
