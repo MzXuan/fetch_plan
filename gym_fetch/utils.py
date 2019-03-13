@@ -31,12 +31,11 @@ def ctrl_set_action(sim, action):
         print("action")
         print(action)
         for i in range(action.shape[0]):
-            print("sim.model.actuator_biastype[i]")
-            print(sim.model.actuator_biastype[i])
+            # print("sim.model.actuator_biastype[i]")
+            # print(sim.model.actuator_biastype[i])
             if sim.model.actuator_biastype[i] == 0:
                 sim.data.ctrl[i] = action[i]
             elif sim.model.actuator_biastype[i] == 1:
-                print("bias type 1")
                 sim.data.ctrl[i] = action[i]
             else:
                 idx = sim.model.jnt_qposadr[sim.model.actuator_trnid[i, 0]]

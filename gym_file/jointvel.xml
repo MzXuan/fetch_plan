@@ -24,13 +24,13 @@
 
 
 	<actuator>
-		<velocity name="robot0:ShoudlerPan" class="robot0:fetch" joint="robot0:shoulder_pan_joint" ctrlrange="-1.0 1.0" kv="5"></velocity>
-		<velocity name="robot0:ShoudlerLift" class="robot0:fetch" joint="robot0:shoulder_lift_joint" ctrlrange="-1.0 1.0" kv="5"></velocity>
-		<velocity name="robot0:UArmRoll" class="robot0:fetch" joint="robot0:upperarm_roll_joint" ctrlrange="-1.0 1.0" kv="5"></velocity>
-		<velocity name="robot0:ElbowFlex" class="robot0:fetch" joint="robot0:elbow_flex_joint" ctrlrange="-1.0 1.0" kv="5"></velocity>
-		<velocity name="robot0:FArmRoll" class="robot0:fetch" joint="robot0:forearm_roll_joint" ctrlrange="-1.0 1.0" kv="5"></velocity>
-		<velocity name="robot0:WristFlex" class="robot0:fetch" joint="robot0:wrist_flex_joint" ctrlrange="-1.0 1.0" kv="5"></velocity>
-		<velocity name="robot0:WristRoll" class="robot0:fetch" joint="robot0:wrist_roll_joint" ctrlrange="-1.0 1.0" kv="5"></velocity>
+		<velocity name="robot0:ShoudlerPan" class="robot0:fetch" joint="robot0:shoulder_pan_joint" ctrlrange="-1.0 1.0" kv="1000"></velocity>
+		<velocity name="robot0:ShoudlerLift" class="robot0:fetch" joint="robot0:shoulder_lift_joint" ctrlrange="-1.0 1.0" kv="1000"></velocity>
+		<velocity name="robot0:UArmRoll" class="robot0:fetch" joint="robot0:upperarm_roll_joint" ctrlrange="-1.0 1.0" kv="1000"></velocity>
+		<velocity name="robot0:ElbowFlex" class="robot0:fetch" joint="robot0:elbow_flex_joint" ctrlrange="-1.0 1.0" kv="1000"></velocity>
+		<velocity name="robot0:FArmRoll" class="robot0:fetch" joint="robot0:forearm_roll_joint" ctrlrange="-1.0 1.0" kv="1000"></velocity>
+		<velocity name="robot0:WristFlex" class="robot0:fetch" joint="robot0:wrist_flex_joint" ctrlrange="-1.0 1.0" kv="1000"></velocity>
+		<velocity name="robot0:WristRoll" class="robot0:fetch" joint="robot0:wrist_roll_joint" ctrlrange="-1.0 1.0" kv="1000"></velocity>
 	</actuator>
 
 
