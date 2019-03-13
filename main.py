@@ -31,12 +31,11 @@ def main():
             #todo: edit env that can return batch data
             obs, _, done, info = env.step(env.action_space.sample())
             # env.render()
-            time.sleep(0.1)
+            # time.sleep(0.1)
             # print("obs: ")
             # print(obs)
             # print("done: ")
             # print(done)
-
             desired_goal = obs['desired_goal']
             current_state = obs['observation'][0:3]
             # print("current state: ")
@@ -45,11 +44,9 @@ def main():
             if(x_len<10):
                 x[x_len] = current_state
                 x_len+=1
-
             else:
                 x = np.roll(x,-1,axis=0)
                 x[x_len-1] = current_state
-
 
             # print("x_len: ")
             # print(x_len)
@@ -57,16 +54,10 @@ def main():
             # print(x)
             # print("y: ")
             # print(y)
-
-
             #todo: send observation to lstm 
             loss = rnn_model.train_online(x,y,x_len,i)
-            
-
 
     return 0 
-
-
 
 
 def initialize_env():

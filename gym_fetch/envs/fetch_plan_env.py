@@ -4,8 +4,8 @@ from gym_fetch.envs import fetch_LSTM_reward_env
 
 
 # Ensure we get the path separator correct on windows
-MODEL_XML_PATH = os.path.join('fetch', 'reach.xml')
-
+MODEL_XML_PATH = os.path.join('fetch','jointvel.xml')
+print(MODEL_XML_PATH)
 
 class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
     def __init__(self, reward_type='sparse'):
