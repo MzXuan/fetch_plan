@@ -95,30 +95,20 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         assert action.shape == (7,)
         action = action.copy()
-        # #-----------not use actuator--------------------
+        #-----------not use actuator--------------------
         delta_v = np.clip(action-self.sim.data.qvel[6:13], -self.maxi_accerl, self.maxi_accerl)
         action = delta_v+self.sim.data.qvel[6:13]
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         self.sim.data.qpos[6:13] = self.sim.data.qpos[6:13]+action*dt
         # self.sim.data.qpos[6:13] = self.sim.data.qpos[6:13]
-        gripper_old = self.sim.data.get_site_xpos('robot0:grip')
-        self.sim.forward()
+        # gripper_old = self.sim.data.get_site_xpos('robot0:grip')
+        # self.sim.forward()
 
-        print(" self.sim.data.qpos[6:13] ")
-        print( self.sim.data.qpos[6:13] )
-        gripper_new = self.sim.data.get_site_xpos('robot0:grip')
-        pos_ctrl = gripper_new - gripper_old
-        print("pos_ctrl")
-        print(pos_ctrl)
-        gripper_ctrl=0
-        rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
+        # gripper_pos = self.sim.data.get_site_xpos('robot0:grip')
+        # gripper_rot = [1., 0., 1., 0.]
+        # self.sim.data.set_mocap_pos('robot0:mocap', gripper_pos)
+        # self.sim.data.set_mocap_quat('robot0:mocap', gripper_rot)
 
-        gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
-        assert gripper_ctrl.shape == (2,)
-        if self.block_gripper:
-            gripper_ctrl = np.zeros_like(gripper_ctrl)
-        mocap_action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
-        utils.mocap_set_action(self.sim, mocap_action)
         # #-------use actuator-----------
         # ctrlrange = self.sim.model.actuator_ctrlrange
         # # print("ctrlrange: ")
@@ -127,6 +117,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #
         # # Apply action to simulation.
         # utils.ctrl_set_action(self.sim, action)
+        return 0
 
 
 
@@ -212,6 +203,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
     def _reset_sim(self):
         self.sim.set_state(self.initial_state)
+        print(self.sim.data.qpos)
 
         # Randomize start position of object.
         if self.has_object:
@@ -247,15 +239,17 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
             self.sim.data.set_joint_qpos(name, value)
-        utils.reset_mocap_welds(self.sim)
+        print("done env initialization")
+
+        # utils.reset_mocap_welds(self.sim)
         self.sim.forward()
 
         # Move end effector into position.
-        gripper_target = np.array([-0.498, 0.005, -0.431 + self.gripper_extra_height]) + self.sim.data.get_site_xpos('robot0:grip')
-        gripper_rotation = np.array([1., 0., 1., 0.])
-        self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
-        self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
-        for _ in range(10):
+        # gripper_target = np.array([-0.498, 0.005, -0.431 + self.gripper_extra_height]) + self.sim.data.get_site_xpos('robot0:grip')
+        # gripper_rotation = np.array([1., 0., 1., 0.])
+        # self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
+        # self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
+        for _ in range(1000):
             self.sim.step()
 
         # Extract information for sampling goals.
