@@ -15,7 +15,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     def __init__(
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
-        distance_threshold, initial_qpos, reward_type,
+        distance_threshold,  max_accel, initial_qpos, reward_type,
     ):
         """Initializes a new Fetch environment.
 
@@ -42,6 +42,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.target_range = target_range
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
+        self.maxi_accerl = max_accel
 
         super(FetchLSTMRewardEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=7,
@@ -68,16 +69,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # print(self.action_space.low)
         # print("self.action_space.high")
         # print(self.action_space.high)
-
         action = np.clip(action, self.action_space.low, self.action_space.high)
-
         self._set_action(action)
         self.sim.step()
         self._step_callback()
-
-
         obs = self._get_obs()
-
         done = False
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
@@ -99,18 +95,38 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         assert action.shape == (7,)
         action = action.copy()
-        # #not use actuator
-        # self.sim.data.qvel[6:13] = action
+        # #-----------not use actuator--------------------
+        delta_v = np.clip(action-self.sim.data.qvel[6:13], -self.maxi_accerl, self.maxi_accerl)
+        action = delta_v+self.sim.data.qvel[6:13]
+        dt = self.sim.nsubsteps * self.sim.model.opt.timestep
+        self.sim.data.qpos[6:13] = self.sim.data.qpos[6:13]+action*dt
+        # self.sim.data.qpos[6:13] = self.sim.data.qpos[6:13]
+        gripper_old = self.sim.data.get_site_xpos('robot0:grip')
+        self.sim.forward()
 
+        print(" self.sim.data.qpos[6:13] ")
+        print( self.sim.data.qpos[6:13] )
+        gripper_new = self.sim.data.get_site_xpos('robot0:grip')
+        pos_ctrl = gripper_new - gripper_old
+        print("pos_ctrl")
+        print(pos_ctrl)
+        gripper_ctrl=0
+        rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
 
-        #use actuator
-        ctrlrange = self.sim.model.actuator_ctrlrange
-        # print("ctrlrange: ")
-        # print(ctrlrange)
-        action = np.expand_dims(action,axis=1)
-
-        # Apply action to simulation.
-        utils.ctrl_set_action(self.sim, action)
+        gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
+        assert gripper_ctrl.shape == (2,)
+        if self.block_gripper:
+            gripper_ctrl = np.zeros_like(gripper_ctrl)
+        mocap_action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
+        utils.mocap_set_action(self.sim, mocap_action)
+        # #-------use actuator-----------
+        # ctrlrange = self.sim.model.actuator_ctrlrange
+        # # print("ctrlrange: ")
+        # # print(ctrlrange)
+        # action = np.expand_dims(action,axis=1)
+        #
+        # # Apply action to simulation.
+        # utils.ctrl_set_action(self.sim, action)
 
 
 

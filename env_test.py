@@ -6,12 +6,12 @@ env = gym.make('FetchPlan-v0')
 env.reset()
 
 for i in range(1000):
-    action= env.action_space.sample()
-    # for idx,_ in enumerate(action):
-    #     if idx ==5:
-    #         action[idx]=0.8
-    #     else:
-    #         action[idx] = 0
+    action= 0.1*env.action_space.sample()
+    for idx,_ in enumerate(action):
+        if idx ==4:
+            action[idx]=0.1
+        else:
+            action[idx] = 0
     obs,_,done,_ = env.step(action)
     # env.reset()
     env.render()
@@ -22,8 +22,8 @@ for i in range(1000):
     joint_pos = obs['observation'][3:10]
     print("joint action: ")
     print(joint_action)
-    print("joint_pos: ")
-    print(joint_pos)
-    print("joint velocity: ")
-    print(joint_vel)
+    # print("joint_pos: ")
+    # print(joint_pos)
+    # print("joint velocity: ")
+    # print(joint_vel)
     time.sleep(0.1)
