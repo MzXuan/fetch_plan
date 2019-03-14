@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 
 
+
 fig1 = plt.figure(1)
 fig2 = plt.figure(2)
 control,pos,vel = [],[],[]
@@ -18,13 +19,14 @@ env.reset()
 show_id = 1
 
 
-for i in range(50):
+for i in range(500):
     action= 0.6*env.action_space.sample()
-    # for idx,_ in enumerate(action):
-    #     if idx == show_id:
-    #         action[idx] = 0.4
-    #     else:
-    #         action[idx] = 0
+    for idx,_ in enumerate(action):
+        if idx == show_id:
+            action[idx] = 0.4
+        else:
+            action[idx] = 0
+
 
     obs,_,done,_ = env.step(action)
     # env.reset()
@@ -33,8 +35,8 @@ for i in range(50):
 
     #todo: plot control variable and real variable
     joint_action = action
-    print("obs")
-    print(obs)
+    # print("obs")
+    # print(obs)
 
 
     joint_pos = obs['observation'][3:10]

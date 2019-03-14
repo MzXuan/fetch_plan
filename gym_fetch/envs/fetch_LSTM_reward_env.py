@@ -1,4 +1,5 @@
 import numpy as np
+import mujoco_py
 from gym.envs.robotics import rotations, robot_env
 from gym_fetch import utils
 
@@ -66,6 +67,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             return -d
 
 
+
+
     # RobotEnv methods
     # ----------------------------
     def step(self, action):
@@ -79,12 +82,44 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self._step_callback()
         obs = self._get_obs()
         done = False
+
+        self._contact_dection()
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
+            'is_collision': self._contact_dection()
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         return obs, reward, done, info
 
+    def _contact_dection(self):
+        #----------------------------------
+        # if there is collision: return true
+        # if there is no collision: return false
+        #----------------------------------
+        if self.sim.data.ncon > 0:
+            return True
+        else:
+            return False
+        # print('number of contacts', self.sim.data.ncon)
+        # for i in range(self.sim.data.ncon):
+        #     # Note that the contact array has more than `ncon` entries,
+        #     # so be careful to only read the valid entries.
+        #     contact = self.sim.data.contact[i]
+        #     print('contact', i)
+        #     print('dist', contact.dist)
+        #     print('geom1', contact.geom1, self.sim.model.geom_id2name(contact.geom1))
+        #     print('geom2', contact.geom2, self.sim.model.geom_id2name(contact.geom2))
+        #     # There's more stuff in the data structure
+        #     # See the mujoco documentation for more info!
+        #     geom2_body = self.sim.model.geom_bodyid[self.sim.data.contact[i].geom2]
+        #     print(' Contact force on geom2 body', self.sim.data.cfrc_ext[geom2_body])
+        #     print('norm', np.sqrt(np.sum(np.square(self.sim.data.cfrc_ext[geom2_body]))))
+        #     # Use internal functions to read out mj_contactForce
+        #     c_array = np.zeros(6, dtype=np.float64)
+        #     print('c_array', c_array)
+        #     mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
+        #     print('c_array', c_array)
+        # print('done')
 
     def _step_callback(self):
         if self.block_gripper:
