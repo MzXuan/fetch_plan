@@ -19,7 +19,12 @@ show_id = 1
 
 
 for i in range(50):
-    action= 0*env.action_space.sample()
+    action= 0.6*env.action_space.sample()
+    # for idx,_ in enumerate(action):
+    #     if idx == show_id:
+    #         action[idx] = 0.4
+    #     else:
+    #         action[idx] = 0
 
     obs,_,done,_ = env.step(action)
     # env.reset()
@@ -28,15 +33,19 @@ for i in range(50):
 
     #todo: plot control variable and real variable
     joint_action = action
+    print("obs")
+    print(obs)
+
+
     joint_pos = obs['observation'][3:10]
     joint_vel = obs['observation'][10:17]
 
-    print("joint action: ")
-    print(joint_action)
-    print("joint_pos: ")
-    print(joint_pos)
-    print("joint velocity: ")
-    print(joint_vel)
+    # print("joint action: ")
+    # print(joint_action)
+    # print("joint_pos: ")
+    # print(joint_pos)
+    # print("joint velocity: ")
+    # print(joint_vel)
 
     control.append(action[show_id])
     pos.append(joint_pos[show_id])
