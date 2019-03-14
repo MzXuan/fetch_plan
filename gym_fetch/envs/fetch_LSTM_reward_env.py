@@ -15,7 +15,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     def __init__(
         self, model_path, n_substeps, gripper_extra_height, block_gripper,
         has_object, target_in_the_air, target_offset, obj_range, target_range,
-        distance_threshold, initial_qpos, reward_type,
+        distance_threshold,  max_accel, initial_qpos, reward_type,
     ):
         """Initializes a new Fetch environment.
 
@@ -42,6 +42,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.target_range = target_range
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
+        self.maxi_accerl = max_accel
+
+
+        self.current_qvel = np.zeros(7)
+
 
         super(FetchLSTMRewardEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=7,
@@ -68,16 +73,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # print(self.action_space.low)
         # print("self.action_space.high")
         # print(self.action_space.high)
-
         action = np.clip(action, self.action_space.low, self.action_space.high)
-
         self._set_action(action)
         self.sim.step()
         self._step_callback()
-
-
         obs = self._get_obs()
-
         done = False
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
@@ -99,18 +99,43 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         assert action.shape == (7,)
         action = action.copy()
-        # #not use actuator
+
+        #-----------not use actuator, only self defined kinematics--------------------
+        self.last_qvel = self.current_qvel
+        self.last_qpos = self.current_qpos
+        delta_v = np.clip(action-self.last_qvel, -self.maxi_accerl, self.maxi_accerl)
+        action_clip = delta_v+self.last_qvel
+
+        dt = self.sim.nsubsteps * self.sim.model.opt.timestep
+        self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = self.last_qpos+action_clip*dt
+
+        self.current_qvel = action_clip
+        self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
+
+
+        # #-----------directly control velocity------------------------
+        # delta_v = np.clip(action - self.sim.data.qvel[6:13], -self.maxi_accerl, self.maxi_accerl)
+        # action = delta_v + self.sim.data.qvel[6:13]
         # self.sim.data.qvel[6:13] = action
 
 
-        #use actuator
-        ctrlrange = self.sim.model.actuator_ctrlrange
-        # print("ctrlrange: ")
-        # print(ctrlrange)
-        action = np.expand_dims(action,axis=1)
+        #-----------directly control position------------------------
 
-        # Apply action to simulation.
-        utils.ctrl_set_action(self.sim, action)
+        # self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = action
+        # print("bias: ")
+        # print(self.sim.data.qfrc_bias)
+
+
+
+        # #-------use actuator-----------
+        # ctrlrange = self.sim.model.actuator_ctrlrange
+        # # print("ctrlrange: ")
+        # # print(ctrlrange)
+        # action = np.expand_dims(action,axis=1)
+        #
+        # # Apply action to simulation.
+        # utils.ctrl_set_action(self.sim, action)
+        return 0
 
 
 
@@ -121,7 +146,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
-        robot_qpos, robot_qvel = utils.robot_get_obs(self.sim)
+        robot_qpos, _ = utils.robot_get_obs(self.sim)
         # print("robot qpos: ")
         # print(robot_qpos)
         # print("robot qvel: ")
@@ -139,11 +164,10 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             object_velp -= grip_velp
         else:
             object_pos = object_rot = object_velp = object_velr = object_rel_pos = np.zeros(0)
-        gripper_state = robot_qpos[-2:]
-        gripper_vel = robot_qvel[-2:] * dt  # change to a scalar if the gripper is made symmetric
+
 
         joint_angle = robot_qpos[6:13]
-        joint_vel = robot_qvel[6:13]
+        joint_vel = self.current_qvel
 
         if not self.has_object:
             achieved_goal = grip_pos.copy()
@@ -196,6 +220,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
     def _reset_sim(self):
         self.sim.set_state(self.initial_state)
+        print('self.initial_state')
+        print(self.initial_state)
 
         # Randomize start position of object.
         if self.has_object:
@@ -231,16 +257,16 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
             self.sim.data.set_joint_qpos(name, value)
-        utils.reset_mocap_welds(self.sim)
-        self.sim.forward()
+        self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
+        self.initial_state = self.sim.get_state()
 
-        # Move end effector into position.
-        gripper_target = np.array([-0.498, 0.005, -0.431 + self.gripper_extra_height]) + self.sim.data.get_site_xpos('robot0:grip')
-        gripper_rotation = np.array([1., 0., 1., 0.])
-        self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
-        self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
-        for _ in range(10):
-            self.sim.step()
+        print("done env initialization")
+
+        self.sim.forward()
+        self.sim.step()
+
+        # for _ in range(10):
+        #     self.sim.step()
 
         # Extract information for sampling goals.
         self.initial_gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()
