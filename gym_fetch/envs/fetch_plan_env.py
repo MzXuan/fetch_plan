@@ -14,15 +14,15 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             'robot0:slide1': 0.48,
             'robot0:slide2': 0.0,
             'robot0:torso_lift_joint': 0.04,
-            'robot0:head_pan_joint': 0.0,
-            'robot0:head_tilt_joint': 0.00,
-            'robot0:shoulder_pan_joint': 0,
-            'robot0:shoulder_lift_joint': 1.0,
-            'robot0:upperarm_roll_joint': 0,
-            'robot0:elbow_flex_joint': -2.0,
-            'robot0:forearm_roll_joint': 0,
-            'robot0:wrist_flex_joint':0.8,
-            'robot0:wrist_roll_joint': 0,
+            'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
+            'robot0:head_tilt_joint': 0.00, #range="-0.76 1.45"
+            'robot0:shoulder_pan_joint': 0, #range="-1.6056 1.6056"
+            'robot0:shoulder_lift_joint': 1.0, #range="-1.221 1.518"
+            'robot0:upperarm_roll_joint': 0, #limited="false"
+            'robot0:elbow_flex_joint': -2.0, #range="-2.251 2.251"
+            'robot0:forearm_roll_joint': 0,#limited="false"
+            'robot0:wrist_flex_joint':0.8, #range="-2.16 2.16"
+            'robot0:wrist_roll_joint': 0, #limited="false"
             'robot0:r_gripper_finger_joint': 0,
             'robot0:l_gripper_finger_joint': 0
 
