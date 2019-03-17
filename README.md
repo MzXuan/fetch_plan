@@ -27,3 +27,8 @@
 run test script as follows
 
 `python env_test.py`
+
+---
+## Change log
+1. 0.1.0
+* complete environment test
