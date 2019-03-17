@@ -3,6 +3,7 @@ import gym
 import gym_fetch
 
 env = gym.make('FetchPlan-v0')
+# env = gym.make('FetchPushDense-v1')
 for e in range(100):
     env.reset()
     done = False
