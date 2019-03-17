@@ -32,3 +32,7 @@ run test script as follows
 ## Change log
 1. 0.1.0
 * complete environment test
+
+2. 0.2.0
+* complete reward function for env
+* complete reset function for env

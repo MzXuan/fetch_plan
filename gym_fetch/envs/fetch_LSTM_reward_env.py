@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import mujoco_py
 from gym.envs.robotics import rotations, robot_env
@@ -44,7 +46,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
         self.maxi_accerl = max_accel
-
+        self.last_distance = 0.0
 
         self.current_qvel = np.zeros(7)
 
@@ -57,25 +59,67 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # ----------------------------
 
     def compute_reward(self, achieved_goal, goal, info, predict_reward=0):
-        # todo: get reward from outside
         # predict reward: a predict reward from LSTM prediction algorithm
         # Compute distance between goal and the achieved goal.
-        d = goal_distance(achieved_goal, goal)+predict_reward
-        if self.reward_type == 'sparse':
-            return -(d > self.distance_threshold).astype(np.float32)
+        if info["is_success"]:
+            return 20.0
+        elif info["is_collision"]:
+            return -20.0
         else:
-            return -d
+            current_distance = goal_distance(achieved_goal, goal)
+            approaching_rew = 10.0 * (self.last_distance - current_distance)
+            self.last_distance = copy.deepcopy(current_distance)
+            return approaching_rew
 
+    def _reset_arm(self):
+        collision_flag = True
+        while collision_flag:
+            initial_qpos = {
+                'robot0:slide0': 0.4049,
+                'robot0:slide1': 0.48,
+                'robot0:slide2': 0.0,
+                'robot0:torso_lift_joint': 0.0,
+                'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
+                'robot0:head_tilt_joint': 0.0, #range="-0.76 1.45"
+                'robot0:shoulder_pan_joint': 2 * 1.6056 * np.random.random() - 1.6056, #range="-1.6056 1.6056"
+                'robot0:shoulder_lift_joint': (1.221 + 1.518) * np.random.random() - 1.221, #range="-1.221 1.518"
+                'robot0:upperarm_roll_joint': 2 * np.pi * np.random.random() - np.pi, #limited="false"
+                'robot0:elbow_flex_joint': 2.251 * 2 * np.random.random() - 2.251, #range="-2.251 2.251"
+                'robot0:forearm_roll_joint': 2 * np.pi * np.random.random() - np.pi, #limited="false"
+                'robot0:wrist_flex_joint': 2.16 * 2 * np.random.random() - 2.16, #range="-2.16 2.16"
+                'robot0:wrist_roll_joint': 2 * np.pi * np.random.random() - np.pi, #limited="false"
+                'robot0:r_gripper_finger_joint': 0,
+                'robot0:l_gripper_finger_joint': 0
+            }
 
+            for name, value in initial_qpos.items():
+                self.sim.data.set_joint_qpos(name, value)
+            self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
+            self.initial_state = self.sim.get_state()
+            self.sim.set_state(self.initial_state)
+            self.sim.forward()
+            collision_flag = self._contact_dection()
 
+    # RobotEnv methods
+    # ----------------------------
+    def reset(self):
+        # Attempt to reset the simulator. Since we randomize initial conditions, it
+        # is possible to get into a state with numerical issues (e.g. due to penetration or
+        # Gimbel lock) or we may not achieve an initial condition (e.g. an object is within the hand).
+        # In this case, we just keep randomizing until we eventually achieve a valid initial
+        # configuration.
+        self._reset_arm()
+
+        did_reset_sim = False
+        while not did_reset_sim:
+            did_reset_sim = self._reset_sim()
+        self.goal = self._sample_goal().copy()
+        obs = self._get_obs()
+        return obs
 
     # RobotEnv methods
     # ----------------------------
     def step(self, action):
-        # print("self.action_space.low")
-        # print(self.action_space.low)
-        # print("self.action_space.high")
-        # print(self.action_space.high)
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         self.sim.step()
@@ -83,12 +127,14 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         obs = self._get_obs()
         done = False
 
-        self._contact_dection()
+        # self._contact_dection()
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
             'is_collision': self._contact_dection()
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
+        if info["is_success"] or info["is_collision"]:
+            done = True
         return obs, reward, done, info
 
     def _contact_dection(self):
@@ -96,10 +142,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # if there is collision: return true
         # if there is no collision: return false
         #----------------------------------
-        if self.sim.data.ncon > 0:
-            return True
-        else:
-            return False
+
         # print('number of contacts', self.sim.data.ncon)
         # for i in range(self.sim.data.ncon):
         #     # Note that the contact array has more than `ncon` entries,
@@ -119,14 +162,17 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     print('c_array', c_array)
         #     mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
         #     print('c_array', c_array)
-        # print('done')
+
+        if self.sim.data.ncon > 1:
+            return True
+        else:
+            return False
 
     def _step_callback(self):
         if self.block_gripper:
             self.sim.data.set_joint_qpos('robot0:l_gripper_finger_joint', 0.)
             self.sim.data.set_joint_qpos('robot0:r_gripper_finger_joint', 0.)
             self.sim.forward()
-
 
     def _set_action(self, action):
         #todo: add a limitation of maximum accerleration and joint position(in xml file)
@@ -147,7 +193,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.current_qvel = action_clip
         self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
 
-
         # #-----------directly control velocity------------------------
         # delta_v = np.clip(action - self.sim.data.qvel[6:13], -self.maxi_accerl, self.maxi_accerl)
         # action = delta_v + self.sim.data.qvel[6:13]
@@ -160,8 +205,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # print("bias: ")
         # print(self.sim.data.qfrc_bias)
 
-
-
         # #-------use actuator-----------
         # ctrlrange = self.sim.model.actuator_ctrlrange
         # # print("ctrlrange: ")
@@ -172,9 +215,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # utils.ctrl_set_action(self.sim, action)
         return 0
 
-
-
-
     def _get_obs(self):
         # positions
         # todo: add joint observation
@@ -182,10 +222,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
         robot_qpos, _ = utils.robot_get_obs(self.sim)
-        # print("robot qpos: ")
-        # print(robot_qpos)
-        # print("robot qvel: ")
-        # print(robot_qvel)
 
         if self.has_object:
             object_pos = self.sim.data.get_site_xpos('object0')
@@ -254,17 +290,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.sim.forward()
 
     def _reset_sim(self):
-        self.sim.set_state(self.initial_state)
-        print('self.initial_state')
-        print(self.initial_state)
-
         # Randomize start position of object.
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
-            print("initial gripper xpos:")
-            print(self.initial_gripper_xpos)
+            # print("initial gripper xpos:")
+            # print(self.initial_gripper_xpos)
 
-            while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
+            while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 4.0:
                 object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
             object_qpos = self.sim.data.get_joint_qpos('object0:joint')
             assert object_qpos.shape == (7,)
@@ -272,6 +304,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.data.set_joint_qpos('object0:joint', object_qpos)
 
         self.sim.forward()
+        self.last_distance = 0
         return True
 
     def _sample_goal(self):
@@ -290,12 +323,14 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         return (d < self.distance_threshold).astype(np.float32)
 
     def _env_setup(self, initial_qpos):
+        # print("==> init_qpos:")
         for name, value in initial_qpos.items():
+            # print("{} : {}".format(name, value))
             self.sim.data.set_joint_qpos(name, value)
         self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
         self.initial_state = self.sim.get_state()
 
-        print("done env initialization")
+        # print("done env initialization")
 
         self.sim.forward()
         self.sim.step()
