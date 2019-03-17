@@ -1,0 +1,4 @@
+*.pyc
+gym_fetch.egg-info
+model/
+MUJOCO_LOG.TXT
