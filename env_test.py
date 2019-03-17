@@ -4,9 +4,6 @@ import time
 
 import matplotlib.pyplot as plt
 
-
-
-
 fig1 = plt.figure(1)
 fig2 = plt.figure(2)
 control,pos,vel = [],[],[]
