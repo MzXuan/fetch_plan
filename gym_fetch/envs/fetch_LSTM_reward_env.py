@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import mujoco_py
 from gym.envs.robotics import rotations, robot_env
@@ -44,7 +46,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
         self.maxi_accerl = max_accel
-
+        self.last_distance = 0.0
 
         self.current_qvel = np.zeros(7)
 
@@ -57,25 +59,21 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # ----------------------------
 
     def compute_reward(self, achieved_goal, goal, info, predict_reward=0):
-        # todo: get reward from outside
         # predict reward: a predict reward from LSTM prediction algorithm
         # Compute distance between goal and the achieved goal.
-        d = goal_distance(achieved_goal, goal)+predict_reward
-        if self.reward_type == 'sparse':
-            return -(d > self.distance_threshold).astype(np.float32)
+        if info["is_success"]:
+            return 20.0
+        elif info["is_collision"]:
+            return -20.0
         else:
-            return -d
-
-
-
+            current_distance = goal_distance(achieved_goal, goal)
+            approaching_rew = 10.0 * (self.last_distance - current_distance)
+            self.last_distance = copy.deepcopy(current_distance)
+            return approaching_rew
 
     # RobotEnv methods
     # ----------------------------
     def step(self, action):
-        # print("self.action_space.low")
-        # print(self.action_space.low)
-        # print("self.action_space.high")
-        # print(self.action_space.high)
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         self.sim.step()
@@ -86,12 +84,21 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self._contact_dection()
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
-            'is_collision': self._contact_dection()
+            # 'is_collision': self._contact_dection() TODO: when it work, it should be used
+            'is_collision': False # temp used
+
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
+        if info["is_success"] or info["is_collision"]:
+            done = True
         return obs, reward, done, info
 
     def _contact_dection(self):
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # CAN NOT WORK WELL @ tingxfan
+        # In my test, this function always
+        # output True.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #----------------------------------
         # if there is collision: return true
         # if there is no collision: return false
@@ -127,7 +134,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.data.set_joint_qpos('robot0:r_gripper_finger_joint', 0.)
             self.sim.forward()
 
-
     def _set_action(self, action):
         #todo: add a limitation of maximum accerleration and joint position(in xml file)
         # adjust pid
@@ -160,8 +166,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # print("bias: ")
         # print(self.sim.data.qfrc_bias)
 
-
-
         # #-------use actuator-----------
         # ctrlrange = self.sim.model.actuator_ctrlrange
         # # print("ctrlrange: ")
@@ -171,9 +175,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # # Apply action to simulation.
         # utils.ctrl_set_action(self.sim, action)
         return 0
-
-
-
 
     def _get_obs(self):
         # positions
@@ -255,14 +256,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
     def _reset_sim(self):
         self.sim.set_state(self.initial_state)
-        print('self.initial_state')
-        print(self.initial_state)
-
+        # print('self.initial_state')
+        # print(self.initial_state)
         # Randomize start position of object.
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
-            print("initial gripper xpos:")
-            print(self.initial_gripper_xpos)
+            # print("initial gripper xpos:")
+            # print(self.initial_gripper_xpos)
 
             while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
                 object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
@@ -272,6 +272,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.data.set_joint_qpos('object0:joint', object_qpos)
 
         self.sim.forward()
+        self.last_distance = 0
         return True
 
     def _sample_goal(self):
@@ -295,7 +296,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
         self.initial_state = self.sim.get_state()
 
-        print("done env initialization")
+        # print("done env initialization")
 
         self.sim.forward()
         self.sim.step()
