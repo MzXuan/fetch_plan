@@ -81,12 +81,10 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         obs = self._get_obs()
         done = False
 
-        self._contact_dection()
+        # self._contact_dection()
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
-            # 'is_collision': self._contact_dection() TODO: when it work, it should be used
-            'is_collision': False # temp used
-
+            'is_collision': self._contact_dection()
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         if info["is_success"] or info["is_collision"]:
@@ -94,19 +92,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         return obs, reward, done, info
 
     def _contact_dection(self):
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # CAN NOT WORK WELL @ tingxfan
-        # In my test, this function always
-        # output True.
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #----------------------------------
         # if there is collision: return true
         # if there is no collision: return false
         #----------------------------------
-        if self.sim.data.ncon > 0:
-            return True
-        else:
-            return False
+
         # print('number of contacts', self.sim.data.ncon)
         # for i in range(self.sim.data.ncon):
         #     # Note that the contact array has more than `ncon` entries,
@@ -126,7 +116,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     print('c_array', c_array)
         #     mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
         #     print('c_array', c_array)
-        # print('done')
+
+        if self.sim.data.ncon > 1:
+            return True
+        else:
+            return False
 
     def _step_callback(self):
         if self.block_gripper:

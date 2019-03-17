@@ -12,7 +12,7 @@ for e in range(100):
         # print("action: ", action)
         obs, rew, done,_ = env.step(action)
         env.render()
-        time.sleep(0.1)
+        # time.sleep(0.1)
         # print("rew: ", rew)
         total_rew += rew
     print("episode {} rewards: {} ".format(
