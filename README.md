@@ -17,7 +17,7 @@
 ``` shell
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/nvidia-396
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/$YOUR_HOME_DIR/.mujoco/mjpro150/bin
-export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-396/libGL.so
+# export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-396/libGL.so
 ```
 
 4. copy gym files to your gym directory
