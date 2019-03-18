@@ -14,19 +14,36 @@
 2. install [mujoco-py](https://github.com/openai/mujoco-py#obtaining-the-binaries-and-license-key)
 
 3. setup environment
-`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/nvidia-396`
-`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/$YOUR_HOME_DIR/.mujoco/mjpro150/bin`
-`export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-396/libGL.so`
+``` shell
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/nvidia-396
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/$YOUR_HOME_DIR/.mujoco/mjpro150/bin
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so:/usr/lib/nvidia-396/libGL.so
+```
 
 4. copy gym files to your gym directory
-`cp gym_file/jointvel.xml to $GYM_PATH/gym/envs/robotics/assets/fetch`
-`cp gym_file/shared_xz.xml to $GYM_PATH/gym/envs/robotics/assets/fetch`
+``` shell
+cp gym_file/jointvel.xml to $GYM_PATH/gym/envs/robotics/assets/fetch
+cp gym_file/shared_xz.xml to $GYM_PATH/gym/envs/robotics/assets/fetch
+```
+
+5. install baselines
+``` shell
+cd baselines
+pip install -e .
+```
 
 ---
 ## Test
 run test script as follows
-
-`python env_test.py`
+``` shell
+python env_test.py
+```
+---
+## Run
+``` shell
+cd baselines/baselines/ppo2
+python run.py 
+```
 
 ---
 ## Change log
@@ -36,3 +53,7 @@ run test script as follows
 2. 0.2.0
 * complete reward function for env
 * complete reset function for env
+
+3. 0.3.0
+* add reinforcement learning code to train fetch
+* complete no predictable reward training
