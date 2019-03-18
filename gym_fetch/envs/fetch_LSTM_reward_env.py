@@ -115,6 +115,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             did_reset_sim = self._reset_sim()
         self.goal = self._sample_goal().copy()
         obs = self._get_obs()
+        self.last_distance = goal_distance(
+            obs['achieved_goal'], self.goal)
         return obs
 
     # RobotEnv methods

@@ -1,6 +1,13 @@
 # fetch planner
 
 ---
+## TODO List
+1. Complete predictor training (@xuan_z)
+2. Address smoothness issue (@xuan_z)
+3. Add predictable reward (@tingxfan)
+4. Two reward structure (@tingxfan)
+
+---
 ## Environment
 
 * python3.6
