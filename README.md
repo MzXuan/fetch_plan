@@ -3,6 +3,24 @@
 ---
 ## TODO List
 1. Complete predictor training (@xuan_z)
+``` python
+class Predictor(object):
+    def __init__(self):
+        pass
+    
+    def reset(self):
+        # function: reset the lstm cell of predictor.
+        pass
+
+    def predict(self, obs, achieved_goal):
+        # function: predict the goal position
+        # input: 
+        # obs.shape = [batch_size, 7]
+        # achieved_goal.shape = [batch_size, 3]
+        # return:
+        # goal.shape = [batch_size, 7]
+        return goal
+```
 2. Address smoothness issue (@xuan_z)
 3. Add predictable reward (@tingxfan)
 4. Two reward structure (@tingxfan)
