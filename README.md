@@ -5,7 +5,7 @@
 1. Complete predictor training (@xuan_z)
 ``` python
 class Predictor(object):
-    def __init__(self):
+    def __init__(self,sess,FLAGS, batch_size, max_timestep):
         pass
     
     def predict(self, obs, achieved_goal, goal, dones):

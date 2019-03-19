@@ -177,8 +177,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.forward()
 
     def _set_action(self, action):
-        #todo: add a limitation of maximum accerleration and joint position(in xml file)
-        # adjust pid
 
         assert action.shape == (7,)
         action = action.copy()
