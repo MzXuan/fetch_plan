@@ -20,6 +20,14 @@ class Predictor(object):
         # return:
         # goal.shape = [batch_size, 3]
         return goal
+
+    def train(self, obs, achieved_goal, goal):
+        # function: predict the goal position
+        # input: 
+        # obs.shape = [batch_size, time_step, 7]
+        # achieved_goal.shape = [batch_size, time_step, 3]
+        # goal.shape = [batch_size, time_step, 3]
+        pass
 ```
 2. Address smoothness issue (@xuan_z)
 3. Add predictable reward (@tingxfan)
