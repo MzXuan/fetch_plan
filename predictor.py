@@ -45,10 +45,7 @@ class Predictor(object):
         self.weight_2 = 10.0
         self.gamma = 0.99
         self.gen_samples = 32
-        
-        
-        ## for record dara
-        self.validate_data = 0
+    
 
         ## prepare containers for saving data
         self.xs = np.zeros(batch_size, self.in_timesteps_max, self.in_dim)
@@ -103,8 +100,11 @@ class Predictor(object):
 
     def initialize_sess(self):
         ## initialize global variables
-        self.sess.run(tf.global_variables_initializer())
-        print("initialize model training first")
+        if self.train_flag is True:
+            self.sess.run(tf.global_variables_initializer())
+            print("initialize model training first")
+        else:
+            self.load()
 
     def reset(self, dones):
         # function: reset the lstm cell of predictor.
