@@ -18,7 +18,7 @@ class Predictor(object):
         # obs.shape = [batch_size, 7]
         # achieved_goal.shape = [batch_size, 3]
         # return:
-        # goal.shape = [batch_size, 7]
+        # goal.shape = [batch_size, 3]
         return goal
 ```
 2. Address smoothness issue (@xuan_z)
