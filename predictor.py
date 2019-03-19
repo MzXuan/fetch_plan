@@ -12,7 +12,7 @@ import csv
 
 
 class Predictor(object):
-    def __init__(self, sess, FLAGS):
+    def __init__(self, sess, FLAGS, batch_size, max_timestep):
         ## extract FLAGS
         self.sess = sess
         
@@ -22,10 +22,7 @@ class Predictor(object):
         self.in_dim = FLAGS.in_dim
         self.out_dim = FLAGS.out_dim
         
-        self.in_timesteps = FLAGS.in_timesteps
-        self.in_timesteps_min = FLAGS.in_timesteps_min
-        self.in_timesteps_max = FLAGS.in_timesteps_max
-        self.out_timesteps = FLAGS.out_timesteps
+        self.in_timesteps_max = max_timestep
     
         self.validation_interval = FLAGS.validation_interval
         self.checkpoint_interval = FLAGS.checkpoint_interval
@@ -35,27 +32,19 @@ class Predictor(object):
         self.sample_dir = FLAGS.sample_dir_cls
         
         self.max_iteration = FLAGS.cls_max_iteration
-        self.batch_size = FLAGS.batch_size
-        self.learning_rate = FLAGS.learning_rate
-        self.test_type = FLAGS.test_type
         
-        self.loss_mode = FLAGS.loss_mode
+        self.learning_rate = FLAGS.learning_rate
+        
         self.out_dim_wgts = [FLAGS.out_dim_wgt1, FLAGS.out_dim_wgt2, FLAGS.out_dim_wgt3]
     
         self.run_mode = FLAGS.run_mode
 
-        self.val_traj_num = 3
-
+        self.batch_size = batch_size
         self.weight_1 = 1.0
         self.weight_2 = 10.0
         self.gamma = 0.99
         self.gen_samples = 32
         
-    
-        # ## split datasets
-        # self.datasets_list = DATASETS
-        # print("the length of datasets: ", len(self.datasets_list))
-        # self.datasets = []
         
         ## for record dara
         self.validate_data = 0
@@ -66,14 +55,7 @@ class Predictor(object):
     
     def calculate_loss(self):
         ## calculate loss as a whole based on all dimensionalities
-        if self.loss_mode is 0:
-            self.loss = tf.losses.mean_squared_error(self.y_ph, self.mean)
-
-        # if self.loss_mode is 1:
-        #     self.mse = tf.square(self.y_ph - self.mean)
-        #     self.mse_var = tf.reduce_mean((1.0 / self.std) * self.mse + self.weight_1 * self.std)
-        #     self.mse_prob = tf.reduce_mean(tf.square(self.prob - self.prob_ph))
-        #     self.loss = self.mse_var + self.weight_2 * self.mse_prob
+        self.loss = tf.losses.mean_squared_error(self.y_ph, self.mean)
 
     def build(self):
         ## define input and output
@@ -106,7 +88,6 @@ class Predictor(object):
         
         ## save summary
         tf.summary.scalar('loss', self.loss)
-        # tf.summary.scalar('validate', self.validate_data)
         self.merged_summary = tf.summary.merge_all()
         self.file_writer = tf.summary.FileWriter(self.checkpoint_dir, self.sess.graph)
 
@@ -114,40 +95,25 @@ class Predictor(object):
         self.saver = tf.train.Saver()
 
 
+    def initialize_sess(self):
+        ## initialize global variables
+        self.sess.run(tf.global_variables_initializer())
+        print("initialize model training first")
+
+     def reset(self):
+        # function: reset the lstm cell of predictor.
+        # create new sequences
+        self.pred_xs = np.zeros(batch_size, self.in_timesteps_max, self.in_dim)
+        self.train_xs = np.zeros(batch_size,self.in_timesteps_max, self.in_dim)
+        self.train_ys = np.zeros(batch_size,self.out_dim)
+        pass
+
+
     def pad_input(self, x):
         x_len = len(x)
         padding_data = np.zeros((self.in_timesteps_max - x_len, self.in_dim))
         x_pad = np.concatenate([x, padding_data], axis=0)
         return x_pad
-
-
-    def feed_one_data(self, end_index, train_x,traj_lens):
-        if end_index >= self.in_timesteps_max:
-            start_index = np.max(end_index - 50, 0)
-            x = train_x[start_index:end_index]
-            y = train_x[end_index]
-            x_len = end_index - start_index
-        else:
-            # x = train_x[0:self.in_timesteps_max]
-            x = train_x[0:end_index]
-            x = self.pad_input(x)
-            y = train_x[end_index]
-            x_len = end_index
-
-        x = np.asarray(x)
-        y = np.asarray(y)
-
-        return x, y, x_len
-
-
-    def feed_traj_data(self, traj_index):
-        datasets = self.datasets_list[traj_index]
-
-        train_x = datasets['traj_x']
-        traj_lens = datasets['traj_lens']
-
-        end_index = random.randint(1, traj_lens-1)
-        return self.feed_one_data(end_index, train_x,traj_lens)
 
         
     def feed_data(self):
@@ -164,6 +130,7 @@ class Predictor(object):
 
         return xs, ys, x_lens
 
+
     def feed_data_online(self,x,y,x_len):
         xs, ys, x_lens = [], [], []
         xs.append(x)
@@ -175,14 +142,23 @@ class Predictor(object):
         return xs, ys, x_lens
 
 
-    def initialize_sess(self):
-        ## initialize global variables
-        self.sess.run(tf.global_variables_initializer())
-        print("initialize model training first")
-            
+    def create_input_sequence(self,x,y=None):
+        if y == None:
+        # predict sequence
+            self.pred_sequence.append(x)
+        else:
+        # train sequence
+            self.train_sequcne.append(y)
 
- 
-    def train_online(self, x, y, x_len,iteration):
+
+    def train(self, obs, achieved_goal, goal):
+        # function: predict the goal position
+        # input: 
+        # obs.shape = [batch_size, time_step, 7]
+        # achieved_goal.shape = [batch_size, time_step, 3]
+        # goal.shape = [batch_size, time_step, 3]
+
+        #todo: create input sequence
 
         xs,ys,x_lens = self.feed_data_online(x,y,x_len)
         ## run training
@@ -193,6 +169,7 @@ class Predictor(object):
             loss, y, pred = self.sess.run(fetches, feed_dict)
       
         self.file_writer.add_summary(merged_summary, iteration)
+
         ## save model
         if (iteration % self.checkpoint_interval) is 0:
             self.save(iteration)
@@ -204,150 +181,91 @@ class Predictor(object):
             print('iteration {0}: loss = {1} '.format(
                 iteration, loss))
 
-        return loss
+        pass
 
 
-    def train(self):
-        ## preload the previous saved model or initialize model from scratch
-        # path_name = self.load()
-        if True:
-            ## initialize global variables
-            self.sess.run(tf.global_variables_initializer())
-            print("initialize model training first")
-            
-        ## train model
-        for iteration in range(self.max_iteration+1):
-            ## feed data
-            x, y, x_len = self.feed_data()
-            ## run training
-            fetches  = [self.train_op, self.merged_summary]
-            fetches += [self.loss, self.y_ph, self.mean]
-            feed_dict = {self.x_ph:x, self.y_ph:y, self.x_len_ph: x_len}
-            
-            _, merged_summary, \
-            loss, y, pred = self.sess.run(fetches, feed_dict)
-      
-            self.file_writer.add_summary(merged_summary, iteration)
-      
-            ## validate model
-            if  (iteration % self.validation_interval) is 0:
-                self.validate()
-                validate_summary = tf.Summary()
-                validate_summary.value.add(tag="validate rmse", simple_value = self.validate_data)
-                self.file_writer.add_summary(validate_summary,iteration)
-                # self.file_writer.add_summary(merged_summary, iteration)
-                # self.file_writer.add_summary(validate_rmse, iteration)
-            ## save model
-            if (iteration % self.checkpoint_interval) is 0:
-                self.save(iteration)
-                
-            ## display information
-            if (iteration % self.display_interval) is 0:
-                print('\n')
-                print('iteration {0}: loss = {1} '.format(
-                    iteration, loss))
+    def predict(self, obs, achieved_goal):
+        # function: predict the goal position
+        # input: 
+        # obs.shape = [batch_size, 7]
+        # achieved_goal.shape = [batch_size, 3]
+        # return:
+        # goal.shape = [batch_size, 3]
 
-    
-    def validate(self):
-        print('validating ...')
-        rmse_sum = 0
-        traj_nums = len(self.datasets_list)
-        for i in range(traj_nums-self.val_traj_num-1, traj_nums-1):
-            xs, ys, x_lens = [], [], []
-            for _ in range(32):
-                x, y, x_len = self.feed_traj_data(i)
-                xs.append(x)
-                ys.append(y)
-                x_lens.append(x_len)
+        #todo: create input sequence
+        fetches = [self.y_ph, self.mean]
+        feed_dict = {self.x_ph: xs,
+                     self.x_len_ph: x_lens}
+        goal = self.sess.run(fetches, feed_dict)
 
-            x_lens = np.asarray(x_lens, dtype=np.int32)
-            
-            fetches = [self.y_ph, self.mean]
-            feed_dict = {self.x_ph: xs, self.y_ph: ys,
-                         self.x_len_ph: x_lens}
-            y, mean = self.sess.run(fetches, feed_dict)
+        # print('in_timesteps[{0}] mean={1}'.format(i, mean[-1]))
 
-            print('in_timesteps[{0}] y={1}'.format(i, y[-1]))
-            print('in_timesteps[{0}] mean={1}'.format(i, mean[-1]))
-
-            rmse = np.sqrt(np.square(y - mean).mean())
-            print('validation out_timesteps={0} rmse={1}'.format(self.out_timesteps, rmse))
-
-            rmse_sum += rmse
-
-        rmse_sum = rmse_sum/len(self.datasets_list)
-        print('validation all input time_steps rmse_sem = ', rmse_sum)
-        self.validate_data=rmse_sum
-
-
-    def inference(self, x, horizon=50):
-        '''
-        x shape: (time_step, 7), time_step <= 50
-        '''
-        # load model first
-        self.load()
-        x_len = x.shape[0]
-
-        samples = self.gen_samples
-        xs = np.tile(np.expand_dims(x, axis=0), (samples, 1, 1))
+        return goal
         
-        for _ in range(horizon):
-            x_lens = np.tile(x_len, samples)
-            if x_len > 50:
-                x_len = 50
-                xs = xs[:, -50:, :]
-            else:
-                # padding 0
-                padding_data = np.zeros((samples, self.in_timesteps_max-x_len, self.in_dim))
-                x_padding = np.concatenate([xs, padding_data], axis=1)
+    
+    # def validate(self):
+    #     print('validating ...')
+    #     rmse_sum = 0
+    #     traj_nums = len(self.datasets_list)
+    #     for i in range(traj_nums-self.val_traj_num-1, traj_nums-1):
+    #         xs, ys, x_lens = [], [], []
+    #         for _ in range(32):
+    #             x, y, x_len = self.feed_traj_data(i)
+    #             xs.append(x)
+    #             ys.append(y)
+    #             x_lens.append(x_len)
 
-            preds, means = self.sess.run([self.pred, self.mean], feed_dict={
-                self.x_ph: x_padding, self.x_len_ph: x_lens
-            })
+    #         x_lens = np.asarray(x_lens, dtype=np.int32)
+            
+    #         fetches = [self.y_ph, self.mean]
+    #         feed_dict = {self.x_ph: xs, self.y_ph: ys,
+    #                      self.x_len_ph: x_lens}
+    #         y, mean = self.sess.run(fetches, feed_dict)
 
-            preds = np.expand_dims(preds, axis=1)
-            xs = np.concatenate([xs, preds], axis=1)
-            # xs = np.hstack((xs, preds))
-            x_len += 1
+    #         print('in_timesteps[{0}] y={1}'.format(i, y[-1]))
+    #         print('in_timesteps[{0}] mean={1}'.format(i, mean[-1]))
 
-        return xs
+    #         rmse = np.sqrt(np.square(y - mean).mean())
+    #         print('validation out_timesteps={0} rmse={1}'.format(self.out_timesteps, rmse))
+
+    #         rmse_sum += rmse
+
+    #     rmse_sum = rmse_sum/len(self.datasets_list)
+    #     print('validation all input time_steps rmse_sem = ', rmse_sum)
+    #     self.validate_data=rmse_sum
 
 
-    def test(self):
-        # generate x
-        xs=[]
-        traj_nums = len(self.datasets_list)
-        # for i in range(traj_nums - self.val_traj_num - 1, traj_nums - 1):
-        i = traj_nums - self.val_traj_num
-        datasets = self.datasets_list[i]
+    # def inference(self, x, horizon=50):
+    #     '''
+    #     x shape: (time_step, 7), time_step <= 50
+    #     '''
+    #     # load model first
+    #     self.load()
+    #     x_len = x.shape[0]
 
-        train_x = datasets['traj_x']
-        traj_lens = datasets['traj_lens']
+    #     samples = self.gen_samples
+    #     xs = np.tile(np.expand_dims(x, axis=0), (samples, 1, 1))
+        
+    #     for _ in range(horizon):
+    #         x_lens = np.tile(x_len, samples)
+    #         if x_len > 50:
+    #             x_len = 50
+    #             xs = xs[:, -50:, :]
+    #         else:
+    #             # padding 0
+    #             padding_data = np.zeros((samples, self.in_timesteps_max-x_len, self.in_dim))
+    #             x_padding = np.concatenate([xs, padding_data], axis=1)
 
-        yt=train_x
-        for end_index in range(2, traj_lens - 1,5):
-            if end_index >= self.in_timesteps_max:
-                start_index = np.max(end_index - 50, 0)
-                x = train_x[start_index:end_index]
-                # y = train_x[end_index]
-                # x_len = end_index - start_index
-            else:
-                x = train_x[0:end_index]
+    #         preds, means = self.sess.run([self.pred, self.mean], feed_dict={
+    #             self.x_ph: x_padding, self.x_len_ph: x_lens
+    #         })
 
-            xs.append(x)
+    #         preds = np.expand_dims(preds, axis=1)
+    #         xs = np.concatenate([xs, preds], axis=1)
+    #         # xs = np.hstack((xs, preds))
+    #         x_len += 1
 
-        for samples in xs:
-            preds = self.inference(samples)
-            # calculate mean and std
-            means = np.mean (preds, axis=0)
-            stds = np.std(preds, axis = 0)
-            trajs = [means, means+stds, means-stds]
-
-            vt.draw_trajs(trajs,  yt)
-
-        #interate inference
-
-        # create trajectory
+    #     return xs
 
 
     def save(self, iteration):

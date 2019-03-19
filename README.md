@@ -5,7 +5,7 @@
 1. Complete predictor training (@xuan_z)
 ``` python
 class Predictor(object):
-    def __init__(self):
+    def __init__(self,sess,FLAGS, batch_size, max_timestep):
         pass
     
     def reset(self):
@@ -24,9 +24,9 @@ class Predictor(object):
     def train(self, obs, achieved_goal, goal):
         # function: predict the goal position
         # input: 
-        # obs.shape = [batch_size, time_step, 7]
-        # achieved_goal.shape = [batch_size, time_step, 3]
-        # goal.shape = [batch_size, time_step, 3]
+        # obs.shape = [batch_size, 7]
+        # achieved_goal.shape = [batch_size, 3]
+        # goal.shape = [batch_size, 3]
         pass
 ```
 2. Address smoothness issue (@xuan_z)

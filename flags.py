@@ -15,29 +15,23 @@ flags.DEFINE_integer('num_units_cls', 32, 'number of units of a rnn cell in enco
 flags.DEFINE_integer('num_units', 32, 'number of units of a rnn cell in encoder or decoder')
 flags.DEFINE_integer('num_stacks', 1, 'number of stacked rnn cells in encoder or decoder')
 
-flags.DEFINE_integer('in_dim', 3, 'dimensionality of each timestep input')
+flags.DEFINE_integer('in_dim', 10, 'dimensionality of each timestep input')
 flags.DEFINE_integer('out_dim', 3, 'dimensionality of each timestep output')
-flags.DEFINE_integer('num_cls', 7, 'task numbers')
+
 # add weights for each dimensionality of output
-flags.DEFINE_integer("loss_mode", 0, "0: calculate loss as a whole; 1: calculate loss one by one")
 flags.DEFINE_integer('out_dim_wgt1', 1, 'The 1th weight for each dimensionality of output')
 flags.DEFINE_integer('out_dim_wgt2', 1, 'The 2th weight for each dimensionality of output')
 flags.DEFINE_integer('out_dim_wgt3', 1, 'The 3th weight for each dimensionality of output')
-#
-flags.DEFINE_integer('in_timesteps', 20, 'input timesteps')
-flags.DEFINE_integer('in_timesteps_min', 10, 'input min timesteps')
+
 flags.DEFINE_integer('in_timesteps_max', 50, 'input max timesteps')
-flags.DEFINE_integer('out_timesteps', 50, 'output timesteps')
 
 ## optimization hyper-parameters
 flags.DEFINE_integer('cls_max_iteration', 30000, 'max iteration of classification model')
 flags.DEFINE_integer('max_iteration', 30000, 'max iteration of training model')
-flags.DEFINE_integer('batch_size', 32, 'batch size of datapoints')
 flags.DEFINE_float('learning_rate', 0.0001, 'learning rate of optimization')
 
 ## todo & can be adjusted
 flags.DEFINE_integer("run_mode", 0, "0: training; 1: testing; 2: test by trajectory; 3: testing online")
-flags.DEFINE_integer("test_type", 0, "0: testing as a whole; 1: testing one by one")
 
 ## log hyper-parameters
 flags.DEFINE_integer('validation_interval', 500, 'interval of performing validation')
