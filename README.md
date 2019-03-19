@@ -70,6 +70,19 @@ cd baselines/baselines/ppo2
 python run.py 
 ```
 
+For training policy, please set
+``` shell
+--train=True
+--load=False
+```
+
+For testing, please set
+``` shell
+--train=False
+--load=True
+--point="$YOUR_CHECKPOINT_NUMBER"
+```
+
 ---
 ## Change log
 1. 0.1.0
