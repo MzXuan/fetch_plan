@@ -8,26 +8,17 @@ class Predictor(object):
     def __init__(self,sess,FLAGS, batch_size, max_timestep):
         pass
     
-    def reset(self):
-        # function: reset the lstm cell of predictor.
-        pass
-
-    def predict(self, obs, achieved_goal):
+    def predict(self, obs, achieved_goal, goal, dones):
         # function: predict the goal position
         # input: 
         # obs.shape = [batch_size, 7]
         # achieved_goal.shape = [batch_size, 3]
+        # goal.shape = [batch_size, 3]
+        # dones.shape = [batch_size]
         # return:
         # goal.shape = [batch_size, 3]
-        return goal
+        return predict_goal
 
-    def train(self, obs, achieved_goal, goal):
-        # function: predict the goal position
-        # input: 
-        # obs.shape = [batch_size, 7]
-        # achieved_goal.shape = [batch_size, 3]
-        # goal.shape = [batch_size, 3]
-        pass
 ```
 2. Address smoothness issue (@xuan_z)
 3. Add predictable reward (@tingxfan)
