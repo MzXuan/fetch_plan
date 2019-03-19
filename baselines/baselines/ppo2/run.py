@@ -100,6 +100,14 @@ def main():
     parser.add_argument('--d_targ', type=float, default=0.012)
     parser.add_argument('--point', type=str, default='12200')
     args = parser.parse_args()
+
+    #------for debug-------------
+    # print("args.train: ")
+    # print(args.train)
+    # print("args.load: ")
+    # print(args.load)
+    #-----end debug------------------
+
     curr_path = sys.path[0]
     if args.train:
         logger.configure(dir='{}/log'.format(curr_path))
