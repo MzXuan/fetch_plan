@@ -5,15 +5,13 @@
 1. Complete predictor training (@xuan_z)
 ``` python
 class Predictor(object):
-    def __init__(self,sess,FLAGS, batch_size, max_timestep):
+    def __init__(self,sess, FLAGS, batch_size, max_timestep, train_flag):
         pass
     
-    def predict(self, obs, achieved_goal, goal, dones):
+    def predict(self, obs, dones):
         # function: predict the goal position
         # input: 
-        # obs.shape = [batch_size, 7]
-        # achieved_goal.shape = [batch_size, 3]
-        # goal.shape = [batch_size, 3]
+        # obs.shape = [batch_size, ob_shape] include joint angle etc.
         # dones.shape = [batch_size]
         # return:
         # goal.shape = [batch_size, 3]
