@@ -104,7 +104,6 @@ class Predictor(object):
             self.sess.run(tf.global_variables_initializer())
             self.iteration = 0
             print("done")
-            
         else:
             self.load()
             self.iteration = 0
@@ -141,7 +140,7 @@ class Predictor(object):
         # obs.shape = [batch_size, ob_shape] include joint angle etc.
         # dones.shape = [batch_size]
         # return:
-        # goal.shape = [batch_size, 3]
+        # batch_loss.shape = [batch_size]
 
         #create input sequence
         self.create_input_sequence(obs,dones)
@@ -194,8 +193,11 @@ class Predictor(object):
     
     
     def load(self):
-        ## load the previous saved model
+        ## load the previous saved model and extract iteration number
         path_name = tf.train.latest_checkpoint(self.checkpoint_dir)
+        iteration = path_name.split("model.ckpt-")
+        self.iteration=int(iteration[-1])
+        
         if path_name is not None:
             self.saver.restore(self.sess, path_name)
             print('restore model from checkpoint path: ', path_name)
