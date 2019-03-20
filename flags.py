@@ -46,24 +46,23 @@ num_stacks = 'stacks' + str(flags.FLAGS.num_stacks)
 in_dim = 'indim' + str(flags.FLAGS.in_dim)
 out_dim = 'outdim' + str(flags.FLAGS.out_dim)
 
-postfix = "ours_gru_64_64_output_15_w1_1_w2_10"
 
 model_name = flags.FLAGS.model_name
 
 # save directory of classifier
-check_dir_cls = './model/'+model_name+'/cls'+'/checkpoint_' + postfix
-sample_dir_cls = './model/'+model_name+'/cls'+'/sample_' + postfix
+check_dir_cls = './model/'+model_name+'/checkpoint_'
+sample_dir_cls = './model/'+model_name+'/sample_'
 
 flags.DEFINE_string('check_dir_cls', check_dir_cls, 'Directory name to save checkpoints')
 flags.DEFINE_string('sample_dir_cls', sample_dir_cls, 'Directory name to save datapoints')
 
 
-# save directory of generator
-checkpoint_dir = './model/'+model_name+'/gen'+'/checkpoint_' + postfix
-sample_dir = './model/'+model_name+'/gen'+'/sample_' + postfix
-
-flags.DEFINE_string('checkpoint_dir', checkpoint_dir, 'Directory name to save class checkpoints')
-flags.DEFINE_string('sample_dir', sample_dir, 'Directory name to save class datapoints')
+# # save directory of generator
+# checkpoint_dir = './model/'+model_name+'/gen'+'/checkpoint_' + postfix
+# sample_dir = './model/'+model_name+'/gen'+'/sample_' + postfix
+#
+# flags.DEFINE_string('checkpoint_dir', checkpoint_dir, 'Directory name to save class checkpoints')
+# flags.DEFINE_string('sample_dir', sample_dir, 'Directory name to save class datapoints')
 
 
 FLAGS = flags.FLAGS
