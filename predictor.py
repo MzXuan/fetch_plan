@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 import time, os
 import joblib
-import random
+import pickle
 
 import numpy as np
 import tensorflow as tf
+
+class DatasetStru(object):
+    def __init__(self,x,y):
+        self.x = x
+        self.y = y
 
 
 class Predictor(object):
@@ -22,10 +27,13 @@ class Predictor(object):
 
         self.iteration = 0
             
-        ## prepare containers for saving data
+        ## prepare sequcne containers
         self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
         self.ys = np.zeros((batch_size, self.out_dim))
         self.x_lens = np.zeros(batch_size, dtype=int)
+
+        ## prepare containers for saving input dataset
+        self.dataset = []
 
         ## build model
         self._build_ph()
@@ -34,6 +42,7 @@ class Predictor(object):
     def _build_flag(self, FLAGS):
         self.num_units = FLAGS.num_units_cls
         self.num_stacks = FLAGS.num_stacks
+        self.model_name = "human_predict_test"
         
         self.in_dim = FLAGS.in_dim
         self.out_dim = FLAGS.out_dim
@@ -138,10 +147,65 @@ class Predictor(object):
         if self.train_flag:
             self.sess.run(tf.global_variables_initializer())
         else:
-            self.load_net("./model/human_predict_test/{}".format(
+            self.load_net(("./model/"+self.model_name+"/{}").format(
                 self.point
             ))
-            
+
+    def create_dataset(self):
+        # function: predict the goal position
+        # input:
+        # obs.shape = [batch_size, ob_shape] include joint angle etc.
+        # dones.shape = [batch_size]
+        #
+
+        # save dataset
+        for idx,length in enumerate(self.x_lens):
+            if length > 1:
+                self.dataset.append(DatasetStru(self.xs[idx],self.ys[idx]))
+
+        # if dataset is large, save it
+        if len(self.dataset) > 10:
+            pickle.dump(self.dataset, open("./model/"+self.model_name+"/dataset/name.pkl","wb"))
+            self.dataset=[]
+
+
+
+    def run_training(self):
+        #function: train the model according to saved dataset
+        ## load dataset
+        self.dataset = pickle.load(open("./model/"+self.model_name+"/dataset/name.pkl","rb"))
+        xs,ys,x_lens = [],[],[]
+        for data in self.dataset:
+            xs.append(data.x)
+            ys.append(data.y)
+            x_lens.append(len(data.x))
+        xs = np.assary(xs)
+        ys = np.assary(ys)
+        x_lens = np.assary(x_lens)
+
+        ## run training
+        fetches = [self.train_op, self.merged_summary]
+        fetches += [self.loss, self.y_ph, self.y_hat]
+        feed_dict = {
+            self.x_ph: xs,
+            self.y_ph: ys,
+            self.x_len_ph: x_lens
+        }
+
+        _, merged_summary, \
+        loss, y, y_hat = self.sess.run(fetches, feed_dict)
+        batch_loss = self._get_batch_loss(y, y_hat)
+
+        self.file_writer.add_summary(merged_summary, self.iteration)
+        self.iteration += 1
+
+        # save model
+        if (self.iteration % self.checkpoint_interval) is 0:
+            self.save_net(("./model/" + self.model_name + "/{}").format(
+                self.iteration
+            ))
+
+
     def predict(self, obs, dones):
         # function: predict the goal position
         # input: 
@@ -158,30 +222,12 @@ class Predictor(object):
         x_lens = self.x_lens
 
         if self.train_flag:
-            # ==> Need to be refactored as follows
-            ## run training
-            fetches  = [self.train_op, self.merged_summary]
-            fetches += [self.loss, self.y_ph, self.y_hat]
-            feed_dict = {
-                self.x_ph:xs, 
-                self.y_ph:ys, 
-                self.x_len_ph: x_lens
-                }
-
-            _, merged_summary, \
-            loss, y, y_hat = self.sess.run(fetches, feed_dict)
-            batch_loss = self._get_batch_loss(y, y_hat)
-
-            self.file_writer.add_summary(merged_summary, self.iteration)
-            self.iteration+=1
-
-            # save model
-            if (self.iteration % self.checkpoint_interval) is 0:
-                self.save_net("./model/human_predict_test/{}".format(
-                    self.iteration
-                ))
+            #----create training dataset for future training---#
+            self.create_dataset()
+            return
             # =========================================
         else:
+            #---predict input data---#
             fetches = [self.loss, self.y_ph, self.y_hat]
             feed_dict = {
                 self.x_ph: xs,
@@ -192,13 +238,13 @@ class Predictor(object):
             loss, y, y_hat = self.sess.run(fetches, feed_dict)
             batch_loss = self._get_batch_loss(y, y_hat)
 
-        ## display information
-        if (self.iteration % self.display_interval) is 0:
-            print('\n')
-            print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
-            print('predict loss = {} '.format(loss))
+            ## display information
+            if (self.iteration % self.display_interval) is 0:
+                print('\n')
+                print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
+                print('predict loss = {} '.format(loss))
 
-        return batch_loss
+            return batch_loss
 
     def save_net(self, save_path):
         params = tf.get_collection(
@@ -221,7 +267,7 @@ class Predictor(object):
 if __name__ == '__main__':
     from flags import flags
 
-    train_flag=False
+    train_flag=True
     FLAGS = flags.FLAGS
 
     def rand_bools_int_func(n):
