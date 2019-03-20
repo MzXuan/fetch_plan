@@ -18,7 +18,7 @@ class DatasetStru(object):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 point="2500"):
+                 reset_flag=True, point="10000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -27,6 +27,7 @@ class Predictor(object):
         self.in_timesteps_max = max_timestep
         self.train_flag = train_flag
         self.point = point
+        self.validata_num = 0.5
 
         self.iteration = 0
             
@@ -37,9 +38,10 @@ class Predictor(object):
 
         ## prepare containers for saving input dataset
         self.dataset = []
-        filelist = [f for f in os.listdir("./model/"+self.model_name) if f.endswith(".pkl")]
-        for f in filelist:
-            os.remove(os.path.join("./model/"+self.model_name, f))
+        if reset_flag:
+            filelist = [f for f in os.listdir("./model/"+self.model_name) if f.endswith(".pkl")]
+            for f in filelist:
+                os.remove(os.path.join("./model/"+self.model_name, f))
         self.dataset_idx=0 # for counting the saved dataset index
 
         ## build model
@@ -174,7 +176,7 @@ class Predictor(object):
                 self.dataset.append(DatasetStru(self.xs[idx],self.ys[idx]))
 
         # if dataset is large, save it
-        if len(self.dataset) > 20000:
+        if len(self.dataset) > 200000:
             pickle.dump(self.dataset, open("./model/"+self.model_name
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
             self.dataset_idx+=1
@@ -196,17 +198,28 @@ class Predictor(object):
 
         try:
             self.dataset = pickle.load(open(os.path.join("./model/" + self.model_name, file_name), "rb"))
+            # random.shuffle(self.dataset)
         except:
             print("Can not load dataset. Please first run the training stage to save dataset.")
             return 0
 
         return 1
 
+    def _create_training_data(self,dataset):
+        xs, ys, x_lens = [], [], []
+        for _ in range(0, self.batch_size):
+            idx = random.randint(0, len(dataset) - 1)
+            data = self.dataset[idx]
+            xs.append(data.x)
+            ys.append(data.y)
+            x_lens.append(len(data.x))
+
+        return xs,ys,x_lens
 
     def run_training(self):
         #function: train the model according to saved dataset
         ## check whether in training process
-        if self.train_flag is not True:
+        if not self.train_flag:
             print("Not in training process,return...")
             return 0
 
@@ -218,27 +231,25 @@ class Predictor(object):
 
         ## prepare threshold to switch dataset
         max_iteration = int(self.point)
-        iter_range = [int(x*max_iteration/num_sets) for x in range(0,num_sets)]
+        iter_range = range(0,max_iteration,500)
+        iter_idx=0
         print("iter_range")
         print(iter_range)
         ## run training
         while self.iteration<max_iteration:
             #----- load dataset ----------#
-            if self.dataset_idx < num_sets:
-                if self.iteration==iter_range[self.dataset_idx]:
-                    print("load new dataset...")
+            if iter_idx < len(iter_range):
+                if self.iteration==iter_range[iter_idx]:
+                    print("switch dataset...")
+                    iter_idx+=1
                     if self.load_dataset(filelist[self.dataset_idx]) == 0:
                         return 0
                     self.dataset_idx+=1
+                    if self.dataset_idx >= num_sets:
+                        self.dataset_idx = 0
             #-----create training data----#
-            xs, ys, x_lens = [], [], []
-            for _ in range(0,self.batch_size):
-                idx =random.randint(0, len(self.dataset)-1)
-                data=self.dataset[idx]
-                xs.append(data.x)
-                ys.append(data.y)
-                x_lens.append(len(data.x))
-
+            train_num=int(self.validata_num*len(self.dataset))
+            xs,ys,x_lens=self._create_training_data(self.dataset[:train_num])
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat]
@@ -261,11 +272,39 @@ class Predictor(object):
                     self.iteration
                 ))
 
-            ## display information
-            if (self.iteration % self.display_interval) is 0:
-                print('\n')
-                print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
-                print('iteration = {}, training loss = {} '.format(self.iteration,loss))
+            # ## display information
+            # if (self.iteration % self.display_interval) is 0:
+            #     print('\n')
+            #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
+            #     print('iteration = {}, training loss = {} '.format(self.iteration,loss))
+
+
+            #----------validate process--------#
+            ## validate model
+            if (self.iteration % self.validation_interval) is 0:
+                ## create validate data
+                xs, ys, x_lens = self._create_training_data(self.dataset[-train_num:])
+
+                ## run validation
+                fetches = [self.loss, self.y_ph, self.y_hat]
+                feed_dict = {
+                    self.x_ph: xs,
+                    self.y_ph: ys,
+                    self.x_len_ph: x_lens
+                }
+                loss, y, y_hat = self.sess.run(fetches, feed_dict)
+
+                ## write summary
+                validate_summary = tf.Summary()
+                validate_summary.value.add(tag="validate rmse", simple_value=loss)
+                self.file_writer.add_summary(validate_summary, self.iteration)
+
+                ## display information
+                if (self.iteration % self.display_interval) is 0:
+                    print('\n')
+                    print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
+                    print('iteration = {}, prediction loss = {} '.format(self.iteration, loss))
+            #---------create validate data-----#
 
         print("finish training")
 
@@ -341,17 +380,17 @@ if __name__ == '__main__':
 
     with tf.Session() as sess:
         # create and initialize session
-        rnn_model = Predictor(sess, FLAGS, 32, 10,
-                              train_flag=train_flag)
+        rnn_model = Predictor(sess, FLAGS, 16, 10,
+                              train_flag=train_flag, reset_flag=False)
 
         rnn_model.init_sess()
-        for _ in range(5000):
-            #create fake data
-            obs = np.random.rand(32, 20)
-            dones = rand_bools_int_func(32)
-            # run the model
-            rnn_model.predict(obs, dones)
+        # for _ in range(5000):
+        #     #create fake data
+        #     obs = np.random.rand(32, 20)
+        #     dones = rand_bools_int_func(32)
+        #     # run the model
+        #     rnn_model.predict(obs, dones)
 
-        rnn_model.save_dataset()
+        # rnn_model.save_dataset()
         rnn_model.run_training()
 
