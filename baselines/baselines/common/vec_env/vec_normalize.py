@@ -17,6 +17,7 @@ class VecNormalize(VecEnv):
         self.ret = np.zeros(self.num_envs)
         self.gamma = gamma
         self.epsilon = epsilon
+
     def step(self, vac):
         """
         Apply sequence of actions to sequence of environments
@@ -31,6 +32,7 @@ class VecNormalize(VecEnv):
             self.ret_rms.update(self.ret)
             rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
         return obs, rews, news, infos
+        
     def _obfilt(self, obs):
         if self.ob_rms: 
             self.ob_rms.update(obs)

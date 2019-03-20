@@ -1,4 +1,4 @@
-import os
+import os, sys
 import time
 import joblib
 import numpy as np
@@ -118,20 +118,24 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
-            _ = self.predictor.predict(self.obs[:], self.dones,
-                                       self.env.ob_rms.mean, self.env.ob_rms.var)
-            #flag: to lstm predict
-            #----------for debug-------------#
-            # print("self.obs: ")
-            # print(self.obs[:])
-            # print("rewards: ")
-            # print(rewards)
+            
+            if self.predictor_flag:
+                _ = self.predictor.predict(self.obs[:], self.dones,
+                                           self.env.mean, self.env.var)
+            else:
+                _ = self.predictor.predict(self.obs[:], self.dones,
+                                           self.env.ob_rms.mean, self.env.ob_rms.var)
 
-            #----------end debug-------------#
+            mb_rewards.append(rewards)
+
+            if self.predictor_flag:
+                continue
+
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
-            mb_rewards.append(rewards)
+
+            
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
@@ -286,7 +290,49 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             np.save('{}/var'.format(logger.get_dir()), runner.env.ob_rms.var)
     env.close()
 
-def test(policy, env, nsteps, nminibatches, load_path):
+def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr, 
+            vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
+            log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
+            save_interval=50, load=True, point='00100', init_targ=0.1,
+            predictor_flag=True):
+
+    total_timesteps = int(total_timesteps)
+
+    nenvs = env.num_envs
+    ob_space = env.observation_space
+    ac_space = env.action_space
+    nbatch = nenvs * nsteps
+    nbatch_train = nbatch // nminibatches
+
+    make_model = lambda : Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train, 
+                    nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
+                    max_grad_norm=max_grad_norm)
+
+    model = make_model()
+    runner = Runner(
+        env=env, model=model, 
+        nsteps=nsteps, gamma=gamma, lam=lam, load=False, point=point,
+        predictor_flag=predictor_flag)
+
+    def load(load_path):
+        sess = tf.get_default_session()
+        params = tf.trainable_variables()
+        loaded_params = joblib.load(load_path)
+        restores = []
+        for p, loaded_p in zip(params, loaded_params):
+            restores.append(p.assign(loaded_p))
+        sess.run(restores)
+    curr_path = sys.path[0]
+    load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
+    load(load_path)
+    
+    for i in range(100):
+        runner.run() #pylint: disable=E0632
+        print("the size of dataset: ", (i+1) * nbatch)
+        
+    env.close()
+
+def display(policy, env, nsteps, nminibatches, load_path):
     nenvs = env.num_envs
     ob_space = env.observation_space
     ac_space = env.action_space
@@ -299,11 +345,11 @@ def test(policy, env, nsteps, nminibatches, load_path):
     params = tf.trainable_variables()
 
     def load(load_path):
-            loaded_params = joblib.load(load_path)
-            restores = []
-            for p, loaded_p in zip(params, loaded_params):
-                restores.append(p.assign(loaded_p))
-            sess.run(restores)
+        loaded_params = joblib.load(load_path)
+        restores = []
+        for p, loaded_p in zip(params, loaded_params):
+            restores.append(p.assign(loaded_p))
+        sess.run(restores)
 
     load(load_path)
 

@@ -58,9 +58,57 @@ def train(env_id, num_timesteps, seed, d_targ, load, point):
         load=load,
         point=point,
         init_targ=d_targ,
+        predictor_flag=False)
+
+def test(env_id, num_timesteps, seed, d_targ, load, point):
+    from baselines.common import set_global_seeds
+    from baselines.common.vec_env.vec_normalize import VecNormalizeTest
+    from baselines.ppo2 import ppo2
+    from baselines.ppo2.policies import LstmMlpPolicy, MlpPolicy
+    import gym
+    import gym_fetch
+    import tensorflow as tf
+    from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+
+    ncpu = 16
+    config = tf.ConfigProto(allow_soft_placement=True,
+                            intra_op_parallelism_threads=ncpu,
+                            inter_op_parallelism_threads=ncpu)
+    tf.Session(config=config).__enter__()
+    def make_env(rank):
+        def _thunk():
+            env = gym.make(env_id)
+            keys = env.observation_space.spaces.keys()
+            env = gym.wrappers.FlattenDictWrapper(env, dict_keys=list(keys))
+            env.seed(seed + rank)
+            return env
+        return _thunk
+
+    curr_path = sys.path[0]
+    nenvs = 16
+    env = SubprocVecEnv([make_env(i) for i in range(nenvs)])
+    running_mean = np.load('{}/log/mean.npy'.format(curr_path))
+    running_var = np.load('{}/log/var.npy'.format(curr_path))
+    env = VecNormalizeTest(env, running_mean, running_var)
+
+    set_global_seeds(seed)
+    policy = MlpPolicy
+
+    def constant_lr(lr, kl=0.0, d_targ=0.0):
+        return lr
+
+    ppo2.test(policy=policy, env=env, nsteps=512, nminibatches=4,
+        lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
+        ent_coef=0.00,
+        lr=constant_lr,
+        cliprange=0.2,
+        total_timesteps=num_timesteps,
+        load=True,
+        point=point,
+        init_targ=d_targ,
         predictor_flag=True)
 
-def test(env_id, num_timesteps, seed, curr_path, point):
+def display(env_id, num_timesteps, seed, curr_path, point):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalizeTest
     from baselines.ppo2 import ppo2
@@ -88,7 +136,7 @@ def test(env_id, num_timesteps, seed, curr_path, point):
     set_global_seeds(seed)
     policy = MlpPolicy
 
-    ppo2.test(policy=policy, env=env, nsteps=2048, nminibatches=32, 
+    ppo2.display(policy=policy, env=env, nsteps=2048, nminibatches=32, 
         load_path='{}/log/checkpoints/{}'.format(curr_path, point))
 
 def main():
@@ -96,27 +144,25 @@ def main():
     parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
     parser.add_argument('--num-timesteps', type=int, default=int(5e5))
-    parser.add_argument('--train', type=bool, default=True)
-    parser.add_argument('--load', type=bool, default=False)
+    parser.add_argument('--train', type=bool, default=False)
+    parser.add_argument('--display', type=bool, default=False)
+    parser.add_argument('--load', type=bool, default=True)
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('--point', type=str, default='00200')
+    parser.add_argument('--point', type=str, default='00050')
     args = parser.parse_args()
 
-    #------for debug-------------
-    # print("args.train: ")
-    # print(args.train)
-    # print("args.load: ")
-    # print(args.load)
-    #-----end debug--------------
-
     curr_path = sys.path[0]
-    if args.train:
+    if args.display:
+        display(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
+            curr_path=curr_path, point=args.point)
+    elif args.train:
         logger.configure(dir='{}/log'.format(curr_path))
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=args.load, point=args.point)
     else:
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            curr_path=curr_path, point=args.point)
+            d_targ=args.d_targ, load=True, point=args.point)
+        
 
 
 if __name__ == '__main__':
