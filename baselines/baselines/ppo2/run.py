@@ -57,7 +57,8 @@ def train(env_id, num_timesteps, seed, d_targ, load, point):
         total_timesteps=num_timesteps,
         load=load,
         point=point,
-        init_targ=d_targ)
+        init_targ=d_targ,
+        predictor_flag=True)
 
 def test(env_id, num_timesteps, seed, curr_path, point):
     from baselines.common import set_global_seeds
@@ -95,8 +96,8 @@ def main():
     parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
     parser.add_argument('--num-timesteps', type=int, default=int(2e6))
-    parser.add_argument('--train', type=bool, default=False)
-    parser.add_argument('--load', type=bool, default=True)
+    parser.add_argument('--train', type=bool, default=True)
+    parser.add_argument('--load', type=bool, default=False)
     parser.add_argument('--d_targ', type=float, default=0.012)
     parser.add_argument('--point', type=str, default='00200')
     args = parser.parse_args()
@@ -106,7 +107,7 @@ def main():
     # print(args.train)
     # print("args.load: ")
     # print(args.load)
-    #-----end debug------------------
+    #-----end debug--------------
 
     curr_path = sys.path[0]
     if args.train:

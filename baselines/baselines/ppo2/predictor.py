@@ -37,6 +37,10 @@ class Predictor(object):
 
         ## prepare containers for saving input dataset
         self.dataset = []
+        filelist = [f for f in os.listdir("./model/"+self.model_name) if f.endswith(".pkl")]
+        for f in filelist:
+            os.remove(os.path.join("./model/"+self.model_name, f))
+        self.dataset_idx=0 # for counting the saved dataset index
 
         ## build model
         self._build_ph()
@@ -149,10 +153,6 @@ class Predictor(object):
         ## initialize global variables
         if self.train_flag:
             # delete existing and dataset to avoid overlap problem
-            filelist = [f for f in os.listdir("./model/"+self.model_name) if f.endswith(".pkl")]
-            for f in filelist:
-                os.remove(os.path.join("./model/"+self.model_name, f))
-            self.dataset_idx=0 # for counting the saved dataset index
             # initialize new model
             self.sess.run(tf.global_variables_initializer())
 
@@ -169,7 +169,7 @@ class Predictor(object):
         #
 
         # create dataset
-        for idx,length in enumerate(self.x_lens):
+        for idx, length in enumerate(self.x_lens):
             if length > 1:
                 self.dataset.append(DatasetStru(self.xs[idx],self.ys[idx]))
 
@@ -288,7 +288,7 @@ class Predictor(object):
         if self.train_flag:
             #----create training dataset for future training---#
             self.create_dataset()
-            return
+            return np.zeros((len(dones)))
             # =========================================
         else:
             #---predict input data---#
@@ -345,7 +345,7 @@ if __name__ == '__main__':
                               train_flag=train_flag)
 
         rnn_model.init_sess()
-        for _ in range(0, 5000):
+        for _ in range(5000):
             #create fake data
             obs = np.random.rand(32, 20)
             dones = rand_bools_int_func(32)
