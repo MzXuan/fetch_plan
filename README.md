@@ -11,9 +11,7 @@ class Predictor(object):
     def predict(self, obs, dones):
         # function: predict the goal position
         # input: 
-        # obs.shape = [batch_size, 7]
-        # achieved_goal.shape = [batch_size, 3]
-        # goal.shape = [batch_size, 3]
+        # obs.shape = [batch_size, ob_shape] include joint angle etc.
         # dones.shape = [batch_size]
         # return:
         # batch_loss.shape =[batch_size]
