@@ -10,7 +10,7 @@ import tensorflow as tf
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 point="300"):
+                 point="2500"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -158,6 +158,7 @@ class Predictor(object):
         x_lens = self.x_lens
 
         if self.train_flag:
+            # ==> Need to be refactored as follows
             ## run training
             fetches  = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat]
@@ -174,12 +175,12 @@ class Predictor(object):
             self.file_writer.add_summary(merged_summary, self.iteration)
             self.iteration+=1
 
-            ## save model
+            # save model
             if (self.iteration % self.checkpoint_interval) is 0:
                 self.save_net("./model/human_predict_test/{}".format(
                     self.iteration
                 ))
-
+            # =========================================
         else:
             fetches = [self.loss, self.y_ph, self.y_hat]
             feed_dict = {
@@ -220,7 +221,7 @@ class Predictor(object):
 if __name__ == '__main__':
     from flags import flags
 
-    train_flag=True
+    train_flag=False
     FLAGS = flags.FLAGS
 
     def rand_bools_int_func(n):
