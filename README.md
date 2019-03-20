@@ -8,7 +8,7 @@ class Predictor(object):
     def __init__(self,sess,FLAGS, batch_size, max_timestep):
         pass
     
-    def predict(self, obs, achieved_goal, goal, dones):
+    def predict(self, obs, dones):
         # function: predict the goal position
         # input: 
         # obs.shape = [batch_size, 7]
@@ -16,8 +16,8 @@ class Predictor(object):
         # goal.shape = [batch_size, 3]
         # dones.shape = [batch_size]
         # return:
-        # goal.shape = [batch_size, 3]
-        return predict_goal
+        # batch_loss.shape =[batch_size]
+        return batch_loss
 
 ```
 2. Address smoothness issue (@xuan_z)

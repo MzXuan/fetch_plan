@@ -98,7 +98,7 @@ def main():
     parser.add_argument('--train', type=bool, default=False)
     parser.add_argument('--load', type=bool, default=True)
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('--point', type=str, default='12200')
+    parser.add_argument('--point', type=str, default='00200')
     args = parser.parse_args()
 
     #------for debug-------------

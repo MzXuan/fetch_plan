@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #general import
 import numpy as np
+import random
 
 # for gym env
 import gym
@@ -17,48 +18,30 @@ FLAGS = flags.FLAGS
 
 def main():
     print("import successfully")
-    env = initialize_env()
+    # env = initialize_env()
+
+    # #-----------for debug----------------
+    # obs = np.random.rand(32, 20)
+    # for data in obs:
+    #     test=np.concatenate((data[0:7],data[14:17]))
+    #     print(test)
+    #
+    # #-------------end debug-------------
+
     with tf.Session() as sess:
-        rnn_model = Predictor(sess, FLAGS)
+        rnn_model = Predictor(sess, FLAGS,32,50,train_flag=True)
         rnn_model.initialize_sess()
 
-        x = np.empty([50,3])
-        y = np.empty([1,3])
-        x_len = 0
-        for i in range(0,5000):
+        for i in range(0,50):
+            obs = np.random.rand(32, 20)
+            done = rand_bools_int_func(32)
+            rnn_model.predict(obs,done)
 
-            #todo: get action from rl algorithm
-            #todo: edit env that can return batch data
-            obs, _, done, info = env.step(env.action_space.sample())
-            # env.render()
-            # time.sleep(0.1)
-            # print("obs: ")
-            # print(obs)
-            # print("done: ")
-            # print(done)
-            desired_goal = obs['desired_goal']
-            current_state = obs['observation'][0:3]
-            # print("current state: ")
-            # print(current_state)
-            y = desired_goal
-            if(x_len<10):
-                x[x_len] = current_state
-                x_len+=1
-            else:
-                x = np.roll(x,-1,axis=0)
-                x[x_len-1] = current_state
+    return 0
 
-            # print("x_len: ")
-            # print(x_len)
-            # print("x: ")
-            # print(x)
-            # print("y: ")
-            # print(y)
-            #todo: send observation to lstm 
-            loss = rnn_model.train_online(x,y,x_len,i)
-
-    return 0 
-
+def rand_bools_int_func(n):
+    r = random.getrandbits(n)
+    return [bool((r>>i)&1) for i in range(n)]
 
 def initialize_env():
     env = gym.make('FetchPlan-v0')

@@ -48,9 +48,9 @@ class Predictor(object):
     
 
         ## prepare containers for saving data
-        self.xs = np.zeros(batch_size, self.in_timesteps_max, self.in_dim)
-        self.ys = np.zeros(batch_size,self.out_dim)
-        self.x_lens = np.zeros(batch_size,1)
+        self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
+        self.ys = np.zeros((batch_size,self.out_dim))
+        self.x_lens = np.zeros(batch_size,dtype=int)
 
         ## build model
         self.build()
@@ -59,6 +59,10 @@ class Predictor(object):
     def calculate_loss(self):
         ## calculate loss as a whole based on all dimensionalities
         self.loss = tf.losses.mean_squared_error(self.y_ph, self.mean)
+
+    def calculate_batch_loss(self, true, pred):
+        error = np.sum((true-pred)**2,axis=1)
+        return error
 
     def build(self):
         ## define input and output
@@ -97,32 +101,34 @@ class Predictor(object):
         ## new a saver for save and load model
         self.saver = tf.train.Saver()
 
-
     def initialize_sess(self):
         ## initialize global variables
         if self.train_flag is True:
+            print("initialize model...")
             self.sess.run(tf.global_variables_initializer())
-            print("initialize model training first")
+            self.iteration = 0
+            print("done")
+            
         else:
             self.load()
+            self.iteration = 0
 
     def reset(self, dones):
         # function: reset the lstm cell of predictor.
         # create new sequences
         for idx, done in enumerate(dones):
             if done is True:
-                self.xs[idx] = np.zeros(self.in_timesteps_max, self.in_dim)
-                self.ys[idx] = np.zeros(batch_size,self.out_dim)
+                self.xs[idx] = np.zeros((self.in_timesteps_max, self.in_dim))
+                self.ys[idx] = np.zeros(self.out_dim)
                 self.x_lens[idx] = 0
         pass
-
 
     def create_input_sequence(self,obs,dones):
         self.reset(dones)
         for idx, data in enumerate(obs):
             lens = self.x_lens[idx]
-            self.xs[idx,lens] = data[0:7,14:17]
-            self.ys[idx,lens] = data[-4:-1]
+            self.xs[idx,lens,:] = np.concatenate((data[0:7],data[14:17]))
+            self.ys[idx,:] = data[-4:-1]
             self.x_lens[idx]+=1
         pass
 
@@ -135,11 +141,11 @@ class Predictor(object):
         # return:
         # goal.shape = [batch_size, 3]
 
-        #todo: create input sequence
+        #create input sequence
         self.create_input_sequence(obs,dones)
 
-        xs = self.train_xs
-        ys = self.train_ys
+        xs = self.xs
+        ys = self.ys
         x_lens = self.x_lens
 
         if self.train_flag is True:
@@ -148,27 +154,29 @@ class Predictor(object):
             fetches += [self.loss, self.y_ph, self.mean]
             feed_dict = {self.x_ph:xs, self.y_ph:ys, self.x_len_ph: x_lens}
             _, merged_summary, \
-                loss, y, pred = self.sess.run(fetches, feed_dict)
-          
-            self.file_writer.add_summary(merged_summary, iteration)
+                loss, true, pred = self.sess.run(fetches, feed_dict)
+
+            batch_loss = self.calculate_batch_loss(true, pred)
+
+            self.file_writer.add_summary(merged_summary, self.iteration)
+            self.iteration+=1
 
             ## save model
-            if (iteration % self.checkpoint_interval) is 0:
-                self.save(iteration)
+            if (self.iteration % self.checkpoint_interval) is 0:
+                self.save(self.iteration)
             ## display information
-            if (iteration % self.display_interval) is 0:
+            if (self.iteration % self.display_interval) is 0:
                 print('\n')
                 print("pred = {0}, true goal = {1}".format(pred, y))
-                print('iteration {0}: loss = {1} '.format(
-                    iteration, loss)
+                print('iteration {0}: loss = {1} '.format(self.iteration, loss))
         else:
             fetches = [self.y_ph, self.mean]
             feed_dict = {self.x_ph: xs,
             self.x_len_ph: x_lens}
             goal = self.sess.run(fetches, feed_dict)
-            loss = goal - goal
+            batch_loss = goal - goal
 
-        return loss
+        return batch_loss
 
     
     def save(self, iteration):
