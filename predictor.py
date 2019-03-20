@@ -193,8 +193,11 @@ class Predictor(object):
     
     
     def load(self):
-        ## load the previous saved model
+        ## load the previous saved model and extract iteration number
         path_name = tf.train.latest_checkpoint(self.checkpoint_dir)
+        iteration = path_name.split("model.ckpt-")
+        self.iteration=int(iteration[-1])
+        
         if path_name is not None:
             self.saver.restore(self.sess, path_name)
             print('restore model from checkpoint path: ', path_name)

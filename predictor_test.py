@@ -12,7 +12,7 @@ from predictor import Predictor
 FLAGS = flags.FLAGS
 
 def main():
-    train_flag=True
+    train_flag=False
 
 
     with tf.Session() as sess:
