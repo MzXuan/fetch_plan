@@ -270,7 +270,7 @@ class Predictor(object):
         print("finish training")
 
 
-    def predict(self, obs, dones):
+    def predict(self, obs, dones, mean, var):
         # function: predict the goal position
         # input: 
         # obs.shape = [batch_size, ob_shape] include joint angle etc.

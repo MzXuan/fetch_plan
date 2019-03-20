@@ -118,7 +118,8 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
-            _ = self.predictor.predict(self.obs[:], self.dones)
+            _ = self.predictor.predict(self.obs[:], self.dones,
+                                       self.env.ob_rms.mean, self.env.ob_rms.var)
             #flag: to lstm predict
             #----------for debug-------------#
             # print("self.obs: ")
