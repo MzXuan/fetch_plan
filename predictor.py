@@ -2,13 +2,9 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
 import random
-import pickle as pkl
 import tensorflow as tf
-from tensorflow.contrib.legacy_seq2seq import attention_decoder as attention_decoder_seq2seq
 from tensorflow.contrib.legacy_seq2seq import rnn_decoder
 import time, os
-import scripts.visual_test_trajs as vt
-import csv
 
 
 class Predictor(object):
@@ -61,7 +57,7 @@ class Predictor(object):
         self.loss = tf.losses.mean_squared_error(self.y_ph, self.mean)
 
     def calculate_batch_loss(self, true, pred):
-        error = np.sum((true-pred)**2,axis=1)
+        error = np.sqrt(np.mean((true-pred)**2,axis=1))
         return error
 
     def build(self):
@@ -167,14 +163,20 @@ class Predictor(object):
             ## display information
             if (self.iteration % self.display_interval) is 0:
                 print('\n')
-                print("pred = {0}, true goal = {1}".format(pred, y))
+                print("pred = {0}, true goal = {1}".format(pred, true))
                 print('iteration {0}: loss = {1} '.format(self.iteration, loss))
         else:
-            fetches = [self.y_ph, self.mean]
-            feed_dict = {self.x_ph: xs,
+            fetches = [self.loss,self.y_ph, self.mean]
+            feed_dict = {self.x_ph: xs,self.y_ph:ys,
             self.x_len_ph: x_lens}
-            goal = self.sess.run(fetches, feed_dict)
-            batch_loss = goal - goal
+            loss, true_goal, predict_goal = self.sess.run(fetches, feed_dict)
+            batch_loss = self.calculate_batch_loss(true_goal, predict_goal)
+
+            ## display information
+            if (self.iteration % self.display_interval) is 0:
+                print('\n')
+                print("pred = {0}, true goal = {1}".format(predict_goal, true_goal))
+                print('iteration {0}: loss = {1} '.format(self.iteration, loss))
 
         return batch_loss
 
