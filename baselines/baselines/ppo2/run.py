@@ -90,17 +90,24 @@ def test(env_id, num_timesteps, seed, curr_path, point):
     ppo2.test(policy=policy, env=env, nsteps=2048, nminibatches=32, 
         load_path='{}/log/checkpoints/{}'.format(curr_path, point))
 
-
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
-    parser.add_argument('--num-timesteps', type=int, default=int(1e7))
+    parser.add_argument('--num-timesteps', type=int, default=int(2e6))
     parser.add_argument('--train', type=bool, default=False)
     parser.add_argument('--load', type=bool, default=True)
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('--point', type=str, default='00100')
+    parser.add_argument('--point', type=str, default='00200')
     args = parser.parse_args()
+
+    #------for debug-------------
+    # print("args.train: ")
+    # print(args.train)
+    # print("args.load: ")
+    # print(args.load)
+    #-----end debug------------------
+
     curr_path = sys.path[0]
     if args.train:
         logger.configure(dir='{}/log'.format(curr_path))

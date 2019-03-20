@@ -111,6 +111,14 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
+            #flag: to lstm predict
+            #----------for debug-------------#
+            # print("self.obs: ")
+            # print(self.obs[:])
+            # print("rewards: ")
+            # print(rewards)
+
+            #----------end debug-------------#
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)

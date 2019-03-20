@@ -115,6 +115,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             did_reset_sim = self._reset_sim()
         self.goal = self._sample_goal().copy()
         obs = self._get_obs()
+        self.last_distance = goal_distance(
+            obs['achieved_goal'], self.goal)
         return obs
 
     # RobotEnv methods
@@ -175,8 +177,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.forward()
 
     def _set_action(self, action):
-        #todo: add a limitation of maximum accerleration and joint position(in xml file)
-        # adjust pid
 
         assert action.shape == (7,)
         action = action.copy()
@@ -245,7 +245,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         else:
             achieved_goal = np.squeeze(object_pos.copy())
         obs = np.concatenate([
-            grip_pos, joint_angle, joint_vel
+            joint_angle, joint_vel
         ])
         # ------------------------
         #   Observation details
