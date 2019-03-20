@@ -45,9 +45,6 @@ num_units = 'units' + str(flags.FLAGS.num_units)
 num_stacks = 'stacks' + str(flags.FLAGS.num_stacks)
 in_dim = 'indim' + str(flags.FLAGS.in_dim)
 out_dim = 'outdim' + str(flags.FLAGS.out_dim)
-in_timesteps = 'intime' + str(flags.FLAGS.in_timesteps)
-out_timesteps = 'outtime' + str(flags.FLAGS.out_timesteps)
-batch_size = 'batch' + str(flags.FLAGS.batch_size)
 
 postfix = "ours_gru_64_64_output_15_w1_1_w2_10"
 

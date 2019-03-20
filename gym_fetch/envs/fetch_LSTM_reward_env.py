@@ -245,7 +245,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         else:
             achieved_goal = np.squeeze(object_pos.copy())
         obs = np.concatenate([
-            grip_pos, joint_angle, joint_vel
+            joint_angle, joint_vel
         ])
         # ------------------------
         #   Observation details

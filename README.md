@@ -2,10 +2,10 @@
 
 ---
 ## TODO List
-1. Complete predictor training (@xuan_z)
+1. Predictor training (@xuan_z)
 ``` python
 class Predictor(object):
-    def __init__(self,sess, FLAGS, batch_size, max_timestep, train_flag):
+    def __init__(self,sess,FLAGS, batch_size, max_timestep, train_flag):
         pass
     
     def predict(self, obs, dones):
@@ -14,8 +14,8 @@ class Predictor(object):
         # obs.shape = [batch_size, ob_shape] include joint angle etc.
         # dones.shape = [batch_size]
         # return:
-        # goal.shape = [batch_size, 3]
-        return predict_goal
+        # batch_loss.shape =[batch_size]
+        return batch_loss
 
 ```
 2. Address smoothness issue (@xuan_z)
@@ -56,11 +56,20 @@ pip install -e .
 
 ---
 ## Test
+### Test env
 run test script as follows
 ``` shell
 python env_test.py
 ```
+
+### Test predictor
+run test script as follows
+``` shell
+python predictor_test.py
+```
 ---
+
+
 ## Run
 ``` shell
 cd baselines/baselines/ppo2
