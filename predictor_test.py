@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #general import
+
 import numpy as np
 import random
 
@@ -7,14 +8,16 @@ import tensorflow as tf
 from flags import flags
 from predictor import Predictor
 
+
 FLAGS = flags.FLAGS
 
-
 def main():
-    print("import successfully")
+    train_flag=True
+
+
     with tf.Session() as sess:
         # create and initialize session
-        rnn_model = Predictor(sess, FLAGS,32,50,train_flag=False)
+        rnn_model = Predictor(sess, FLAGS,32,10,train_flag=train_flag)
         rnn_model.initialize_sess()
 
         for i in range(0,5000):

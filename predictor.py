@@ -123,9 +123,15 @@ class Predictor(object):
         self.reset(dones)
         for idx, data in enumerate(obs):
             lens = self.x_lens[idx]
-            self.xs[idx,lens,:] = np.concatenate((data[0:7],data[14:17]))
-            self.ys[idx,:] = data[-4:-1]
-            self.x_lens[idx]+=1
+            if lens<self.in_timesteps_max:
+                self.xs[idx,lens,:] = np.concatenate((data[0:7],data[14:17]))
+                self.ys[idx,:] = data[-4:-1]
+                self.x_lens[idx]+=1
+            else:
+                lens = self.in_timesteps_max-1
+                self.xs[idx,:] = np.roll(self.xs[idx,:], -1, axis=0)
+                self.xs[idx,lens,:] = np.concatenate((data[0:7],data[14:17]))
+                self.ys[idx,:] = data[-4:-1]
         pass
 
 
@@ -164,7 +170,7 @@ class Predictor(object):
             if (self.iteration % self.display_interval) is 0:
                 print('\n')
                 print("pred = {0}, true goal = {1}".format(pred, true))
-                print('iteration {0}: loss = {1} '.format(self.iteration, loss))
+                print('training iteration {0}: loss = {1} '.format(self.iteration, loss))
         else:
             fetches = [self.loss,self.y_ph, self.mean]
             feed_dict = {self.x_ph: xs,self.y_ph:ys,
@@ -176,7 +182,7 @@ class Predictor(object):
             if (self.iteration % self.display_interval) is 0:
                 print('\n')
                 print("pred = {0}, true goal = {1}".format(predict_goal, true_goal))
-                print('iteration {0}: loss = {1} '.format(self.iteration, loss))
+                print('predict loss = {0} '.format(loss))
 
         return batch_loss
 
