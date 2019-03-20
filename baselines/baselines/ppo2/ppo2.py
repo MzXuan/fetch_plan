@@ -7,6 +7,9 @@ import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
+from predictor import Predictor
+from flags import FLAGS
+
 
 class Model(object):
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
@@ -84,8 +87,9 @@ class Model(object):
         tf.global_variables_initializer().run(session=sess) #pylint: disable=E1101
 
 class Runner(object):
-
-    def __init__(self, *, env, model, nsteps, gamma, lam, load, point):
+    def __init__(self, *, env, model, 
+                 nsteps, gamma, lam, load, point, 
+                 predictor_flag=False):
         self.env = env
         self.model = model
         nenv = env.num_envs
@@ -95,9 +99,12 @@ class Runner(object):
         self.lam = lam
         self.nsteps = nsteps
         self.states = model.initial_state
+        self.predictor_flag = predictor_flag
         self.dones = [False for _ in range(nenv)]
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
+        sess = tf.get_default_session()
+        self.predictor = Predictor(sess, FLAGS, nenv, 10, train_flag=predictor_flag)
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
@@ -111,6 +118,7 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
+            _ = self.predictor.predict(self.obs[:], self.dones)
             #flag: to lstm predict
             #----------for debug-------------#
             # print("self.obs: ")
@@ -163,7 +171,8 @@ def constfn(val):
 def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr, 
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
-            save_interval=50, load=False, point='00100', init_targ):
+            save_interval=50, load=False, point='00100', init_targ=0.1,
+            predictor_flag=False):
 
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
@@ -185,7 +194,10 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
             fh.write(cloudpickle.dumps(make_model))
     model = make_model()
-    runner = Runner(env=env, model=model, nsteps=nsteps, gamma=gamma, lam=lam, load=load, point=point)
+    runner = Runner(
+        env=env, model=model, 
+        nsteps=nsteps, gamma=gamma, lam=lam, load=load, point=point,
+        predictor_flag=predictor_flag)
 
     epinfobuf = deque(maxlen=100)
     tfirststart = time.time()
