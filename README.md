@@ -8,6 +8,9 @@ class Predictor(object):
     def __init__(self,sess,FLAGS, batch_size, max_timestep, train_flag):
         pass
     
+    def run_training(self):
+        #load previously saved dataset and train the network
+        
     def predict(self, obs, dones):
         # function: predict the goal position
         # input: 
