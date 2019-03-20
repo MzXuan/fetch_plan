@@ -1,26 +1,43 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-import random
-import tensorflow as tf
-from tensorflow.contrib.legacy_seq2seq import rnn_decoder
 import time, os
+import joblib
+import random
+
+import numpy as np
+import tensorflow as tf
 
 
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
-                 batch_size, max_timestep, train_flag):
+                 batch_size, max_timestep, train_flag,
+                 point="300"):
         ## extract FLAGS
         self.sess = sess
+        self._build_flag(FLAGS)
+
+        self.batch_size = batch_size
+        self.in_timesteps_max = max_timestep
         self.train_flag = train_flag
-        
+        self.point = point
+
+        self.iteration = 0
+            
+        ## prepare containers for saving data
+        self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
+        self.ys = np.zeros((batch_size, self.out_dim))
+        self.x_lens = np.zeros(batch_size, dtype=int)
+
+        ## build model
+        self._build_ph()
+        self._build_net()
+
+    def _build_flag(self, FLAGS):
         self.num_units = FLAGS.num_units_cls
         self.num_stacks = FLAGS.num_stacks
         
         self.in_dim = FLAGS.in_dim
         self.out_dim = FLAGS.out_dim
-        
-        self.in_timesteps_max = max_timestep
-    
+
         self.validation_interval = FLAGS.validation_interval
         self.checkpoint_interval = FLAGS.checkpoint_interval
         self.sample_interval = FLAGS.sample_interval
@@ -38,17 +55,6 @@ class Predictor(object):
     
         self.run_mode = FLAGS.run_mode
 
-        self.batch_size = batch_size
-    
-        ## prepare containers for saving data
-        self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
-        self.ys = np.zeros((batch_size, self.out_dim))
-        self.x_lens = np.zeros(batch_size, dtype=int)
-
-        ## build model
-        self._build_ph()
-        self._build_net()
-
     def _build_ph(self):
         self.x_ph = tf.placeholder(
             tf.float32, 
@@ -64,38 +70,32 @@ class Predictor(object):
             tf.float32, 
             shape=[None, self.out_dim], 
             name='out_timesteps')
-    
-    def calculate_batch_loss(self, true, pred):
-        error = np.sqrt(np.mean((true-pred)**2,axis=1))
-        return error
 
     def _build_net(self):
         ## encoder
-        enc_inputs = self.x_ph
-        gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
-        gru_rnn2 = tf.nn.rnn_cell.GRUCell(32)
-        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
-        _, enc_state = tf.nn.dynamic_rnn(
-            enc_cell, enc_inputs, 
-            sequence_length=self.x_len_ph, dtype=tf.float32
-            )
-        
-        ## dense layer classifier
-        dense_outputs = tf.layers.dense(
-            enc_state[1], self.out_dim, activation=tf.nn.sigmoid
-            )
-        print('dense shape:', dense_outputs.get_shape())
-
-        self.mean = tf.reshape(dense_outputs, [-1, self.out_dim])
-        print('self.pred shape:', self.mean.get_shape())
+        with tf.variable_scope("predictor"):
+            enc_inputs = self.x_ph
+            gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
+            gru_rnn2 = tf.nn.rnn_cell.GRUCell(32)
+            enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
+            _, enc_state = tf.nn.dynamic_rnn(
+                enc_cell, enc_inputs, 
+                sequence_length=self.x_len_ph, dtype=tf.float32
+                )
+            
+            ## dense layer classifier
+            self.y_hat = tf.layers.dense(
+                enc_state[1], self.out_dim
+                )
 
         ## setup optimization
-        self.loss = tf.losses.mean_squared_error(self.y_ph, self.mean)
+        self.loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat)
 
+        var_list = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope="predictor"
+        )
         self.train_op = tf.train.AdamOptimizer(self.lr).minimize(
-            self.loss, var_list=tf.trainable_variables())
-
-        print('var_list:\n', tf.trainable_variables())
+            self.loss, var_list=var_list)
         
         ## save summary
         tf.summary.scalar('loss', self.loss)
@@ -104,19 +104,9 @@ class Predictor(object):
             self.checkpoint_dir, self.sess.graph
             )
 
-        ## new a saver for save and load model
-        self.saver = tf.train.Saver()
-
-    def initialize_sess(self):
-        ## initialize global variables
-        if self.train_flag is True:
-            print("initialize model...")
-            self.sess.run(tf.global_variables_initializer())
-            self.iteration = 0
-            print("done")
-        else:
-            self.load()
-            self.iteration = 0
+    def _get_batch_loss(self, y, y_hat):
+        error = np.sqrt(np.mean((y - y_hat)**2,axis=1))
+        return error
 
     def _reset_seq(self, dones):
         # function: reset the lstm cell of predictor.
@@ -143,6 +133,15 @@ class Predictor(object):
                                                         data[14:17]))
                 self.ys[idx, :] = data[-3:]
 
+    def init_sess(self):
+        ## initialize global variables
+        if self.train_flag:
+            self.sess.run(tf.global_variables_initializer())
+        else:
+            self.load_net("./model/human_predict_test/{}".format(
+                self.point
+            ))
+            
     def predict(self, obs, dones):
         # function: predict the goal position
         # input: 
@@ -161,7 +160,7 @@ class Predictor(object):
         if self.train_flag:
             ## run training
             fetches  = [self.train_op, self.merged_summary]
-            fetches += [self.loss, self.y_ph, self.mean]
+            fetches += [self.loss, self.y_ph, self.y_hat]
             feed_dict = {
                 self.x_ph:xs, 
                 self.y_ph:ys, 
@@ -170,17 +169,19 @@ class Predictor(object):
 
             _, merged_summary, \
             loss, y, y_hat = self.sess.run(fetches, feed_dict)
-            batch_loss = self.calculate_batch_loss(y, y_hat)
+            batch_loss = self._get_batch_loss(y, y_hat)
 
             self.file_writer.add_summary(merged_summary, self.iteration)
             self.iteration+=1
 
             ## save model
             if (self.iteration % self.checkpoint_interval) is 0:
-                self.save(self.iteration)
+                self.save_net("./model/human_predict_test/{}".format(
+                    self.iteration
+                ))
 
         else:
-            fetches = [self.loss, self.y_ph, self.mean]
+            fetches = [self.loss, self.y_ph, self.y_hat]
             feed_dict = {
                 self.x_ph: xs,
                 self.y_ph:ys,
@@ -188,44 +189,38 @@ class Predictor(object):
                 }
 
             loss, y, y_hat = self.sess.run(fetches, feed_dict)
-            batch_loss = self.calculate_batch_loss(y, y_hat)
+            batch_loss = self._get_batch_loss(y, y_hat)
 
         ## display information
         if (self.iteration % self.display_interval) is 0:
             print('\n')
-            print("pred = {}, true goal = {}".format(y_hat, y))
+            print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
             print('predict loss = {} '.format(loss))
 
         return batch_loss
 
-    def save(self, iteration):
-        ## save the model iteratively
-        print('iteration {}: save model to {}'.format(
-            iteration, self.checkpoint_dir)
-            )
-        self.saver.save(self.sess, 
-            self.checkpoint_dir + '/model.ckpt', 
-            global_step=iteration)
-    
-    def load(self):
-        ## load the previous saved model and extract iteration number
-        path_name = tf.train.latest_checkpoint(self.checkpoint_dir)
-        iteration = path_name.split("model.ckpt-")
-        self.iteration=int(iteration[-1])
-        
-        if path_name is not None:
-            self.saver.restore(self.sess, path_name)
-            print('restore model from checkpoint path: ', path_name)
-        else:
-            print('no checkpoints are existed in ', self.checkpoint_dir)
-            
-        return path_name
+    def save_net(self, save_path):
+        params = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope="predictor"
+        )
+        ps = self.sess.run(params)
+        joblib.dump(ps, save_path)
 
+    def load_net(self, load_path):
+        loaded_params = joblib.load(load_path)
+        restores = []
+        params = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope="predictor"
+        )
+
+        for p, loaded_p in zip(params, loaded_params):
+            restores.append(p.assign(loaded_p))
+        self.sess.run(restores)
 
 if __name__ == '__main__':
     from flags import flags
 
-    train_flag=False
+    train_flag=True
     FLAGS = flags.FLAGS
 
     def rand_bools_int_func(n):
@@ -238,8 +233,7 @@ if __name__ == '__main__':
         rnn_model = Predictor(sess, FLAGS, 32, 10, 
                               train_flag=train_flag)
 
-        rnn_model.initialize_sess()
-
+        rnn_model.init_sess()
         for _ in range(0, 5000):
             #create fake data
             obs = np.random.rand(32, 20)
