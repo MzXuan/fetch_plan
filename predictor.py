@@ -2,7 +2,10 @@
 import time, os
 import joblib
 import pickle
+import os
 
+import random
+import math
 import numpy as np
 import tensorflow as tf
 
@@ -145,7 +148,14 @@ class Predictor(object):
     def init_sess(self):
         ## initialize global variables
         if self.train_flag:
+            # delete existing and dataset to avoid overlap problem
+            filelist = [f for f in os.listdir("./model/"+self.model_name) if f.endswith(".pkl")]
+            for f in filelist:
+                os.remove(os.path.join("./model/"+self.model_name, f))
+            self.dataset_idx=0 # for counting the saved dataset index
+            # initialize new model
             self.sess.run(tf.global_variables_initializer())
+
         else:
             self.load_net(("./model/"+self.model_name+"/{}").format(
                 self.point
@@ -158,52 +168,106 @@ class Predictor(object):
         # dones.shape = [batch_size]
         #
 
-        # save dataset
+        # create dataset
         for idx,length in enumerate(self.x_lens):
             if length > 1:
                 self.dataset.append(DatasetStru(self.xs[idx],self.ys[idx]))
 
         # if dataset is large, save it
-        if len(self.dataset) > 10:
-            pickle.dump(self.dataset, open("./model/"+self.model_name+"/dataset/name.pkl","wb"))
+        if len(self.dataset) > 20000:
+            pickle.dump(self.dataset, open("./model/"+self.model_name
+                                           +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
+            self.dataset_idx+=1
             self.dataset=[]
 
+    def save_dataset(self):
+        # check whether in training process
+        if self.train_flag is not True:
+            print("Not in training process, saving failed")
+            return 0
+        else:
+            pickle.dump(self.dataset, open("./model/" + self.model_name
+                                            +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
+            print("saving dataset successfully")
+            self.dataset = []
+
+    def load_dataset(self, file_name):
+        ## load dataset
+
+        try:
+            self.dataset = pickle.load(open(os.path.join("./model/" + self.model_name, file_name), "rb"))
+        except:
+            print("Can not load dataset. Please first run the training stage to save dataset.")
+            return 0
+
+        return 1
 
 
     def run_training(self):
         #function: train the model according to saved dataset
-        ## load dataset
-        self.dataset = pickle.load(open("./model/"+self.model_name+"/dataset/name.pkl","rb"))
-        xs,ys,x_lens = [],[],[]
-        for data in self.dataset:
-            xs.append(data.x)
-            ys.append(data.y)
-            x_lens.append(len(data.x))
-        xs = np.assary(xs)
-        ys = np.assary(ys)
-        x_lens = np.assary(x_lens)
+        ## check whether in training process
+        if self.train_flag is not True:
+            print("Not in training process,return...")
+            return 0
 
+        ## check saved data set
+        filelist = [f for f in os.listdir("./model/" + self.model_name) if f.endswith(".pkl")]
+        num_sets = len(filelist)
+        self.dataset_idx = 0
+
+
+        ## prepare threshold to switch dataset
+        max_iteration = int(self.point)
+        iter_range = [int(x*max_iteration/num_sets) for x in range(0,num_sets)]
+        print("iter_range")
+        print(iter_range)
         ## run training
-        fetches = [self.train_op, self.merged_summary]
-        fetches += [self.loss, self.y_ph, self.y_hat]
-        feed_dict = {
-            self.x_ph: xs,
-            self.y_ph: ys,
-            self.x_len_ph: x_lens
-        }
+        while self.iteration<max_iteration:
+            #----- load dataset ----------#
+            if self.dataset_idx < num_sets:
+                if self.iteration==iter_range[self.dataset_idx]:
+                    print("load new dataset...")
+                    if self.load_dataset(filelist[self.dataset_idx]) == 0:
+                        return 0
+                    self.dataset_idx+=1
+            #-----create training data----#
+            xs, ys, x_lens = [], [], []
+            for _ in range(0,self.batch_size):
+                idx =random.randint(0, len(self.dataset)-1)
+                data=self.dataset[idx]
+                xs.append(data.x)
+                ys.append(data.y)
+                x_lens.append(len(data.x))
 
-        _, merged_summary, \
-        loss, y, y_hat = self.sess.run(fetches, feed_dict)
-        batch_loss = self._get_batch_loss(y, y_hat)
+            #----start training-----#
+            fetches = [self.train_op, self.merged_summary]
+            fetches += [self.loss, self.y_ph, self.y_hat]
+            feed_dict = {
+                self.x_ph: xs,
+                self.y_ph: ys,
+                self.x_len_ph: x_lens
+            }
 
-        self.file_writer.add_summary(merged_summary, self.iteration)
-        self.iteration += 1
+            _, merged_summary, \
+            loss, y, y_hat = self.sess.run(fetches, feed_dict)
+            batch_loss = self._get_batch_loss(y, y_hat)
 
-        # save model
-        if (self.iteration % self.checkpoint_interval) is 0:
-            self.save_net(("./model/" + self.model_name + "/{}").format(
-                self.iteration
-            ))
+            self.file_writer.add_summary(merged_summary, self.iteration)
+            self.iteration += 1
+
+            # save model
+            if (self.iteration % self.checkpoint_interval) is 0:
+                self.save_net(("./model/" + self.model_name + "/{}").format(
+                    self.iteration
+                ))
+
+            ## display information
+            if (self.iteration % self.display_interval) is 0:
+                print('\n')
+                print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
+                print('iteration = {}, training loss = {} '.format(self.iteration,loss))
+
+        print("finish training")
 
 
     def predict(self, obs, dones):
@@ -277,7 +341,7 @@ if __name__ == '__main__':
 
     with tf.Session() as sess:
         # create and initialize session
-        rnn_model = Predictor(sess, FLAGS, 32, 10, 
+        rnn_model = Predictor(sess, FLAGS, 32, 10,
                               train_flag=train_flag)
 
         rnn_model.init_sess()
@@ -287,3 +351,7 @@ if __name__ == '__main__':
             dones = rand_bools_int_func(32)
             # run the model
             rnn_model.predict(obs, dones)
+
+        rnn_model.save_dataset()
+        rnn_model.run_training()
+
