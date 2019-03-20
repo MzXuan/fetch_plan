@@ -62,14 +62,6 @@ run test script as follows
 python env_test.py
 ```
 
-### Test predictor
-run test script as follows
-``` shell
-python predictor_test.py
-```
----
-
-
 ## Run
 ``` shell
 cd baselines/baselines/ppo2
