@@ -106,3 +106,6 @@ For displaying performance, please set
 3. 0.3.0
 * add reinforcement learning code to train fetch
 * complete no predictable reward training
+
+4. 0.3.5
+* add visualization of obs in ppo2.py (example in line 389 to 402)

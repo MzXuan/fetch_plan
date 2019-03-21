@@ -11,6 +11,7 @@ from predictor import Predictor
 from flags import FLAGS
 
 
+
 class Model(object):
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
                 nsteps, ent_coef, vf_coef, max_grad_norm):
@@ -104,7 +105,8 @@ class Runner(object):
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
         sess = tf.get_default_session()
-        self.predictor = Predictor(sess, FLAGS, nenv, 10, train_flag=predictor_flag)
+        self.predictor = Predictor(sess, FLAGS, nenv, 20, train_flag=predictor_flag)
+        self.predictor.init_sess()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
@@ -118,8 +120,19 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
+            # # -----for dubug----#
+            # print("self.obs[:]:")
+            # print(self.obs[0,14:17])
+            # # ----end debug----#
+
             
             if self.predictor_flag:
+                # -----for dubug----#
+                # print("self.env.mean:")
+                # print(self.env.mean)
+                # print("self.env.var:")
+                # print(self.env.var)
+                # ----end debug----#
                 _ = self.predictor.predict(self.obs[:], self.dones,
                                            self.env.mean, self.env.var)
             else:
@@ -278,6 +291,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             for (lossval, lossname) in zip(lossvals, model.loss_names):
                 logger.logkv(lossname, lossval)
             logger.dumpkvs()
+
         if save_interval and (update % save_interval == 0 or update == 1) and logger.get_dir():
             checkdir = osp.join(logger.get_dir(), 'checkpoints')
             os.makedirs(checkdir, exist_ok=True)
@@ -315,6 +329,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         predictor_flag=predictor_flag)
 
     def load(load_path):
+
         sess = tf.get_default_session()
         params = tf.trainable_variables()
         loaded_params = joblib.load(load_path)
@@ -354,6 +369,14 @@ def display(policy, env, nsteps, nminibatches, load_path):
     load(load_path)
 
     def run_episode(env, agent):
+
+        import visual
+        global OBS_LIST
+        global OBS_LIST_3D
+        global DRAW_FLAG
+
+        DRAW_FLAG = True
+
         obs = env.reset()
         score = 0
         done = [False]
@@ -362,6 +385,20 @@ def display(policy, env, nsteps, nminibatches, load_path):
             env.render()
             act, state = agent.mean(obs, state, done)
             obs, rew, done, info = env.step(act)
+
+            #---- plot result ----#
+            try:
+                OBS_LIST
+                OBS_LIST_3D
+            except:
+                OBS_LIST = None
+                OBS_LIST_3D = None
+            OBS_LIST = visual.plot_obs(obs[:],OBS_LIST)
+            OBS_LIST_3D = visual.plot_3d_obs(obs[:], OBS_LIST_3D, done)
+
+            DRAW_FLAG =False
+
+            #--- end plot ---#
             score += rew[0]
 
         return score
@@ -374,3 +411,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
 def safemean(xs):
     return np.nan if len(xs) == 0 else np.mean(xs)
+
+
+
+
