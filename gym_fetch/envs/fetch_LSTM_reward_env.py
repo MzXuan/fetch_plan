@@ -123,8 +123,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # ----------------------------
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
-        self._set_action(action)
         self.sim.step()
+        self._set_action(action)
         self._step_callback()
         obs = self._get_obs()
         done = False
