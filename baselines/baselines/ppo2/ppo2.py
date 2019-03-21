@@ -382,20 +382,14 @@ def display(policy, env, nsteps, nminibatches, load_path):
             env.render()
             act, state = agent.mean(obs, state, done)
             obs, rew, done, _ = env.step(act)
-            # print("mean")
-            # print(env.mean)
-            # print("var")
-            # print(env.var)
-            print("source_obs")
-            print(env.origin_obs)
 
             #---- plot result ---
 
             obs_list = visualize.plot_obs(
-                env.origin_obs[:], obs_list)
+                env.origin_obs, obs_list)
 
             obs_list_3d = visualize.plot_3d_obs(
-                env.origin_obs[:], obs_list_3d)
+                env.origin_obs, obs_list_3d)
 
             #--- end plot ---#
             score += rew[0]

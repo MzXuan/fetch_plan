@@ -254,19 +254,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #   obs[10:17]: joint velocity
         # ------------------------
 
-        # obs = np.concatenate([
-        #     grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
-        #     object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
-        # ])
-        # print("grip_pos:")
-        # print(grip_pos)
-        # print("object_pos:")
-        # print(object_pos)
-        # print("obs:")
-        # print(obs)
-        # print("goal:")
-        # print(self.goal)
-
         return {
             'observation': obs.copy(),
             'achieved_goal': achieved_goal.copy(),
