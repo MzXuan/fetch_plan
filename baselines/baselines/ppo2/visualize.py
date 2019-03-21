@@ -13,8 +13,10 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def plot_obs(obs, obs_list=None):
     if obs_list is None:
-        obs_list = obs[0, 14:17]
+        obs_list = obs[0, :3]
         obs_list = np.expand_dims(obs_list, axis=0)
+    else:
+        obs_list = np.vstack((obs_list, obs[0, :3]))
     
     # print("obs:")
     # print(obs)
@@ -34,8 +36,10 @@ def plot_obs(obs, obs_list=None):
 
 def plot_3d_obs(obs, obs_list=None):
     if obs_list is None:
-        obs_list = obs[0, 14:17]
+        obs_list = obs[0, :3]
         obs_list = np.expand_dims(obs_list, axis=0)
+    else:
+        obs_list = np.vstack((obs_list, obs[0, :3]))
     
     # print("obs:")
     # print(obs)
@@ -52,7 +56,7 @@ def plot_3d_obs(obs, obs_list=None):
     # print(obs_list[:,0])
     ax.plot(obs_list[:, 0], obs_list[:, 1], obs_list[:, 2], 
             '-o', linewidth=2, color="blue")
-
+    
     plt.pause(0.1)
 
     return obs_list
