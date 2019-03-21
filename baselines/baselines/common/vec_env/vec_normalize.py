@@ -75,6 +75,7 @@ class VecNormalizeTest(VecEnv):
 
     def step(self, vac):
         obs, rews, dones, infos = self.venv.step(vac)
+        self.origin_obs = obs
         obs = self._obfilt(obs)
         return obs, rews, dones, infos
 
@@ -84,6 +85,7 @@ class VecNormalizeTest(VecEnv):
 
     def reset(self):
         obs = self.venv.reset()
+        self.origin_obs = obs
         return self._obfilt(obs)
 
     @property

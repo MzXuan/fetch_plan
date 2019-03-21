@@ -181,9 +181,12 @@ class Predictor(object):
             self.sess.run(tf.global_variables_initializer())
 
         else:
-            self.load_net(("./model/"+self.model_name+"/{}").format(
-                self.point
-            ))
+            try:
+                self.load_net(("./model/"+self.model_name+"/{}").format(
+                    self.point
+                ))
+            except:
+                self.sess.run(tf.global_variables_initializer())
 
     def create_dataset(self):
         # function: predict the goal position
