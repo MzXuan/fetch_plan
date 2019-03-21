@@ -188,7 +188,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         action_clip = delta_v+self.last_qvel
 
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
-        self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = self.last_qpos+action_clip*dt
+        self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = self.last_qpos+(action_clip+1e-8)*dt
 
         self.current_qvel = action_clip
         self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]

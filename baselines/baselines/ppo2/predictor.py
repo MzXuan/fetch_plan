@@ -5,14 +5,22 @@ import pickle
 import os
 
 import random
-import math
 import numpy as np
 import tensorflow as tf
 
+# for plot saved dataset
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.font_manager import FontProperties
+
 class DatasetStru(object):
-    def __init__(self,x,y):
+    def __init__(self,x,y,x_mean,x_var,y_mean,y_var):
         self.x = x
         self.y = y
+        self.x_mean = x_mean
+        self.x_var = x_var
+        self.y_mean = y_mean
+        self.y_var = y_var
 
 
 class Predictor(object):
@@ -35,6 +43,10 @@ class Predictor(object):
         self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
         self.ys = np.zeros((batch_size, self.out_dim))
         self.x_lens = np.zeros(batch_size, dtype=int)
+        self.x_mean = np.zeros(self.in_dim)
+        self.x_var = np.zeros(self.in_dim)
+        self.y_mean = np.zeros(self.out_dim)
+        self.y_var = np.zeros(self.out_dim)
 
         ## prepare containers for saving input dataset
         self.dataset = []
@@ -135,8 +147,18 @@ class Predictor(object):
                 self.ys[idx] = np.zeros(self.out_dim)
                 self.x_lens[idx] = 0
 
-    def _create_seq(self, obs, dones):
+    def _create_seq(self, obs, dones, mean, var):
         self._reset_seq(dones)
+
+        ## save mean and var
+        self.x_mean = np.concatenate((mean[0:7],
+                                    mean[14:17]))
+        self.x_var = np.concatenate((var[0:7],
+                                      var[14:17]))
+        self.y_mean = mean[-3:]
+        self.y_var = var[-3:]
+
+        ## create sequence data
         for idx, data in enumerate(obs):
             lens = self.x_lens[idx]
             if lens < self.in_timesteps_max:
@@ -169,11 +191,12 @@ class Predictor(object):
         # obs.shape = [batch_size, ob_shape] include joint angle etc.
         # dones.shape = [batch_size]
         #
-
         # create dataset
         for idx, length in enumerate(self.x_lens):
             if length > 1:
-                self.dataset.append(DatasetStru(self.xs[idx],self.ys[idx]))
+                self.dataset.append(DatasetStru(self.xs[idx], self.ys[idx],
+                                                self.x_mean, self.x_var,
+                                                self.y_mean, self.y_var))
 
         # if dataset is large, save it
         if len(self.dataset) > 200000:
@@ -205,15 +228,19 @@ class Predictor(object):
 
         return 1
 
+    def _revert_data(self,data,mean,var):
+        return(data*(var+1e-8)+mean)
+
+
     def _create_training_data(self,dataset):
         xs, ys, x_lens = [], [], []
+
         for _ in range(0, self.batch_size):
             idx = random.randint(0, len(dataset) - 1)
             data = self.dataset[idx]
             xs.append(data.x)
             ys.append(data.y)
             x_lens.append(len(data.x))
-
         return xs,ys,x_lens
 
     def run_training(self):
@@ -301,9 +328,13 @@ class Predictor(object):
 
                 ## display information
                 if (self.iteration % self.display_interval) is 0:
+                    mean_y = self.dataset[0].y_mean
+                    var_y = self.dataset[0].y_var
+                    y_origin = self._revert_data(y[0],mean_y,var_y)
+                    y_hat_origin = self._revert_data(y_hat[0],mean_y,var_y)
                     print('\n')
-                    print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
-                    print('iteration = {}, prediction loss = {} '.format(self.iteration, loss))
+                    print("pred = {}, true goal = {}".format(y_hat_origin, y_origin))
+                    print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
             #---------create validate data-----#
 
         print("finish training")
@@ -314,11 +345,14 @@ class Predictor(object):
         # input: 
         # obs.shape = [batch_size, ob_shape] include joint angle etc.
         # dones.shape = [batch_size]
+        # mean.shape = [batch_size, ob_shape]
+        # var.shape = [batch_size, ob_shape]
         # return:
         # batch_loss.shape = [batch_size]
 
         #create input sequence
-        self._create_seq(obs, dones)
+        self._create_seq(obs, dones, mean, var)
+
 
         xs = self.xs
         ys = self.ys
@@ -341,11 +375,11 @@ class Predictor(object):
             loss, y, y_hat = self.sess.run(fetches, feed_dict)
             batch_loss = self._get_batch_loss(y, y_hat)
 
-            ## display information
-            if (self.iteration % self.display_interval) is 0:
-                print('\n')
-                print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
-                print('predict loss = {} '.format(loss))
+            # ## display information
+            # if (self.iteration % self.display_interval) is 0:
+            #     print('\n')
+            #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
+            #     print('predict loss = {} '.format(loss))
 
             return batch_loss
 
@@ -367,6 +401,31 @@ class Predictor(object):
             restores.append(p.assign(loaded_p))
         self.sess.run(restores)
 
+
+def plot_dataset(dataset):
+    fig = plt.figure(0)
+    ax = fig.gca(projection='3d')
+    # print robot trajectory
+    for i, data in enumerate(dataset[5:6]):
+        x = revert_data(data.x, data.x_mean, data.x_var)
+        y = revert_data(data.y, data.y_mean, data.y_var)
+
+        ax.plot(x[:, -3], x[:, -2], x[:, -1], '-o', linewidth=2, color='black', label="x")
+        ax.plot([y[0]], [y[1]], [y[2]], marker='o', markersize=3, linewidth=2, color='red')
+    plt.show()
+    # for i, data in enumerate(dataset):
+    #     if i%8001 is 0:
+    #         x=revert_data(data.x,data.x_mean,data.x_var)
+    #         y=revert_data(data.y,data.y_mean,data.y_var)
+    #
+    #         ax.plot(x[:, -3], x[:, -2], x[:, -1], '-o', linewidth=2, color='black', label="x")
+    #         ax.plot([y[0]], [y[1]], [y[2]], marker='o', markersize=3, linewidth=2, color='red')
+    # plt.show()
+
+def revert_data(data, mean, var):
+    return(data*(var+1e-8)+mean)
+
+
 if __name__ == '__main__':
     from flags import flags
 
@@ -380,7 +439,7 @@ if __name__ == '__main__':
 
     with tf.Session() as sess:
         # create and initialize session
-        rnn_model = Predictor(sess, FLAGS, 16, 10,
+        rnn_model = Predictor(sess, FLAGS, 16, 20,
                               train_flag=train_flag, reset_flag=False)
 
         rnn_model.init_sess()
@@ -392,5 +451,13 @@ if __name__ == '__main__':
         #     rnn_model.predict(obs, dones)
 
         # rnn_model.save_dataset()
-        rnn_model.run_training()
+        # rnn_model.run_training()
+
+        # plot saved dataset
+        filelist = [f for f in os.listdir("./model/human_predict_test") if f.endswith(".pkl")]
+        if rnn_model.load_dataset(filelist[0]) is not 0:
+            dataset=rnn_model.dataset
+        plot_dataset(dataset)
+
+
 
