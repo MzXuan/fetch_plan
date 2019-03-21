@@ -3,4 +3,5 @@ gym_fetch.egg-info
 model/
 MUJOCO_LOG.TXT
 baselines/baselines/ppo2/log
+baselines/baselines/ppo2/model
 .idea

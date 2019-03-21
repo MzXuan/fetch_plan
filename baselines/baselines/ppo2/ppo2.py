@@ -1,4 +1,4 @@
-import os
+import os, sys
 import time
 import joblib
 import numpy as np
@@ -7,6 +7,10 @@ import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
+from predictor import Predictor
+from flags import FLAGS
+
+
 
 class Model(object):
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
@@ -84,8 +88,9 @@ class Model(object):
         tf.global_variables_initializer().run(session=sess) #pylint: disable=E1101
 
 class Runner(object):
-
-    def __init__(self, *, env, model, nsteps, gamma, lam, load, point):
+    def __init__(self, *, env, model, 
+                 nsteps, gamma, lam, load, point, 
+                 predictor_flag=False):
         self.env = env
         self.model = model
         nenv = env.num_envs
@@ -95,9 +100,13 @@ class Runner(object):
         self.lam = lam
         self.nsteps = nsteps
         self.states = model.initial_state
+        self.predictor_flag = predictor_flag
         self.dones = [False for _ in range(nenv)]
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
+        sess = tf.get_default_session()
+        self.predictor = Predictor(sess, FLAGS, nenv, 20, train_flag=predictor_flag)
+        self.predictor.init_sess()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
@@ -111,18 +120,35 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
-            #flag: to lstm predict
-            #----------for debug-------------#
-            # print("self.obs: ")
-            # print(self.obs[:])
-            # print("rewards: ")
-            # print(rewards)
+            # # -----for dubug----#
+            # print("self.obs[:]:")
+            # print(self.obs[0,14:17])
+            # # ----end debug----#
 
-            #----------end debug-------------#
+            
+            if self.predictor_flag:
+                # -----for dubug----#
+                # print("self.env.mean:")
+                # print(self.env.mean)
+                # print("self.env.var:")
+                # print(self.env.var)
+                # ----end debug----#
+                _ = self.predictor.predict(self.obs[:], self.dones,
+                                           self.env.mean, self.env.var)
+            else:
+                _ = self.predictor.predict(self.obs[:], self.dones,
+                                           self.env.ob_rms.mean, self.env.ob_rms.var)
+
+            mb_rewards.append(rewards)
+
+            if self.predictor_flag:
+                continue
+
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
-            mb_rewards.append(rewards)
+
+            
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
@@ -163,7 +189,8 @@ def constfn(val):
 def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr, 
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
-            save_interval=50, load=False, point='00100', init_targ):
+            save_interval=50, load=False, point='00100', init_targ=0.1,
+            predictor_flag=False):
 
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
@@ -185,7 +212,10 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
             fh.write(cloudpickle.dumps(make_model))
     model = make_model()
-    runner = Runner(env=env, model=model, nsteps=nsteps, gamma=gamma, lam=lam, load=load, point=point)
+    runner = Runner(
+        env=env, model=model, 
+        nsteps=nsteps, gamma=gamma, lam=lam, load=load, point=point,
+        predictor_flag=predictor_flag)
 
     epinfobuf = deque(maxlen=100)
     tfirststart = time.time()
@@ -261,6 +291,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             for (lossval, lossname) in zip(lossvals, model.loss_names):
                 logger.logkv(lossname, lossval)
             logger.dumpkvs()
+
         if save_interval and (update % save_interval == 0 or update == 1) and logger.get_dir():
             checkdir = osp.join(logger.get_dir(), 'checkpoints')
             os.makedirs(checkdir, exist_ok=True)
@@ -273,7 +304,50 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             np.save('{}/var'.format(logger.get_dir()), runner.env.ob_rms.var)
     env.close()
 
-def test(policy, env, nsteps, nminibatches, load_path):
+def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr, 
+            vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
+            log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
+            save_interval=50, load=True, point='00100', init_targ=0.1,
+            predictor_flag=True):
+
+    total_timesteps = int(total_timesteps)
+
+    nenvs = env.num_envs
+    ob_space = env.observation_space
+    ac_space = env.action_space
+    nbatch = nenvs * nsteps
+    nbatch_train = nbatch // nminibatches
+
+    make_model = lambda : Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train, 
+                    nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
+                    max_grad_norm=max_grad_norm)
+
+    model = make_model()
+    runner = Runner(
+        env=env, model=model, 
+        nsteps=nsteps, gamma=gamma, lam=lam, load=False, point=point,
+        predictor_flag=predictor_flag)
+
+    def load(load_path):
+
+        sess = tf.get_default_session()
+        params = tf.trainable_variables()
+        loaded_params = joblib.load(load_path)
+        restores = []
+        for p, loaded_p in zip(params, loaded_params):
+            restores.append(p.assign(loaded_p))
+        sess.run(restores)
+    curr_path = sys.path[0]
+    load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
+    load(load_path)
+    
+    for i in range(100):
+        runner.run() #pylint: disable=E0632
+        print("the size of dataset: ", (i+1) * nbatch)
+        
+    env.close()
+
+def display(policy, env, nsteps, nminibatches, load_path):
     nenvs = env.num_envs
     ob_space = env.observation_space
     ac_space = env.action_space
@@ -286,15 +360,23 @@ def test(policy, env, nsteps, nminibatches, load_path):
     params = tf.trainable_variables()
 
     def load(load_path):
-            loaded_params = joblib.load(load_path)
-            restores = []
-            for p, loaded_p in zip(params, loaded_params):
-                restores.append(p.assign(loaded_p))
-            sess.run(restores)
+        loaded_params = joblib.load(load_path)
+        restores = []
+        for p, loaded_p in zip(params, loaded_params):
+            restores.append(p.assign(loaded_p))
+        sess.run(restores)
 
     load(load_path)
 
     def run_episode(env, agent):
+
+        import visual
+        global OBS_LIST
+        global OBS_LIST_3D
+        global DRAW_FLAG
+
+        DRAW_FLAG = True
+
         obs = env.reset()
         score = 0
         done = [False]
@@ -303,6 +385,20 @@ def test(policy, env, nsteps, nminibatches, load_path):
             env.render()
             act, state = agent.mean(obs, state, done)
             obs, rew, done, info = env.step(act)
+
+            #---- plot result ----#
+            try:
+                OBS_LIST
+                OBS_LIST_3D
+            except:
+                OBS_LIST = None
+                OBS_LIST_3D = None
+            OBS_LIST = visual.plot_obs(obs[:],OBS_LIST)
+            OBS_LIST_3D = visual.plot_3d_obs(obs[:], OBS_LIST_3D, done)
+
+            DRAW_FLAG =False
+
+            #--- end plot ---#
             score += rew[0]
 
         return score
@@ -315,3 +411,7 @@ def test(policy, env, nsteps, nminibatches, load_path):
 
 def safemean(xs):
     return np.nan if len(xs) == 0 else np.mean(xs)
+
+
+
+

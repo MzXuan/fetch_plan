@@ -8,7 +8,10 @@ class Predictor(object):
     def __init__(self,sess,FLAGS, batch_size, max_timestep, train_flag):
         pass
     
-    def predict(self, obs, dones):
+    def run_training(self):
+        #load previously saved dataset and train the network
+        
+    def predict(self, obs, dones, mean, var):
         # function: predict the goal position
         # input: 
         # obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -71,12 +74,22 @@ python run.py
 For training policy, please set
 ``` shell
 --train=True
+--display=False
 --load=False
 ```
 
-For testing, please set
+For sampling dataset, please set
 ``` shell
 --train=False
+--display=False
+--load=True
+--point="$YOUR_CHECKPOINT_NUMBER"
+```
+
+For displaying performance, please set
+``` shell
+--train=False
+--display=True
 --load=True
 --point="$YOUR_CHECKPOINT_NUMBER"
 ```
@@ -93,3 +106,6 @@ For testing, please set
 3. 0.3.0
 * add reinforcement learning code to train fetch
 * complete no predictable reward training
+
+4. 0.3.5
+* add visualization of obs in ppo2.py (example in line 389 to 402)
