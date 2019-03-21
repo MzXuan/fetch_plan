@@ -11,7 +11,7 @@ class Predictor(object):
     def run_training(self):
         #load previously saved dataset and train the network
         
-    def predict(self, obs, dones):
+    def predict(self, obs, dones, mean, var):
         # function: predict the goal position
         # input: 
         # obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -74,12 +74,22 @@ python run.py
 For training policy, please set
 ``` shell
 --train=True
+--display=False
 --load=False
 ```
 
-For testing, please set
+For sampling dataset, please set
 ``` shell
 --train=False
+--display=False
+--load=True
+--point="$YOUR_CHECKPOINT_NUMBER"
+```
+
+For displaying performance, please set
+``` shell
+--train=False
+--display=True
 --load=True
 --point="$YOUR_CHECKPOINT_NUMBER"
 ```
