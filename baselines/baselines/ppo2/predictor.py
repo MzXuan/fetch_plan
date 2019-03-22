@@ -148,15 +148,14 @@ class Predictor(object):
                 self.x_lens[idx] = 0
 
     def _create_seq(self, obs, dones, mean, var):
-        self._reset_seq(dones)
-
-        ## save mean and var
-        self.x_mean = np.concatenate((mean[6:13],
-                                    mean[0:3])) #(joint angle, end-effector position)
-        self.x_var = np.concatenate((var[6:13],
-                                      var[0:3]))
-        self.y_mean = mean[3:6]
-        self.y_var = var[3:6]
+        if mean is not None and var is not None:
+            ## save mean and var
+            self.x_mean = np.concatenate((mean[6:13],
+                                        mean[0:3])) #(joint angle, end-effector position)
+            self.x_var = np.concatenate((var[6:13],
+                                          var[0:3]))
+            self.y_mean = mean[3:6]
+            self.y_var = var[3:6]
 
         ## create sequence data
         for idx, data in enumerate(obs):
@@ -172,6 +171,8 @@ class Predictor(object):
                 self.xs[idx, lens, :] = np.concatenate((data[6:13],
                                                         data[0:3]))
                 self.ys[idx, :] = data[3:6]
+
+        self._reset_seq(dones)
 
     def init_sess(self):
         ## initialize global variables
@@ -202,7 +203,7 @@ class Predictor(object):
                                                 self.y_mean, self.y_var))
 
         # if dataset is large, save it
-        if len(self.dataset) > 200000:
+        if len(self.dataset) > 150000:
             pickle.dump(self.dataset, open("./model/"+self.model_name
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
             self.dataset_idx+=1
@@ -335,7 +336,7 @@ class Predictor(object):
                 self.file_writer.add_summary(validate_summary, self.iteration)
 
                 ## display
-                visualize.plot_3d_pred(x[0], y[0], y_hat[0])
+                # visualize.plot_3d_pred(x[0], y[0], y_hat[0])
 
 
                 if (self.iteration % self.display_interval) is 0:
@@ -352,7 +353,7 @@ class Predictor(object):
         print("finish training")
 
 
-    def predict(self, obs, dones, mean, var):
+    def predict(self, obs, dones, mean=None, var=None):
         # function: predict the goal position
         # input: 
         # obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -369,8 +370,6 @@ class Predictor(object):
         # import visualize
         # visualize.plot_3d_pred(self.xs[0],self.ys[0])
         # #----------------------------------
-
-
         xs = self.xs
         ys = self.ys
         x_lens = self.x_lens
@@ -398,7 +397,13 @@ class Predictor(object):
             #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
             #     print('predict loss = {} '.format(loss))
 
+            #------plot predicted data-----------
+            import visualize
+            visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
+            #------------------------------------#
+
             return batch_loss
+
 
     def save_net(self, save_path):
         params = tf.get_collection(
@@ -455,26 +460,36 @@ if __name__ == '__main__':
         return [bool((r>>i)&1) for i in range(n)]
 
     with tf.Session() as sess:
-        # create and initialize session
-        rnn_model = Predictor(sess, FLAGS, 16, 20,
-                              train_flag=train_flag, reset_flag=False)
+        if train_flag:
+            # create and initialize session
+            rnn_model = Predictor(sess, FLAGS, 16, 20,
+                                  train_flag=True, reset_flag=False)
 
-        rnn_model.init_sess()
-        # for _ in range(5000):
-        #     #create fake data
-        #     obs = np.random.rand(32, 20)
-        #     dones = rand_bools_int_func(32)
-        #     # run the model
-        #     rnn_model.predict(obs, dones)
+            rnn_model.init_sess()
+            # for _ in range(5000):
+            #     #create fake data
+            #     obs = np.random.rand(32, 20)
+            #     dones = rand_bools_int_func(32)
+            #     # run the model
+            #     rnn_model.predict(obs, dones)
 
-        # rnn_model.save_dataset()
-        rnn_model.run_training()
+            # rnn_model.save_dataset()
+            rnn_model.run_training()
 
-        # # plot saved dataset
-        # filelist = [f for f in os.listdir("./model/human_predict_test") if f.endswith(".pkl")]
-        # if rnn_model.load_dataset(filelist[0]) is not 0:
-        #     dataset=rnn_model.dataset
-        # plot_dataset(dataset)
+            # # plot saved dataset
+            # filelist = [f for f in os.listdir("./model/human_predict_test") if f.endswith(".pkl")]
+            # if rnn_model.load_dataset(filelist[0]) is not 0:
+            #     dataset=rnn_model.dataset
+            # plot_dataset(dataset)
+
+        else:
+            #plot all the validate data step by step
+            rnn_model = Predictor(sess, FLAGS, 16, 20,
+                                  train_flag=False, reset_flag=False)
+
+            rnn_model.init_sess()
+
+
 
 
 

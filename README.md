@@ -2,28 +2,10 @@
 
 ---
 ## TODO List
-1. Predictor training (@xuan_z)
-``` python
-class Predictor(object):
-    def __init__(self,sess,FLAGS, batch_size, max_timestep, train_flag):
-        pass
-    
-    def run_training(self):
-        #load previously saved dataset and train the network
-        
-    def predict(self, obs, dones, mean, var):
-        # function: predict the goal position
-        # input: 
-        # obs.shape = [batch_size, ob_shape] include joint angle etc.
-        # dones.shape = [batch_size]
-        # return:
-        # batch_loss.shape =[batch_size]
-        return batch_loss
++ Investigate why LSTM training result shows very small error (@xuanz)
 
-```
-2. Address smoothness issue (@xuan_z)
-3. Add predictable reward (@tingxfan)
-4. Two reward structure (@tingxfan)
++ Add predictable reward (@tingxfan)
++ Two reward structure (@tingxfan)
 
 ---
 ## Environment
