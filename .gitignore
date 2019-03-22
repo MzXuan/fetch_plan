@@ -5,3 +5,4 @@ MUJOCO_LOG.TXT
 baselines/baselines/ppo2/log
 baselines/baselines/ppo2/model
 .idea
+.DS_Store

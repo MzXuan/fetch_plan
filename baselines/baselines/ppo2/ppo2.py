@@ -11,7 +11,6 @@ from predictor import Predictor
 from flags import FLAGS
 
 
-
 class Model(object):
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
                 nsteps, ent_coef, vf_coef, max_grad_norm):
@@ -136,10 +135,11 @@ class Runner(object):
                 _ = self.predictor.predict(self.obs[:], self.dones,
                                            self.env.mean, self.env.var)
             else:
-                _ = self.predictor.predict(self.obs[:], self.dones,
+                # Use it after loading the predictor model
+                batch_loss = self.predictor.predict(self.obs[:], self.dones,
                                            self.env.ob_rms.mean, self.env.ob_rms.var)
 
-            mb_rewards.append(rewards)
+            mb_rewards.append(rewards + batch_loss)
 
             if self.predictor_flag:
                 continue
