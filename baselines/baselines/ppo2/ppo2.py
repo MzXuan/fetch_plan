@@ -383,6 +383,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
             act, state = agent.mean(obs, state, done)
             obs, rew, done, _ = env.step(act)
 
+
             #---- plot result ---
 
             obs_list = visualize.plot_obs(

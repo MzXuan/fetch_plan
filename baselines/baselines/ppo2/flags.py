@@ -34,7 +34,7 @@ flags.DEFINE_float('learning_rate', 0.0001, 'learning rate of optimization')
 flags.DEFINE_integer("run_mode", 0, "0: training; 1: testing; 2: test by trajectory; 3: testing online")
 
 ## log hyper-parameters
-flags.DEFINE_integer('validation_interval', 300, 'interval of performing validation')
+flags.DEFINE_integer('validation_interval', 100, 'interval of performing validation')
 flags.DEFINE_integer('checkpoint_interval', 500, 'interval of saving checkpoint')
 flags.DEFINE_integer('sample_interval', 500, 'interval of sampling datapoints')
 flags.DEFINE_integer('display_interval', 100, 'interval of displaying information')

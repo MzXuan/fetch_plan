@@ -62,6 +62,40 @@ def plot_3d_obs(obs, obs_list=None):
     return obs_list
 
 
+def plot_3d_pred(x, goal, pred=None):
+    # print("obs:")
+    # print(obs)
+    # print("obs_list")
+    # print(obs_list)
+
+    fig3d = plt.figure(3)
+    plt.clf()
+
+    ax = fig3d.gca(projection='3d')
+    plt.ion()
+
+    ax.set_xlim(-3,3)
+    ax.set_ylim(-3,3)
+    ax.set_zlim(-3,3)
+
+    # print("obs_list[:,0]")
+    # print(obs_list[:,0])
+    ax.plot(x[:, -3], x[:, -2], x[:, -1],
+            '-o', linewidth=2, color="blue",label="x")
+
+    ax.plot([goal[0]], [goal[1]], [goal[2]],
+            marker='o', markersize=10, color = "brown", label="goal")
+    if pred is not None:
+        ax.plot([pred[0]], [pred[1]], [pred[2]],
+                marker='o', markersize=10, color="red", label="pred")
+
+    ax.legend()
+
+
+    plt.pause(0.1)
+
+
+
 
 
 

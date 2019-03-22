@@ -142,7 +142,7 @@ class Predictor(object):
         # function: reset the lstm cell of predictor.
         # create new sequences
         for idx, done in enumerate(dones):
-            if done is True:
+            if done:
                 self.xs[idx] = np.zeros((self.in_timesteps_max, self.in_dim))
                 self.ys[idx] = np.zeros(self.out_dim)
                 self.x_lens[idx] = 0
@@ -151,27 +151,27 @@ class Predictor(object):
         self._reset_seq(dones)
 
         ## save mean and var
-        self.x_mean = np.concatenate((mean[0:7],
-                                    mean[14:17]))
-        self.x_var = np.concatenate((var[0:7],
-                                      var[14:17]))
-        self.y_mean = mean[-3:]
-        self.y_var = var[-3:]
+        self.x_mean = np.concatenate((mean[6:13],
+                                    mean[0:3])) #(joint angle, end-effector position)
+        self.x_var = np.concatenate((var[6:13],
+                                      var[0:3]))
+        self.y_mean = mean[3:6]
+        self.y_var = var[3:6]
 
         ## create sequence data
         for idx, data in enumerate(obs):
             lens = self.x_lens[idx]
             if lens < self.in_timesteps_max:
-                self.xs[idx, lens, :] = np.concatenate((data[0:7], 
-                                                        data[14:17]))
-                self.ys[idx, :] = data[-3:]
+                self.xs[idx, lens, :] = np.concatenate((data[6:13],
+                                                        data[0:3]))
+                self.ys[idx, :] = data[3:6]
                 self.x_lens[idx] += 1
             else:
                 lens = self.in_timesteps_max-1
                 self.xs[idx, :] = np.roll(self.xs[idx,:], -1, axis=0)
-                self.xs[idx, lens, :] = np.concatenate((data[0:7], 
-                                                        data[14:17]))
-                self.ys[idx, :] = data[-3:]
+                self.xs[idx, lens, :] = np.concatenate((data[6:13],
+                                                        data[0:3]))
+                self.ys[idx, :] = data[3:6]
 
     def init_sess(self):
         ## initialize global variables
@@ -248,14 +248,16 @@ class Predictor(object):
 
     def run_training(self):
         #function: train the model according to saved dataset
-        ## check whether in training process
+        import visualize
+
+        ## check whether in training
         if not self.train_flag:
             print("Not in training process,return...")
             return 0
 
         ## check saved data set
         filelist = [f for f in os.listdir("./model/" + self.model_name) if f.endswith(".pkl")]
-        num_sets = len(filelist)
+        num_sets = len(filelist)-1
         self.dataset_idx = 0
 
 
@@ -279,7 +281,7 @@ class Predictor(object):
                         self.dataset_idx = 0
             #-----create training data----#
             train_num=int(self.validata_num*len(self.dataset))
-            xs,ys,x_lens=self._create_training_data(self.dataset[:train_num])
+            xs,ys,x_lens=self._create_training_data(self.dataset)
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat]
@@ -312,31 +314,38 @@ class Predictor(object):
             #----------validate process--------#
             ## validate model
             if (self.iteration % self.validation_interval) is 0:
+                validate_set = \
+                    pickle.load(open(os.path.join("./model/" + self.model_name, filelist[-1]), "rb"))
+
                 ## create validate data
-                xs, ys, x_lens = self._create_training_data(self.dataset[-train_num:])
+                xs, ys, x_lens = self._create_training_data(validate_set)
 
                 ## run validation
-                fetches = [self.loss, self.y_ph, self.y_hat]
+                fetches = [self.loss, self.x_ph, self.y_ph, self.y_hat]
                 feed_dict = {
                     self.x_ph: xs,
                     self.y_ph: ys,
                     self.x_len_ph: x_lens
                 }
-                loss, y, y_hat = self.sess.run(fetches, feed_dict)
+                loss, x, y, y_hat = self.sess.run(fetches, feed_dict)
 
                 ## write summary
                 validate_summary = tf.Summary()
                 validate_summary.value.add(tag="validate rmse", simple_value=loss)
                 self.file_writer.add_summary(validate_summary, self.iteration)
 
-                ## display information
+                ## display
+                visualize.plot_3d_pred(x[0], y[0], y_hat[0])
+
+
                 if (self.iteration % self.display_interval) is 0:
                     mean_y = self.dataset[0].y_mean
                     var_y = self.dataset[0].y_var
                     y_origin = self._revert_data(y[0],mean_y,var_y)
                     y_hat_origin = self._revert_data(y_hat[0],mean_y,var_y)
                     print('\n')
-                    print("pred = {}, true goal = {}".format(y_hat_origin, y_origin))
+                    print("x = {}".format(x[0]))
+                    print("pred = {}, true goal = {}".format(y[0], y_hat[0]))
                     print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
             #---------create validate data-----#
 
@@ -355,6 +364,11 @@ class Predictor(object):
 
         #create input sequence
         self._create_seq(obs, dones, mean, var)
+
+        # #---- plot created dataset
+        # import visualize
+        # visualize.plot_3d_pred(self.xs[0],self.ys[0])
+        # #----------------------------------
 
 
         xs = self.xs
@@ -454,13 +468,13 @@ if __name__ == '__main__':
         #     rnn_model.predict(obs, dones)
 
         # rnn_model.save_dataset()
-        # rnn_model.run_training()
+        rnn_model.run_training()
 
-        # plot saved dataset
-        filelist = [f for f in os.listdir("./model/human_predict_test") if f.endswith(".pkl")]
-        if rnn_model.load_dataset(filelist[0]) is not 0:
-            dataset=rnn_model.dataset
-        plot_dataset(dataset)
+        # # plot saved dataset
+        # filelist = [f for f in os.listdir("./model/human_predict_test") if f.endswith(".pkl")]
+        # if rnn_model.load_dataset(filelist[0]) is not 0:
+        #     dataset=rnn_model.dataset
+        # plot_dataset(dataset)
 
 
 
