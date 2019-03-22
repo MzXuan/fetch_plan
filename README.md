@@ -76,6 +76,29 @@ For displaying performance, please set
 --point="$YOUR_CHECKPOINT_NUMBER"
 ```
 
+###For training predictor
+1. training the policy 
+```
+--train=True
+--display=False
+--load=False
+```
+2. "test" the policy 
+```
+--train=False
+--display=False
+--load=True
+```
+3. train the predictor
+```
+python predictor.py
+```
+4. show the result by running "display" policy
+```
+--train=False
+--display=True
+```
+
 ---
 ## Change log
 1. 0.1.0
