@@ -26,7 +26,7 @@ class DatasetStru(object):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="10000"):
+                 reset_flag=True, point="50000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -241,7 +241,7 @@ class Predictor(object):
 
         for _ in range(0, self.batch_size):
             idx = random.randint(0, len(dataset) - 1)
-            data = self.dataset[idx]
+            data = dataset[idx]
             xs.append(data.x)
             ys.append(data.y)
             x_lens.append(len(data.x))
@@ -273,7 +273,7 @@ class Predictor(object):
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
                 if self.iteration==iter_range[iter_idx]:
-                    print("switch dataset...")
+                    print("switch to...{}".format(filelist[self.dataset_idx]))
                     iter_idx+=1
                     if self.load_dataset(filelist[self.dataset_idx]) == 0:
                         return 0
@@ -315,6 +315,7 @@ class Predictor(object):
             #----------validate process--------#
             ## validate model
             if (self.iteration % self.validation_interval) is 0:
+                print("load validate dataset {}".format(filelist[-1]))
                 validate_set = \
                     pickle.load(open(os.path.join("./model/" + self.model_name, filelist[-1]), "rb"))
 
@@ -345,7 +346,7 @@ class Predictor(object):
                     y_origin = self._revert_data(y[0],mean_y,var_y)
                     y_hat_origin = self._revert_data(y_hat[0],mean_y,var_y)
                     print('\n')
-                    print("x = {}".format(x[0]))
+                    # print("x = {}".format(x[0]))
                     print("pred = {}, true goal = {}".format(y[0], y_hat[0]))
                     print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
             #---------create validate data-----#
