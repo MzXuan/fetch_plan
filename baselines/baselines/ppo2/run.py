@@ -143,12 +143,12 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
-    parser.add_argument('--num-timesteps', type=int, default=int(10e6))
+    parser.add_argument('--num-timesteps', type=int, default=int(5e6))
     parser.add_argument('--train', type=bool, default=False)
     parser.add_argument('--display', type=bool, default=True)
     parser.add_argument('--load', type=bool, default=False)
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('--point', type=str, default='01100')
+    parser.add_argument('--point', type=str, default='00600')
     args = parser.parse_args()
 
     curr_path = sys.path[0]
@@ -163,7 +163,6 @@ def main():
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
         
-
 
 if __name__ == '__main__':
     main()

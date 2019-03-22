@@ -102,11 +102,11 @@ class Runner(object):
         self.states = model.initial_state
         self.predictor_flag = predictor_flag
         self.dones = [False for _ in range(nenv)]
+        sess = tf.get_default_session()
+        self.predictor = Predictor(sess, FLAGS, nenv, 30, train_flag=predictor_flag)
+        self.predictor.init_sess()
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
-        sess = tf.get_default_session()
-        self.predictor = Predictor(sess, FLAGS, nenv, 20, train_flag=predictor_flag)
-        self.predictor.init_sess()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
@@ -359,6 +359,8 @@ def display(policy, env, nsteps, nminibatches, load_path):
     train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True)
     params = tf.trainable_variables()
 
+
+
     def load(load_path):
         loaded_params = joblib.load(load_path)
         restores = []
@@ -368,37 +370,36 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
     load(load_path)
 
+    predictor = Predictor(sess, FLAGS, 1, 30, train_flag=False)
+    predictor.init_sess()
+
+
     def run_episode(env, agent):
-
-        import visual
-        global OBS_LIST
-        global OBS_LIST_3D
-        global DRAW_FLAG
-
-        DRAW_FLAG = True
+        import visualize
 
         obs = env.reset()
         score = 0
         done = [False]
         state = agent.initial_state
+        obs_list = None
+        obs_list_3d = None
+
         while not done[0]:
             env.render()
             act, state = agent.mean(obs, state, done)
-            obs, rew, done, info = env.step(act)
+            obs, rew, done, _ = env.step(act)
+            predictor.predict(obs,done)
 
-            #---- plot result ----#
-            try:
-                OBS_LIST
-                OBS_LIST_3D
-            except:
-                OBS_LIST = None
-                OBS_LIST_3D = None
-            OBS_LIST = visual.plot_obs(obs[:],OBS_LIST)
-            OBS_LIST_3D = visual.plot_3d_obs(obs[:], OBS_LIST_3D, done)
 
-            DRAW_FLAG =False
-
-            #--- end plot ---#
+            # #---- plot result ---
+            #
+            # obs_list = visualize.plot_obs(
+            #     env.origin_obs, obs_list)
+            #
+            # obs_list_3d = visualize.plot_3d_obs(
+            #     env.origin_obs, obs_list_3d)
+            #
+            # #--- end plot ---#
             score += rew[0]
 
         return score
