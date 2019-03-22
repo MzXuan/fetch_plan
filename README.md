@@ -76,7 +76,7 @@ For displaying performance, please set
 --point="$YOUR_CHECKPOINT_NUMBER"
 ```
 
-###For training predictor
+### For training predictor
 1. training the policy 
 ```
 --train=True
