@@ -138,8 +138,9 @@ class Runner(object):
                 # Use it after loading the predictor model
                 batch_loss = self.predictor.predict(self.obs[:], self.dones,
                                            self.env.ob_rms.mean, self.env.ob_rms.var)
+                rewards -= batch_loss
 
-            mb_rewards.append(rewards + batch_loss)
+            mb_rewards.append(rewards)
 
             if self.predictor_flag:
                 continue
