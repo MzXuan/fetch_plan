@@ -26,7 +26,7 @@ class DatasetStru(object):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="8000"):
+                 reset_flag=True, point="3000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
