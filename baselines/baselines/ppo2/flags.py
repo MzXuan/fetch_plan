@@ -7,7 +7,7 @@ import tensorflow as tf
 flags = tf.app.flags
 
 ##model name
-flags.DEFINE_string('model_name','obs_32_16','name of the model')
+flags.DEFINE_string('model_name','iteration2','name of the model')
 
 
 ## model hyper-parameters

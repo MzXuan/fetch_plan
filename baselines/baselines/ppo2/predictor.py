@@ -136,7 +136,8 @@ class Predictor(object):
             )
 
     def _get_batch_loss(self, y, y_hat):
-        error = np.sqrt(np.mean((y - y_hat)**2,axis=1))
+        error = np.linalg.norm((y-y_hat), axis=1)
+        # error = np.sqrt(np.mean((y - y_hat)**2,axis=1))
         return error
 
     def _reset_seq(self, dones):
@@ -217,6 +218,7 @@ class Predictor(object):
 
         # if dataset is large, save it
         if len(self.dataset) > 150000:
+            print("save dataset...")
             pickle.dump(self.dataset, open("./model/"
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
             self.dataset_idx+=1
@@ -404,11 +406,12 @@ class Predictor(object):
             #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
             #     print('predict loss = {} '.format(loss))
 
-            #------plot predicted data-----------
-            import visualize
-            visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
-            #------------------------------------#
-
+            # #------plot predicted data-----------
+            # import visualize
+            # visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
+            # #------------------------------------#
+            # print("batch loss")
+            # print(batch_loss)
 
             return batch_loss
 
@@ -418,6 +421,12 @@ class Predictor(object):
             tf.GraphKeys.TRAINABLE_VARIABLES, scope="predictor"
         )
         ps = self.sess.run(params)
+
+        directory = os.path.dirname(save_path)
+        try:
+            os.stat(directory)
+        except:
+            os.mkdir(directory)
         joblib.dump(ps, save_path)
 
     def load_net(self, load_path):
