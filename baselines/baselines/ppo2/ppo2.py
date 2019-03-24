@@ -127,7 +127,7 @@ class Runner(object):
             # print(rewards)
             # # ----end debug----#
 
-            predict_weight =0.0015
+            predict_weight =0.0005
             if self.predictor_flag:
                 # -----for dubug----#
                 # print("self.env.mean:")
@@ -137,11 +137,13 @@ class Runner(object):
                 # ----end debug----#
                 predict_loss = self.predictor.predict(self.obs[:], self.dones,
                                            self.env.mean, self.env.var)
-                rewards = -predict_loss*predict_weight+rewards
+                print("squred loss: ")
+                print(np.square(predict_loss))
+                rewards = -predict_loss*np.square(predict_weight)+rewards
             else:
                 predict_loss = self.predictor.predict(self.obs[:], self.dones,
                                            self.env.ob_rms.mean, self.env.ob_rms.var)
-                rewards = -predict_loss * predict_weight + rewards
+                rewards = -predict_loss * np.square(predict_weight) + rewards
             # # ---print rewards----
             # print("reward")
             # print(rewards)
