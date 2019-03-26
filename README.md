@@ -2,8 +2,6 @@
 
 ---
 ## TODO List
-+ Investigate why LSTM training result shows very small error (@xuanz)
-
 + Add predictable reward (@tingxfan)
 + Two reward structure (@tingxfan)
 
