@@ -14,13 +14,26 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.font_manager import FontProperties
 
 class DatasetStru(object):
-    def __init__(self,x,y,x_mean,x_var,y_mean,y_var):
+    def __init__(self, x, x_len, x_mean, x_var):
+        """
+
+        :param x: shape = (self.in_timesteps_max, self.in_dim)
+        :param x_len: shape = 1
+        :param x_mean: shape = (self.in_dim)
+        :param x_var:  shape = (self.in_dim)
+        """
         self.x = x
-        self.y = y
+        self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
-        self.y_mean = y_mean
-        self.y_var = y_var
+
+    def padding(self, seq, new_length):
+        old_length = len(seq)
+        value = seq[-1,:]
+        for _ in range(old_length,new_length):
+            seq = np.append([seq, value], axis=0)
+        return seq
+
 
 
 class Predictor(object):
@@ -33,7 +46,7 @@ class Predictor(object):
 
         self.batch_size = batch_size
         self.in_timesteps_max = max_timestep
-        self.in_timesteps_min = 1
+        self.out_timesteps = 10
         self.train_flag = train_flag
         self.point = point
         self.validata_num = 0.5
@@ -42,12 +55,9 @@ class Predictor(object):
             
         ## prepare sequcne containers
         self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
-        self.ys = np.zeros((batch_size, self.out_dim))
         self.x_lens = np.zeros(batch_size, dtype=int)
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
-        self.y_mean = np.zeros(self.out_dim)
-        self.y_var = np.zeros(self.out_dim)
 
         ## prepare containers for saving input dataset
         self.dataset = []
@@ -99,8 +109,23 @@ class Predictor(object):
 
         self.y_ph = tf.placeholder(
             tf.float32, 
-            shape=[None, self.out_dim], 
+            shape=[None, self.out_timesteps, self.out_dim],
             name='out_timesteps')
+
+    def init_sess(self):
+        ## initialize global variables
+        if self.train_flag:
+            # delete existing and dataset to avoid overlap problem
+            # initialize new model
+            self.sess.run(tf.global_variables_initializer())
+
+        else:
+            try:
+                self.load_net(("./model/"+self.model_name+"/{}").format(
+                    self.point
+                ))
+            except:
+                self.sess.run(tf.global_variables_initializer())
 
     def _build_net(self):
         ## encoder
@@ -140,36 +165,23 @@ class Predictor(object):
         # error = np.sqrt(np.mean((y - y_hat)**2,axis=1))
         return error
 
-    def _reset_seq(self, dones):
-        # function: reset the lstm cell of predictor.
-        # create new sequences
-        for idx, done in enumerate(dones):
-            if done:
-                self.xs[idx] = np.zeros((self.in_timesteps_max, self.in_dim))
-                self.ys[idx] = np.zeros(self.out_dim)
-                self.x_lens[idx] = 0
-
-    def _create_training_data(self,dataset):
-        xs, ys, x_lens = [], [], []
-
-        for _ in range(0, self.batch_size):
-            idx = random.randint(0, len(dataset) - 1)
-            data = dataset[idx]
-            # xs.append(data.x[:,-3:])
-            xs.append(data.x)
-            ys.append(data.y)
-            x_lens.append(len(data.x))
-        return xs,ys,x_lens
-
     def _create_seq(self, obs, dones, mean, var):
+        """
+        create sequences from input observations;
+        reset sequence if a agent is done its task
+        :param obs:  observations from environment
+        :param dones: whether the agent is done its task
+        :param mean: mean of observations
+        :param var: variations of observations
+        :return: done sequences
+        """
+
         if mean is not None and var is not None:
             ## save mean and var
             self.x_mean = np.concatenate((mean[6:13],
                                         mean[0:3])) #(joint angle, end-effector position)
             self.x_var = np.concatenate((var[6:13],
                                           var[0:3]))
-            self.y_mean = mean[3:6]
-            self.y_var = var[3:6]
 
         ## create sequence data
         for idx, data in enumerate(obs):
@@ -177,44 +189,33 @@ class Predictor(object):
             if lens < self.in_timesteps_max:
                 self.xs[idx, lens, :] = np.concatenate((data[6:13],
                                                         data[0:3]))
-                self.ys[idx, :] = data[3:6]
                 self.x_lens[idx] += 1
             else:
                 lens = self.in_timesteps_max-1
                 self.xs[idx, :] = np.roll(self.xs[idx,:], -1, axis=0)
                 self.xs[idx, lens, :] = np.concatenate((data[6:13],
                                                         data[0:3]))
-                self.ys[idx, :] = data[3:6]
 
-        self._reset_seq(dones)
+        ## reset requences that reaches destination
+        seqs_done = []
+        for idx, done in enumerate(dones):
+            if done:
+                # create a container saving reseted sequences for future usage
+                seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                            self.x_mean, self.x_var))
+                self.xs[idx] = np.zeros((self.in_timesteps_max, self.in_dim))
+                self.x_lens[idx] = 0
+                self.x_mean = np.zeros(self.in_dim)
+                self.x_var = np.zeros(self.in_dim)
+        return seqs_done
 
-    def init_sess(self):
-        ## initialize global variables
-        if self.train_flag:
-            # delete existing and dataset to avoid overlap problem
-            # initialize new model
-            self.sess.run(tf.global_variables_initializer())
-
-        else:
-            try:
-                self.load_net(("./model/"+self.model_name+"/{}").format(
-                    self.point
-                ))
-            except:
-                self.sess.run(tf.global_variables_initializer())
-
-    def create_dataset(self):
-        # function: predict the goal position
-        # input:
-        # obs.shape = [batch_size, ob_shape] include joint angle etc.
-        # dones.shape = [batch_size]
-        #
-        # create dataset
-        for idx, length in enumerate(self.x_lens):
-            if length > self.in_timesteps_min:
-                self.dataset.append(DatasetStru(self.xs[idx], self.ys[idx],
-                                                self.x_mean, self.x_var,
-                                                self.y_mean, self.y_var))
+    def _create_dataset(self, seqs_done):
+        """
+        create dataset from saved sequences
+        :return:
+        """
+        for data in seqs_done:
+            self.dataset.append(data)
 
         # if dataset is large, save it
         if len(self.dataset) > 150000:
@@ -224,31 +225,57 @@ class Predictor(object):
             self.dataset_idx+=1
             self.dataset=[]
 
-    def save_dataset(self):
-        # check whether in training process
-        if self.train_flag is not True:
-            print("Not in training process, saving failed")
-            return 0
-        else:
-            pickle.dump(self.dataset, open("./model/"
-                                            +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
-            print("saving dataset successfully")
-            self.dataset = []
-
-    def load_dataset(self, file_name):
-        ## load dataset
-
-        try:
-            self.dataset = pickle.load(open(os.path.join("./model/", file_name), "rb"))
-            # random.shuffle(self.dataset)
-        except:
-            print("Can not load dataset. Please first run the training stage to save dataset.")
-            return 0
-
-        return 1
 
     def _revert_data(self,data,mean,var):
         return(data*(var+1e-8)+mean)
+
+    def _feed_training_data(self,dataset):
+        xs, ys, x_lens = [], [], []
+
+        for _ in range(0, self.batch_size):
+            idx = random.randint(0, len(dataset) - 1)
+            data = dataset[idx]
+            x, y, x_len = self._feed_one_data(data)
+            # xs.append(data.x[:,-3:])
+            xs.append(x)
+            ys.append(y)
+            x_lens.append(x_len)
+        return xs, ys, x_lens
+
+    def _feed_one_data(self,data):
+        x = np.zeros(self.in_timesteps_max, self.in_dim)
+        y = np.zeros(self.out_timesteps, self.out_dim)
+        x_len = 0
+
+        length = data.x_len
+        id = random.randint(1,length-1)
+        #id: start index of this data
+        #e.g.: x = data[id-self.in_timesteps:id];
+        #      y = data[id:id+out_timesteps]
+
+        id_start = id-self.in_timesteps_max
+        id_end = id+self.out_timesteps
+
+        if id_end>length:
+            #pading dataset
+            #todo: be careful, need to debug this function
+            data.x = data.padding(data.x,id_end)
+
+        if id_start>0 and id_end<length:
+            x = data.x[id_start:id]
+            y = data.x[id:id_end]
+            x_len = self.in_timesteps_max
+        elif id_start<0:
+            x[0:id] = data.x[0:id]
+            y = data.x[id:id_end]
+            x_len = id
+
+        return x, y, x_len
+
+
+    def _feed_predict_data(self, sequence):
+        for _ in range(0, self.batch_size):
+            np.randint(len(self.dataset))
 
 
     def run_training(self):
@@ -286,7 +313,7 @@ class Predictor(object):
                         self.dataset_idx = 0
             #-----create training data----#
             train_num=int(self.validata_num*len(self.dataset))
-            xs,ys,x_lens=self._create_training_data(self.dataset)
+            xs,ys,x_lens=self._feed_training_data(self.dataset)
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat]
@@ -324,7 +351,7 @@ class Predictor(object):
                     pickle.load(open(os.path.join("./model/", filelist[-1]), "rb"))
 
                 ## create validate data
-                xs, ys, x_lens = self._create_training_data(validate_set)
+                xs, ys, x_lens = self._feed_training_data(validate_set)
 
                 ## run validation
                 fetches = [self.loss, self.x_ph, self.y_ph, self.y_hat]
@@ -359,61 +386,61 @@ class Predictor(object):
 
 
     def predict(self, obs, dones, mean=None, var=None):
-        # function: predict the goal position
-        # input: 
-        # obs.shape = [batch_size, ob_shape] include joint angle etc.
-        # dones.shape = [batch_size]
-        # mean.shape = [batch_size, ob_shape]
-        # var.shape = [batch_size, ob_shape]
-        # return:
-        # batch_loss.shape = [batch_size]
+        """
+        function: predict the goal position
+        :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
+        :param dones: dones.shape = [batch_size]
+        :param mean: mean.shape = [batch_size, ob_shape]
+        :param var: var.shape = [batch_size, ob_shape]
+        :return: batch_loss.shape = [batch_size]
+        """
 
         #create input sequence
-        self._create_seq(obs, dones, mean, var)
+        seqs_done = self._create_seq(obs, dones, mean, var)
 
         # #---- plot created dataset
         # import visualize
         # visualize.plot_3d_pred(self.xs[0],self.ys[0])
         # #----------------------------------
-        xs = self.xs
-        ys = self.ys
-        x_lens = self.x_lens
 
-        if self.train_flag:
-            #----create training dataset for future training---#
-            self.create_dataset()
-            return np.zeros((len(dones)))
-            # =========================================
+        if seqs_done is not []:
+            if self.train_flag:
+                #----create training dataset for future training---#
+                self._create_dataset(seqs_done)
+                return np.zeros((len(dones)))
+                # =========================================
+            else:
+                #---predict input data---#
+                # todo: rewrite this function, we need to feed data from a sequence
+                fetches = [self.loss, self.y_ph, self.y_hat]
+                feed_dict = {
+                    self.x_ph: xs,
+                    self.y_ph:ys,
+                    self.x_len_ph: x_lens
+                    }
+
+                loss, y, y_hat = self.sess.run(fetches, feed_dict)
+
+
+                batch_loss = self._get_batch_loss(y, y_hat)
+
+
+                # ## display information
+                # if (self.iteration % self.display_interval) is 0:
+                #     print('\n')
+                #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
+                #     print('predict loss = {} '.format(loss))
+
+                # #------plot predicted data-----------
+                # import visualize
+                # visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
+                # #------------------------------------#
+                # print("batch loss")
+                # print(batch_loss)
+
+                return batch_loss
         else:
-            #---predict input data---#
-            fetches = [self.loss, self.y_ph, self.y_hat]
-            feed_dict = {
-                self.x_ph: xs,
-                self.y_ph:ys,
-                self.x_len_ph: x_lens
-                }
-
-            loss, y, y_hat = self.sess.run(fetches, feed_dict)
-
-
-            batch_loss = self._get_batch_loss(y, y_hat)
-
-
-
-            # ## display information
-            # if (self.iteration % self.display_interval) is 0:
-            #     print('\n')
-            #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
-            #     print('predict loss = {} '.format(loss))
-
-            # #------plot predicted data-----------
-            # import visualize
-            # visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
-            # #------------------------------------#
-            # print("batch loss")
-            # print(batch_loss)
-
-            return batch_loss
+            return np.zeros((len(dones)))
 
 
     def save_net(self, save_path):
@@ -440,29 +467,29 @@ class Predictor(object):
             restores.append(p.assign(loaded_p))
         self.sess.run(restores)
 
+    def save_dataset(self):
+        # check whether in training process
+        if self.train_flag is not True:
+            print("Not in training process, saving failed")
+            return 0
+        else:
+            pickle.dump(self.dataset, open("./model/"
+                                            +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
+            print("saving dataset successfully")
+            self.dataset = []
 
-def plot_dataset(dataset):
-    fig = plt.figure(0)
-    ax = fig.gca(projection='3d')
-    # print robot trajectory
-    for i, data in enumerate(dataset[5:6]):
-        x = revert_data(data.x, data.x_mean, data.x_var)
-        y = revert_data(data.y, data.y_mean, data.y_var)
+    def load_dataset(self, file_name):
+        ## load dataset
 
-        ax.plot(x[:, -3], x[:, -2], x[:, -1], '-o', linewidth=2, color='black', label="x")
-        ax.plot([y[0]], [y[1]], [y[2]], marker='o', markersize=3, linewidth=2, color='red')
-    plt.show()
-    # for i, data in enumerate(dataset):
-    #     if i%8001 is 0:
-    #         x=revert_data(data.x,data.x_mean,data.x_var)
-    #         y=revert_data(data.y,data.y_mean,data.y_var)
-    #
-    #         ax.plot(x[:, -3], x[:, -2], x[:, -1], '-o', linewidth=2, color='black', label="x")
-    #         ax.plot([y[0]], [y[1]], [y[2]], marker='o', markersize=3, linewidth=2, color='red')
-    # plt.show()
+        try:
+            self.dataset = pickle.load(open(os.path.join("./model/", file_name), "rb"))
+            # random.shuffle(self.dataset)
+        except:
+            print("Can not load dataset. Please first run the training stage to save dataset.")
+            return 0
 
-def revert_data(data, mean, var):
-    return(data*(var+1e-8)+mean)
+        return 1
+
 
 
 if __name__ == '__main__':
@@ -492,12 +519,6 @@ if __name__ == '__main__':
 
             # rnn_model.save_dataset()
             rnn_model.run_training()
-
-            # # plot saved dataset
-            # filelist = [f for f in os.listdir("./model/human_predict_test") if f.endswith(".pkl")]
-            # if rnn_model.load_dataset(filelist[0]) is not 0:
-            #     dataset=rnn_model.dataset
-            # plot_dataset(dataset)
 
         else:
             #plot all the validate data step by step

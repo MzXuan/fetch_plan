@@ -144,11 +144,11 @@ def main():
     parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
     parser.add_argument('--num-timesteps', type=int, default=int(2e6))
-    parser.add_argument('--train', type=bool, default=True)
+    parser.add_argument('--train', type=bool, default=False)
     parser.add_argument('--display', type=bool, default=False)
     parser.add_argument('--load', type=bool, default=True)
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('--point', type=str, default='00300')
+    parser.add_argument('--point', type=str, default='00200')
     args = parser.parse_args()
 
     curr_path = sys.path[0]
