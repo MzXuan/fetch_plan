@@ -2,7 +2,8 @@
 
 ---
 ## TODO List
-+ Add predictable reward (@tingxfan)
++ Add a correct loop function of RNN sequence output (@xuanz)
+
 + Two reward structure (@tingxfan)
 
 ---

@@ -250,14 +250,16 @@ class Predictor(object):
         for _ in range(0, self.batch_size):
             idx = random.randint(0, len(dataset) - 1)
             data = dataset[idx]
-            x, y, y_train, x_len = self._feed_one_data(data)
+            length = data.x_len
+            id = random.randint(1, length - 1)
+            x, y, y_train, x_len = self._feed_one_data(data, id)
             xs.append(x)
             ys.append(y)
             y_trains.append(y_train)
             x_lens.append(x_len)
         return xs, ys, y_trains, x_lens
 
-    def _feed_one_data(self,data):
+    def _feed_one_data(self,data,id):
         """
         #id: start index of this data
         #e.g.: x = data[id-self.in_timesteps:id];
@@ -271,8 +273,6 @@ class Predictor(object):
         x_len = 0
 
         length = data.x_len
-        id = random.randint(1,length-1)
-
         id_start = id-self.in_timesteps_max
         id_end = id+self.out_timesteps
 
@@ -297,9 +297,15 @@ class Predictor(object):
         return x, y, y_train, x_len
 
 
-    def _feed_predict_data(self, sequence):
-        for _ in range(0, self.batch_size):
-            np.randint(len(self.dataset))
+    def _feed_online_data(self, data):
+        xs, ys, y_trains, x_lens = [], [], [], []
+        for id in range(0,data.x_len):
+            x, y, y_train, x_len = self._feed_one_data(data, id)
+            xs.append(x)
+            ys.append(y)
+            y_trains.append(y_train)
+            x_lens.append(x_len)
+        return xs, ys, y_trains, x_lens
 
 
     def run_training(self):
@@ -414,7 +420,7 @@ class Predictor(object):
         :param dones: dones.shape = [batch_size]
         :param mean: mean.shape = [batch_size, ob_shape]
         :param var: var.shape = [batch_size, ob_shape]
-        :return: batch_loss.shape = [batch_size]
+        :return: loss of a predicted sequence
         """
 
         #create input sequence
@@ -434,24 +440,26 @@ class Predictor(object):
             else:
                 #---predict input data---#
                 # todo: rewrite this function, we need to feed data from a sequence
-                fetches = [self.loss, self.y_ph, self.y_hat]
-                feed_dict = {
-                    self.x_ph: xs,
-                    self.y_ph:ys,
-                    self.x_len_ph: x_lens
-                    }
+                for seq in seqs_done:
+                    xs, ys, y_trains, x_lens = self._feed_online_data(seq)
+                    fetches = [self.loss, self.y_ph, self.y_hat,self.y_train]
+                    feed_dict = {
+                        self.x_ph: xs,
+                        self.y_ph:ys,
+                        self.y_train: y_trains,
+                        self.x_len_ph: x_lens
+                        }
 
-                loss, y, y_hat = self.sess.run(fetches, feed_dict)
+                    loss, y, y_hat,y_train = self.sess.run(fetches, feed_dict)
+
+                    batch_loss = self._get_batch_loss(y, y_hat)
 
 
-                batch_loss = self._get_batch_loss(y, y_hat)
-
-
-                # ## display information
-                # if (self.iteration % self.display_interval) is 0:
-                #     print('\n')
-                #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
-                #     print('predict loss = {} '.format(loss))
+                ## display information
+                if (self.iteration % self.display_interval) is 0:
+                    print('\n')
+                    print("pred = {}, true goal = {},y_train = {}".format(y_hat[0], y[0], y_train[0]))
+                    print('predict loss = {} '.format(loss))
 
                 # #------plot predicted data-----------
                 # import visualize
