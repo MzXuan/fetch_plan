@@ -23,7 +23,7 @@ class DatasetStru(object):
         :param x_mean: shape = (self.in_dim)
         :param x_var:  shape = (self.in_dim)
         """
-        self.x = x
+        self.x = np.asarray(x)
         self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
@@ -41,7 +41,7 @@ class DatasetStru(object):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="3000"):
+                 reset_flag=True, point="10000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -56,7 +56,8 @@ class Predictor(object):
         self.iteration = 0
             
         ## prepare sequcne containers
-        self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
+        # self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
+        self.xs = [[] for _ in range(0,self.batch_size)]
         self.x_lens = np.zeros(batch_size, dtype=int)
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
@@ -202,9 +203,8 @@ class Predictor(object):
 
         ## create sequence data
         for idx, data in enumerate(obs):
-            lens = self.x_lens[idx]
-            self.xs[idx, lens, :] = np.concatenate((data[6:13],
-                                                    data[0:3]))
+            self.xs[idx].append(np.concatenate((data[6:13],
+                                                    data[0:3])))
             self.x_lens[idx] += 1
 
 
@@ -215,7 +215,7 @@ class Predictor(object):
                 # create a container saving reseted sequences for future usage
                 seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                             self.x_mean, self.x_var))
-                self.xs[idx] = np.zeros((self.in_timesteps_max, self.in_dim))
+                self.xs[idx] = []
                 self.x_lens[idx] = 0
                 self.x_mean = np.zeros(self.in_dim)
                 self.x_var = np.zeros(self.in_dim)
@@ -227,15 +227,17 @@ class Predictor(object):
         :return:
         """
         for data in seqs_done:
-            self.dataset.append(data)
+            if data.x_len > 1 and data.x_len < 300:
+                self.dataset.append(data)
             # print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        if len(self.dataset) > 400:
+        if len(self.dataset) > 4000:
             print("save dataset...")
             pickle.dump(self.dataset, open("./model/"
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
             self.dataset_idx+=1
+            self.dataset=[]
             self.dataset=[]
 
 
@@ -269,8 +271,6 @@ class Predictor(object):
         x_len = 0
 
         length = data.x_len
-        print("length:")
-        print(length)
         id = random.randint(1,length-1)
 
         id_start = id-self.in_timesteps_max
@@ -281,7 +281,7 @@ class Predictor(object):
             #todo: be careful, need to debug this function
             data.x = data.padding(data.x,id_end)
 
-        if id_start>0 and id_end<length:
+        if id_start>=0:
             x = data.x[id_start:id]
             y = data.x[id:id_end,-3:]
             x_len = self.in_timesteps_max
@@ -397,12 +397,9 @@ class Predictor(object):
 
 
                 if (self.iteration % self.display_interval) is 0:
-                    mean_y = self.dataset[0].y_mean
-                    var_y = self.dataset[0].y_var
-                    y_origin = self._revert_data(y[0],mean_y,var_y)
-                    y_hat_origin = self._revert_data(y_hat[0],mean_y,var_y)
                     print('\n')
                     # print("x = {}".format(x[0]))
+                    print("x_len={}".format(x_lens[0]))
                     print("pred = {}, true goal = {}".format(y[0], y_hat[0]))
                     print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
             #---------create validate data-----#
@@ -465,7 +462,7 @@ class Predictor(object):
 
                 return batch_loss
         else:
-            print("done seq is not none")
+            # print("done seq is not none")
             return np.zeros((len(dones)))
 
 
