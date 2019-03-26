@@ -7,6 +7,7 @@ import os
 import random
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.legacy_seq2seq import rnn_decoder
 
 # for plot saved dataset
 import matplotlib.pyplot as plt
@@ -30,8 +31,9 @@ class DatasetStru(object):
     def padding(self, seq, new_length):
         old_length = len(seq)
         value = seq[-1,:]
+        value = np.expand_dims(value, axis=0)
         for _ in range(old_length,new_length):
-            seq = np.append([seq, value], axis=0)
+            seq=np.append(seq, value, axis=0)
         return seq
 
 
@@ -107,6 +109,11 @@ class Predictor(object):
             shape=[None], 
             name='in_timesteps_len')
 
+        self.y_train = tf.placeholder(
+            tf.float32,
+            shape=[None, self.out_timesteps, self.out_dim],
+            name='out_timesteps')
+
         self.y_ph = tf.placeholder(
             tf.float32, 
             shape=[None, self.out_timesteps, self.out_dim],
@@ -128,21 +135,31 @@ class Predictor(object):
                 self.sess.run(tf.global_variables_initializer())
 
     def _build_net(self):
-        ## encoder
+
         with tf.variable_scope("predictor"):
+            ## encoder
             enc_inputs = self.x_ph
-            gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
+            gru_rnn1 = tf.nn.rnn_cell.GRUCell(16)
             gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
             enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
             _, enc_state = tf.nn.dynamic_rnn(
                 enc_cell, enc_inputs, 
                 sequence_length=self.x_len_ph, dtype=tf.float32
                 )
-            
-            ## dense layer classifier
-            self.y_hat = tf.layers.dense(
-                enc_state[1], self.out_dim
-                )
+
+            ## decorder
+            dec_inputs = tf.unstack(self.y_train, axis=1)
+            print('dec_inputs len, shape:', len(dec_inputs), dec_inputs[0].get_shape())
+            dec_rnn1 = tf.nn.rnn_cell.GRUCell(16)
+            dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
+            dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
+            dec_outputs, dec_state = rnn_decoder(dec_inputs, enc_state, cell=dec_cell)
+
+            ## prediction
+            dense_outputs = [tf.layers.dense(output, self.out_dim) for output in dec_outputs]
+            self.y_hat = tf.stack(dense_outputs, axis=1)
+            print('self.y_hat shape:', self.y_hat.get_shape())
+
 
         ## setup optimization
         self.loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat)
@@ -175,7 +192,7 @@ class Predictor(object):
         :param var: variations of observations
         :return: done sequences
         """
-
+        # todo: the format of this funtion need tobe edited
         if mean is not None and var is not None:
             ## save mean and var
             self.x_mean = np.concatenate((mean[6:13],
@@ -186,15 +203,10 @@ class Predictor(object):
         ## create sequence data
         for idx, data in enumerate(obs):
             lens = self.x_lens[idx]
-            if lens < self.in_timesteps_max:
-                self.xs[idx, lens, :] = np.concatenate((data[6:13],
-                                                        data[0:3]))
-                self.x_lens[idx] += 1
-            else:
-                lens = self.in_timesteps_max-1
-                self.xs[idx, :] = np.roll(self.xs[idx,:], -1, axis=0)
-                self.xs[idx, lens, :] = np.concatenate((data[6:13],
-                                                        data[0:3]))
+            self.xs[idx, lens, :] = np.concatenate((data[6:13],
+                                                    data[0:3]))
+            self.x_lens[idx] += 1
+
 
         ## reset requences that reaches destination
         seqs_done = []
@@ -216,9 +228,10 @@ class Predictor(object):
         """
         for data in seqs_done:
             self.dataset.append(data)
+            # print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        if len(self.dataset) > 150000:
+        if len(self.dataset) > 400:
             print("save dataset...")
             pickle.dump(self.dataset, open("./model/"
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
@@ -230,28 +243,35 @@ class Predictor(object):
         return(data*(var+1e-8)+mean)
 
     def _feed_training_data(self,dataset):
-        xs, ys, x_lens = [], [], []
+        xs, ys, y_trains, x_lens = [], [], [], []
 
         for _ in range(0, self.batch_size):
             idx = random.randint(0, len(dataset) - 1)
             data = dataset[idx]
-            x, y, x_len = self._feed_one_data(data)
-            # xs.append(data.x[:,-3:])
+            x, y, y_train, x_len = self._feed_one_data(data)
             xs.append(x)
             ys.append(y)
+            y_trains.append(y_train)
             x_lens.append(x_len)
-        return xs, ys, x_lens
+        return xs, ys, y_trains, x_lens
 
     def _feed_one_data(self,data):
-        x = np.zeros(self.in_timesteps_max, self.in_dim)
-        y = np.zeros(self.out_timesteps, self.out_dim)
-        x_len = 0
-
-        length = data.x_len
-        id = random.randint(1,length-1)
+        """
         #id: start index of this data
         #e.g.: x = data[id-self.in_timesteps:id];
         #      y = data[id:id+out_timesteps]
+        :param data: a sequence data in DatasetStru format
+        :return:
+        """
+        x = np.zeros((self.in_timesteps_max, self.in_dim))
+        y = np.zeros((self.out_timesteps, self.out_dim))
+        y_train = np.zeros((self.out_timesteps, self.out_dim))
+        x_len = 0
+
+        length = data.x_len
+        print("length:")
+        print(length)
+        id = random.randint(1,length-1)
 
         id_start = id-self.in_timesteps_max
         id_end = id+self.out_timesteps
@@ -263,14 +283,18 @@ class Predictor(object):
 
         if id_start>0 and id_end<length:
             x = data.x[id_start:id]
-            y = data.x[id:id_end]
+            y = data.x[id:id_end,-3:]
             x_len = self.in_timesteps_max
         elif id_start<0:
             x[0:id] = data.x[0:id]
-            y = data.x[id:id_end]
+            y = data.x[id:id_end,-3:]
             x_len = id
 
-        return x, y, x_len
+
+        y_train = y.copy()
+        y_train = np.roll(y_train,1,axis=0)
+        y_train[0,:] = np.zeros(self.out_dim)
+        return x, y, y_train, x_len
 
 
     def _feed_predict_data(self, sequence):
@@ -312,14 +336,14 @@ class Predictor(object):
                     if self.dataset_idx >= num_sets:
                         self.dataset_idx = 0
             #-----create training data----#
-            train_num=int(self.validata_num*len(self.dataset))
-            xs,ys,x_lens=self._feed_training_data(self.dataset)
+            xs, ys, y_trains, x_lens=self._feed_training_data(self.dataset)
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat]
             feed_dict = {
                 self.x_ph: xs,
                 self.y_ph: ys,
+                self.y_train: y_trains,
                 self.x_len_ph: x_lens
             }
 
@@ -351,13 +375,14 @@ class Predictor(object):
                     pickle.load(open(os.path.join("./model/", filelist[-1]), "rb"))
 
                 ## create validate data
-                xs, ys, x_lens = self._feed_training_data(validate_set)
+                xs, ys, y_trains, x_lens = self._feed_training_data(validate_set)
 
                 ## run validation
                 fetches = [self.loss, self.x_ph, self.y_ph, self.y_hat]
                 feed_dict = {
                     self.x_ph: xs,
                     self.y_ph: ys,
+                    self.y_train: y_trains,
                     self.x_len_ph: x_lens
                 }
                 loss, x, y, y_hat = self.sess.run(fetches, feed_dict)
@@ -403,7 +428,7 @@ class Predictor(object):
         # visualize.plot_3d_pred(self.xs[0],self.ys[0])
         # #----------------------------------
 
-        if seqs_done is not []:
+        if len(seqs_done) > 0:
             if self.train_flag:
                 #----create training dataset for future training---#
                 self._create_dataset(seqs_done)
@@ -440,6 +465,7 @@ class Predictor(object):
 
                 return batch_loss
         else:
+            print("done seq is not none")
             return np.zeros((len(dones)))
 
 
