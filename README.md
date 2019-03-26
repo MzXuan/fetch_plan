@@ -2,7 +2,7 @@
 
 ---
 ## TODO List
-+ Add a correct loop function of RNN sequence output (@xuanz)
++ change to new tf rnn api (@xuanz)
 
 + Two reward structure (@tingxfan)
 
