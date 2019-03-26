@@ -7,7 +7,7 @@ import os
 import random
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.legacy_seq2seq import rnn_decoder
+from tensorflow.contrib.seq2seq import BasicDecoder, TrainingHelper
 
 # for plot saved dataset
 import matplotlib.pyplot as plt
@@ -137,29 +137,64 @@ class Predictor(object):
 
     def _build_net(self):
 
-        with tf.variable_scope("predictor"):
-            ## encoder
-            enc_inputs = self.x_ph
-            gru_rnn1 = tf.nn.rnn_cell.GRUCell(16)
-            gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
-            enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
-            _, enc_state = tf.nn.dynamic_rnn(
-                enc_cell, enc_inputs, 
-                sequence_length=self.x_len_ph, dtype=tf.float32
-                )
+        ## encoder
+        enc_inputs = self.x_ph
+        gru_rnn1 = tf.nn.rnn_cell.GRUCell(16)
+        gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
+        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
+        enc_outputs, enc_state = tf.nn.dynamic_rnn(
+            enc_cell, enc_inputs,
+            sequence_length=self.x_len_ph, dtype=tf.float32
+            )
 
-            ## decorder
-            dec_inputs = tf.unstack(self.y_train, axis=1)
-            print('dec_inputs len, shape:', len(dec_inputs), dec_inputs[0].get_shape())
-            dec_rnn1 = tf.nn.rnn_cell.GRUCell(16)
-            dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
-            dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
-            dec_outputs, dec_state = rnn_decoder(dec_inputs, enc_state, cell=dec_cell)
+        ## decoder
+        dec_rnn1 = tf.nn.rnn_cell.GRUCell(16)
+        dec_rnn2 = tf.nn.rnn_cell.GRUCell(self.out_timesteps)
+        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
 
-            ## prediction
-            dense_outputs = [tf.layers.dense(output, self.out_dim) for output in dec_outputs]
-            self.y_hat = tf.stack(dense_outputs, axis=1)
-            print('self.y_hat shape:', self.y_hat.get_shape())
+        ##todo: need to finish network with new api
+        with tf.variable_scope("decorder"):
+            ## training decorder
+            training_helper = tf.contrib.seq2seq.TrainingHelper(enc_state, self.out_timesteps)
+            decoder = tf.contrib.seq2seq.BasicDecoder(
+                cell=dec_cell, helper=training_helper,
+                initial_state=dec_cell.zero_state(
+                    dtype=tf.float32, batch_size=self.batch_size))
+
+            final_outputs, final_state, final_sequence_lengths = tf.contrib.seq2seq.dynamic_decode(
+                decoder=decoder, output_time_major=True,
+                impute_finished=True, maximum_iterations=self.input_steps
+            )
+            self.y_hat = tf.stack(final_state, axis=1)
+
+        with tf.variable_scope("decorder", reuse=True):
+            ## prediction decorder
+            inference_helper = tf.contrib.seq2seq.InferenceHelper()
+            decoder = tf.contrib.seq2seq.BasicDecoder(
+                cell=dec_cell, helper=inference_helper,
+                initial_state=dec_cell.zero_state(
+                    dtype=tf.float32, batch_size=self.batch_size))
+
+            final_outputs, final_state, final_sequence_lengths = tf.contrib.seq2seq.dynamic_decode(
+                decoder=decoder, output_time_major=True,
+                impute_finished=True, maximum_iterations=self.input_steps
+            )
+
+            self.y_hat = tf.stack(final_state, axis=1)
+
+
+            # ## decorder
+            # dec_inputs = tf.unstack(self.y_train, axis=1)
+            # print('dec_inputs len, shape:', len(dec_inputs), dec_inputs[0].get_shape())
+            # dec_rnn1 = tf.nn.rnn_cell.GRUCell(16)
+            # dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
+            # dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
+            # dec_outputs, dec_state = rnn_decoder(dec_inputs, enc_state, cell=dec_cell)
+            #
+            # ## prediction
+            # dense_outputs = [tf.layers.dense(output, self.out_dim) for output in dec_outputs]
+            # self.y_hat = tf.stack(dense_outputs, axis=1)
+            # print('self.y_hat shape:', self.y_hat.get_shape())
 
 
         ## setup optimization
@@ -293,7 +328,7 @@ class Predictor(object):
 
         y_train = y.copy()
         y_train = np.roll(y_train,1,axis=0)
-        y_train[0,:] = np.zeros(self.out_dim)
+        y_train[0,:] = np.ones(self.out_dim)
         return x, y, y_train, x_len
 
 
