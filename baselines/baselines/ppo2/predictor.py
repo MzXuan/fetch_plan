@@ -515,7 +515,7 @@ class Predictor(object):
         :param dones: dones.shape = [batch_size]
         :param mean: mean.shape = [batch_size, ob_shape]
         :param var: var.shape = [batch_size, ob_shape]
-        :return:
+        :return: batch_loss; batch_loss.shape = [batch_size]
         """
         # create input sequence
         _, seqs_all = self._create_seq(obs, dones, mean, var)

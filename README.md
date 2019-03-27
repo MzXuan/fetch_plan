@@ -104,7 +104,9 @@ def collect(self, obs, dones, mean=None, var=None)
 
 predict data using existing network:
 ```
-def predict(self, obs, dones, mean=None, var=None)
+def predict(self, obs, dones, mean=None, var=None);
+...
+    return batch_loss
 ```
 
 
