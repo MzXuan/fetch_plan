@@ -60,10 +60,10 @@ class Predictor(object):
 
         self.batch_size = batch_size
         self.in_timesteps_max = max_timestep
-        self.out_timesteps = 10
+        self.out_timesteps = 5
         self.train_flag = train_flag
         self.point = point
-        self.validata_num = 0.5
+        # self.validata_num = 0.5
 
         self.iteration = 0
             
@@ -135,11 +135,11 @@ class Predictor(object):
             tf.int32, shape=[None], name='batch_seq_length'
         )
 
-        self.go_token = np.full((self.out_dim),1.0, dtype=np.float32)
+        self.go_token = np.full((self.out_dim),0, dtype=np.float32)
 
     def init_sess(self):
 
-        self.sess.run(tf.global_variables_initializer())
+        # self.sess.run(tf.global_variables_initializer())
         filename = ("./model/" + self.model_name + "/{}").format(self.point)
         try:
             self.load_net(filename)
@@ -161,7 +161,6 @@ class Predictor(object):
         return enc_state
 
     def _build_decoder(self, enc_state):
-        ##todo: need to finish network with new api
         ## decoder
         dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
         dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
@@ -286,7 +285,6 @@ class Predictor(object):
                                                     data[0:3])))
             self.x_lens[idx] += 1
 
-
         ## reset requences that reaches destination
         seqs_done, seqs_all = [], []
         for idx, done in enumerate(dones):
@@ -361,11 +359,11 @@ class Predictor(object):
             data.x = data.padding(data.x,id_end)
 
         if id_start>=0:
-            x = data.x[id_start:id]
+            x = data.x[id_start:id,-3:]
             y = data.x[id:id_end,-3:]
             x_len = self.in_timesteps_max
         elif id_start<0:
-            x[0:id] = data.x[0:id]
+            x[0:id] = data.x[0:id,-3:]
             y = data.x[id:id_end,-3:]
             x_len = id
 
@@ -505,8 +503,7 @@ class Predictor(object):
 
         #create training dataset for future training
         if len(seqs_done) > 0:
-            if self.train_flag:
-                self._create_dataset(seqs_done)
+            self._create_dataset(seqs_done)
 
     def predict(self, obs, dones, mean=None, var=None):
         """
@@ -535,17 +532,17 @@ class Predictor(object):
 
         batch_loss = self._get_batch_loss(y, y_hat_pred)
 
-        # ## display information
-        # if (self.iteration % self.display_interval) is 0:
-        #     print('\n')
-        #     print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
-        #     print('predict loss = {} '.format(loss_pred))
-        #     print("batch_loss = {}".format(batch_loss))
+        ## display information
+        if (self.iteration % self.display_interval) is 0:
+            print('\n')
+            print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+            print('predict loss = {} '.format(loss_pred))
+            # print("batch_loss = {}".format(batch_loss))
 
-        # #------plot predicted data-----------
-        # import visualize
-        # visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
-        # #------------------------------------#
+        #------plot predicted data-----------
+        import visualize
+        visualize.plot_3d_seqs(xs[0],y[0],y_hat_pred[0])
+        #------------------------------------#
         return batch_loss
 
     def save_net(self, save_path):

@@ -7,12 +7,12 @@ import tensorflow as tf
 flags = tf.app.flags
 
 ##model name
-flags.DEFINE_string('model_name','iteration1','name of the model')
+flags.DEFINE_string('model_name','iteration0','name of the model')
 
 
 ## model hyper-parameters
 
-flags.DEFINE_integer('in_dim', 10, 'dimensionality of each timestep input')
+flags.DEFINE_integer('in_dim', 3, 'dimensionality of each timestep input')
 flags.DEFINE_integer('out_dim', 3, 'dimensionality of each timestep output')
 
 # add weights for each dimensionality of output
