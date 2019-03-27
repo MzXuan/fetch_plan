@@ -2,8 +2,6 @@
 
 ---
 ## TODO List
-+ change to new tf rnn api (@xuanz)
-
 + Two reward structure (@tingxfan)
 
 ---
@@ -98,6 +96,18 @@ python predictor.py
 --display=True
 ```
 
+### Functions in predictor
+collect training data for lstm network:
+```
+def collect(self, obs, dones, mean=None, var=None)
+```
+
+predict data using existing network:
+```
+def predict(self, obs, dones, mean=None, var=None)
+```
+
+
 ---
 ## Change log
 1. 0.1.0
@@ -113,3 +123,7 @@ python predictor.py
 
 4. 0.3.5
 * add visualization of obs in ppo2.py (example in line 389 to 402)
+
+5. 0.3.6
+* change prediction to sequence to sequence mode
+* use new tensorflow seq2seq api
