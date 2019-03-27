@@ -2,6 +2,9 @@
 
 ---
 ## TODO List
++ Check bugs at sequence generation (@xuanz)
++ Run the whole process (@xuanz)
++ A shell script for training (@xuanz) 
 + Two reward structure (@tingxfan)
 
 ---

@@ -3,6 +3,7 @@ import time, os
 import joblib
 import pickle
 import os
+import time
 
 import random
 import numpy as np
@@ -36,6 +37,8 @@ class DatasetStru(object):
         value = np.expand_dims(value, axis=0)
         for _ in range(old_length,new_length):
             seq=np.append(seq, value, axis=0)
+        # print("padding sequence")
+        # print(seq)
         return seq
 
 
@@ -53,7 +56,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="20000"):
+                 reset_flag=True, point="15000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -63,7 +66,6 @@ class Predictor(object):
         self.out_timesteps = 5
         self.train_flag = train_flag
         self.point = point
-        # self.validata_num = 0.5
 
         self.iteration = 0
             
@@ -138,15 +140,7 @@ class Predictor(object):
         self.go_token = np.full((self.out_dim),0, dtype=np.float32)
 
     def init_sess(self):
-
-        # self.sess.run(tf.global_variables_initializer())
-        filename = ("./model/" + self.model_name + "/{}").format(self.point)
-        try:
-            self.load_net(filename)
-            print("load net {} successfully".format(filename))
-        except:
-            print("Can not load net {}".format(filename))
-            self.sess.run(tf.global_variables_initializer())
+        self.sess.run(tf.global_variables_initializer())
 
     def _build_encoder(self):
         ## encoder
@@ -323,6 +317,9 @@ class Predictor(object):
     def _revert_data(self,data,mean,var):
         return(data*(var+1e-8)+mean)
 
+    def _revert_y(self,delta_y, x):
+        return delta_y+x
+
     def _feed_training_data(self,dataset):
         xs, ys, x_lens = [], [], []
 
@@ -356,15 +353,17 @@ class Predictor(object):
         if id_end>length:
             #pading dataset
             #todo: be careful, need to debug this function
-            data.x = data.padding(data.x,id_end)
+            x_seq = data.padding(data.x,id_end)
+        else:
+            x_seq = data.x
 
         if id_start>=0:
-            x = data.x[id_start:id,-3:]
-            y = data.x[id:id_end,-3:]
+            x = x_seq[id_start:id,-3:]
+            y = x_seq[id:id_end,-3:] - x_seq[id-1,-3:]
             x_len = self.in_timesteps_max
         elif id_start<0:
-            x[0:id] = data.x[0:id,-3:]
-            y = data.x[id:id_end,-3:]
+            x[0:id] = x_seq[0:id,-3:]
+            y = x_seq[id:id_end,-3:] - x_seq[id-1,-3:]
             x_len = id
 
         return x, y, x_len
@@ -390,7 +389,6 @@ class Predictor(object):
 
     def run_training(self):
         #function: train the model according to saved dataset
-        import visualize
 
         ## check whether in training
         if not self.train_flag:
@@ -475,19 +473,79 @@ class Predictor(object):
                 validate_summary.value.add(tag="validate rmse", simple_value=loss_pred)
                 self.file_writer.add_summary(validate_summary, self.iteration)
 
-                ## display
-                # visualize.plot_3d_pred(x[0], y[0], y_hat[0])
+                # # ------plot predicted data-----------
+                # import visualize
+                # origin_y = self._revert_y(y[0],xs[0][x_lens[0]-1,-3:])
+                # origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0]-1, -3:])
+                # visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
+                # time.sleep(1)
+                # # ------------------------------------#
 
-
+                #----display info-------#
                 if (self.iteration % self.display_interval) is 0:
                     print('\n')
                     # print("x = {}".format(x[0]))
                     print("x_len={}".format(x_lens[0]))
                     print("pred = {}, true goal = {}".format(y[0], y_hat_pred[0]))
                     print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
-            #---------create validate data-----#
+
 
         print("finish training")
+
+    def run_test(self):
+        """
+        run test on validation set
+        """
+
+        ## check saved data set
+        filelist = [f for f in os.listdir("./model/") if f.endswith(".pkl")]
+        num_sets = len(filelist)-1
+        self.dataset_idx = 0
+
+        print("load validate dataset {}".format(filelist[-1]))
+        test_set = \
+            pickle.load(open(os.path.join("./model/", filelist[-1]), "rb"))
+        # ## prepare threshold to switch dataset
+        # max_iteration = int(self.point)
+        # iter_range = range(0,max_iteration,500)
+        # iter_idx=0
+        # print("iter_range")
+        # print(iter_range)
+        ## run training
+        for i in range(1,100):
+        #----------test process--------#
+            ## create validate data
+            xs, ys, x_lens = self._feed_training_data(test_set)
+
+            ## run validation
+            fetches = [self.loss_pred, self.x_ph, self.y_ph, self.y_hat_pred]
+            feed_dict = {
+                self.x_ph: xs,
+                self.y_ph: ys,
+                self.x_len_ph: x_lens
+            }
+            loss_pred, x, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+
+            ## write summary
+            validate_summary = tf.Summary()
+            validate_summary.value.add(tag="validate rmse", simple_value=loss_pred)
+            self.file_writer.add_summary(validate_summary, self.iteration)
+
+            # ------plot predicted data-----------
+            import visualize
+            origin_y = self._revert_y(y[0],xs[0][x_lens[0]-1,-3:])
+            origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0]-1, -3:])
+            visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
+            time.sleep(3)
+            # ------display information-----------#
+            print('\n')
+            # print("x = {}".format(x[0]))
+            print("x_len={}".format(x_lens[0]))
+            print("pred = {}, true goal = {}".format(y[0], y_hat_pred[0]))
+            print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
+
+
+        print("finish testing")
 
     def collect(self, obs, dones, mean=None, var=None):
         """
@@ -558,6 +616,10 @@ class Predictor(object):
             os.mkdir(directory)
         joblib.dump(ps, save_path)
 
+    def load(self):
+        filename = ("./model/" + self.model_name + "/{}").format(self.point)
+        self.load_net(filename)
+
     def load_net(self, load_path):
         loaded_params = joblib.load(load_path)
         restores = []
@@ -608,10 +670,12 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         if train_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 2, 10,
+            rnn_model = Predictor(sess, FLAGS, 16, 10,
                                   train_flag=True, reset_flag=False)
 
             rnn_model.init_sess()
+            # rnn_model.load()
+
             # for _ in range(5000):
             #     #create fake data
             #     obs = np.random.rand(32, 20)
@@ -624,10 +688,12 @@ if __name__ == '__main__':
 
         else:
             #plot all the validate data step by step
-            rnn_model = Predictor(sess, FLAGS, 16, 30,
+            rnn_model = Predictor(sess, FLAGS, 16, 10,
                                   train_flag=False, reset_flag=False)
 
             rnn_model.init_sess()
+            rnn_model.load()
+            rnn_model.run_test()
 
 
 
