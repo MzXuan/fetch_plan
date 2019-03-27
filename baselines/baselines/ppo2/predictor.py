@@ -40,11 +40,14 @@ class DatasetStru(object):
 
 
 class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
+    """
+    only required when batch size = 1
+    """
     def sample(self, *args, **kwargs):
         result = super().sample(*args, **kwargs)
         # print("result size")
         # print(result)
-        result.set_shape([1,3])
+        result.set_shape([1,3]) #[batch_size, dimension]
         return result
 
 class Predictor(object):
@@ -253,8 +256,10 @@ class Predictor(object):
             )
 
     def _get_batch_loss(self, y, y_hat):
-        error = np.linalg.norm((y-y_hat), axis=1)
-        # error = np.sqrt(np.mean((y - y_hat)**2,axis=1))
+        error = []
+        for t,p in zip(y, y_hat):
+            error.append(np.linalg.norm((t-p)))
+        # error = np.sqrt(np.mean((y - y_hat)**2,axis=2))
         return error
 
     def _create_seq(self, obs, dones, mean, var):
@@ -369,11 +374,14 @@ class Predictor(object):
     def _feed_online_data(self, sequences):
         xs, ys, x_lens = [], [], []
         for data in sequences:
-            length = len(data.x_len)
+            length = data.x_len
             if length < self.in_timesteps_max+self.out_timesteps:
-                x = np.zeros(self.in_timesteps_max, self.in_dim)
+                x = np.zeros((self.in_timesteps_max, self.in_dim))
                 y = np.zeros((self.out_timesteps, self.out_dim))
                 x_len = 0
+                xs.append(x)
+                ys.append(y)
+                x_lens.append(x_len)
             else:
                 id = length-self.out_timesteps
                 x, y, x_len = self._feed_one_data(data, id)
@@ -515,6 +523,7 @@ class Predictor(object):
         # ---predict input data---#
         # todo: rewrite this function, we need to feed data from a sequence
         xs, ys, x_lens = self._feed_online_data(seqs_all)
+
         fetches = [self.loss_pred, self.y_ph, self.y_hat_pred]
         feed_dict = {
             self.x_ph: xs,
@@ -524,19 +533,20 @@ class Predictor(object):
 
         loss_pred, y, y_hat_pred = self.sess.run(fetches, feed_dict)
 
-        ## display information
-        if (self.iteration % self.display_interval) is 0:
-            print('\n')
-            print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
-            print('predict loss = {} '.format(loss_pred))
+        batch_loss = self._get_batch_loss(y, y_hat_pred)
+
+        # ## display information
+        # if (self.iteration % self.display_interval) is 0:
+        #     print('\n')
+        #     print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+        #     print('predict loss = {} '.format(loss_pred))
+        #     print("batch_loss = {}".format(batch_loss))
 
         # #------plot predicted data-----------
         # import visualize
         # visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
         # #------------------------------------#
-        print("loss pred")
-        print(loss_pred)
-        return loss_pred
+        return batch_loss
 
     def save_net(self, save_path):
         params = tf.get_collection(
