@@ -6,7 +6,9 @@ import os
 
 import random
 import numpy as np
+
 import tensorflow as tf
+from tensorflow.python import keras
 from tensorflow.contrib.seq2seq import BasicDecoder, TrainingHelper
 
 # for plot saved dataset
@@ -115,10 +117,17 @@ class Predictor(object):
             shape=[None, self.out_timesteps, self.out_dim],
             name='out_timesteps')
 
+
         self.y_ph = tf.placeholder(
             tf.float32, 
             shape=[None, self.out_timesteps, self.out_dim],
             name='out_timesteps')
+
+        self.decoder_seq_length = tf.placeholder(
+            tf.int32, shape=[None], name='batch_seq_length'
+        )
+
+        self.go_token = np.full((self.out_dim),1.0, dtype=np.float32)
 
     def init_sess(self):
         ## initialize global variables
@@ -135,52 +144,78 @@ class Predictor(object):
             except:
                 self.sess.run(tf.global_variables_initializer())
 
-    def _build_net(self):
-
+    def _build_encoder(self):
         ## encoder
         enc_inputs = self.x_ph
-        gru_rnn1 = tf.nn.rnn_cell.GRUCell(16)
-        gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
+        gru_rnn1 = tf.nn.rnn_cell.GRUCell(18)
+        gru_rnn2 = tf.nn.rnn_cell.GRUCell(18)
         enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
-        enc_outputs, enc_state = tf.nn.dynamic_rnn(
+        _, enc_state = tf.nn.dynamic_rnn(
             enc_cell, enc_inputs,
             sequence_length=self.x_len_ph, dtype=tf.float32
-            )
+        )
+        return enc_state
 
+    def _build_decoder(self, enc_state):
+        ##todo: need to finish network with new api
         ## decoder
-        dec_rnn1 = tf.nn.rnn_cell.GRUCell(16)
-        dec_rnn2 = tf.nn.rnn_cell.GRUCell(self.out_timesteps)
+        dec_rnn1 = tf.nn.rnn_cell.GRUCell(18)
+        dec_rnn2 = tf.nn.rnn_cell.GRUCell(18)
         dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
 
-        ##todo: need to finish network with new api
-        with tf.variable_scope("decorder"):
+        #Dense layer to translate the decoder's output at each time
+        fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
+
+
+        #Training Decoder
+        with tf.variable_scope("predictor"):
             ## training decorder
-            training_helper = tf.contrib.seq2seq.TrainingHelper(enc_state, self.out_timesteps)
+            go_tokens = tf.constant(self.go_token, shape=[self.batch_size,1, self.out_dim])
+            dec_input = tf.concat([go_tokens, self.y_ph], axis=1)
+
+            seq_length = tf.constant(self.out_timesteps, shape=[self.batch_size])
+
+            print("dec inputs shape:")
+            print(dec_input.shape)
+
+            training_helper = tf.contrib.seq2seq.TrainingHelper(dec_input, seq_length)
+
             decoder = tf.contrib.seq2seq.BasicDecoder(
                 cell=dec_cell, helper=training_helper,
-                initial_state=dec_cell.zero_state(
-                    dtype=tf.float32, batch_size=self.batch_size))
+                initial_state=enc_state, output_layer=fc_layer)
 
             final_outputs, final_state, final_sequence_lengths = tf.contrib.seq2seq.dynamic_decode(
-                decoder=decoder, output_time_major=True,
-                impute_finished=True, maximum_iterations=self.input_steps
-            )
-            self.y_hat = tf.stack(final_state, axis=1)
-
-        with tf.variable_scope("decorder", reuse=True):
-            ## prediction decorder
-            inference_helper = tf.contrib.seq2seq.InferenceHelper()
-            decoder = tf.contrib.seq2seq.BasicDecoder(
-                cell=dec_cell, helper=inference_helper,
-                initial_state=dec_cell.zero_state(
-                    dtype=tf.float32, batch_size=self.batch_size))
-
-            final_outputs, final_state, final_sequence_lengths = tf.contrib.seq2seq.dynamic_decode(
-                decoder=decoder, output_time_major=True,
-                impute_finished=True, maximum_iterations=self.input_steps
+                decoder=decoder, output_time_major=False,
+                impute_finished=True, maximum_iterations=self.out_timesteps
             )
 
-            self.y_hat = tf.stack(final_state, axis=1)
+            print("final_outputs shape:")
+            print(final_outputs)
+
+            self.y_hat = final_outputs[0]
+
+        # #Inference Decoder
+        # with tf.variable_scope("predictor", reuse=True):
+        #     ## inference decorder
+        #     start_tokens = tf.constant(
+        #         self.go_token, shape=[self.batch_size, self.out_dim])
+        #
+        #     inference_helper = tf.contrib.seq2seq.InferenceHelper(
+        #         sample_fn=lambda outputs: outputs,
+        #         sample_shape=[self.out_dim],
+        #         sample_dtype=tf.float32,
+        #         start_inputs=start_tokens,
+        #         end_fn=lambda sample_ids: False)
+        #
+        #     decoder = tf.contrib.seq2seq.BasicDecoder(
+        #         cell=dec_cell, helper=inference_helper,
+        #         initial_state=enc_state, output_layer=fc_layer)
+        #
+        #     final_outputs, final_state, final_sequence_lengths = tf.contrib.seq2seq.dynamic_decode(
+        #         decoder=decoder, output_time_major=False,
+        #         impute_finished=True, maximum_iterations=self.out_timesteps
+        #     )
+        #     self.y_hat = tf.stack(final_state, axis=1)
 
 
             # ## decorder
@@ -196,6 +231,14 @@ class Predictor(object):
             # self.y_hat = tf.stack(dense_outputs, axis=1)
             # print('self.y_hat shape:', self.y_hat.get_shape())
 
+
+    def _build_net(self):
+
+        ## encoder
+        enc_state = self._build_encoder()
+
+        ## docoder
+        self._build_decoder(enc_state)
 
         ## setup optimization
         self.loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat)
@@ -280,19 +323,18 @@ class Predictor(object):
         return(data*(var+1e-8)+mean)
 
     def _feed_training_data(self,dataset):
-        xs, ys, y_trains, x_lens = [], [], [], []
+        xs, ys, x_lens = [], [], []
 
         for _ in range(0, self.batch_size):
             idx = random.randint(0, len(dataset) - 1)
             data = dataset[idx]
             length = data.x_len
             id = random.randint(1, length - 1)
-            x, y, y_train, x_len = self._feed_one_data(data, id)
+            x, y, x_len = self._feed_one_data(data, id)
             xs.append(x)
             ys.append(y)
-            y_trains.append(y_train)
             x_lens.append(x_len)
-        return xs, ys, y_trains, x_lens
+        return xs, ys, x_lens
 
     def _feed_one_data(self,data,id):
         """
@@ -304,7 +346,6 @@ class Predictor(object):
         """
         x = np.zeros((self.in_timesteps_max, self.in_dim))
         y = np.zeros((self.out_timesteps, self.out_dim))
-        y_train = np.zeros((self.out_timesteps, self.out_dim))
         x_len = 0
 
         length = data.x_len
@@ -326,10 +367,10 @@ class Predictor(object):
             x_len = id
 
 
-        y_train = y.copy()
-        y_train = np.roll(y_train,1,axis=0)
-        y_train[0,:] = np.ones(self.out_dim)
-        return x, y, y_train, x_len
+        # y_train = y.copy()
+        # y_train = np.roll(y_train,1,axis=0)
+        # y_train[0,:] = np.ones(self.out_dim)
+        return x, y, x_len
 
 
     def _feed_online_data(self, data):
@@ -377,14 +418,13 @@ class Predictor(object):
                     if self.dataset_idx >= num_sets:
                         self.dataset_idx = 0
             #-----create training data----#
-            xs, ys, y_trains, x_lens=self._feed_training_data(self.dataset)
+            xs, ys, x_lens=self._feed_training_data(self.dataset)
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat]
             feed_dict = {
                 self.x_ph: xs,
                 self.y_ph: ys,
-                self.y_train: y_trains,
                 self.x_len_ph: x_lens
             }
 
@@ -416,14 +456,13 @@ class Predictor(object):
                     pickle.load(open(os.path.join("./model/", filelist[-1]), "rb"))
 
                 ## create validate data
-                xs, ys, y_trains, x_lens = self._feed_training_data(validate_set)
+                xs, ys, x_lens = self._feed_training_data(validate_set)
 
                 ## run validation
                 fetches = [self.loss, self.x_ph, self.y_ph, self.y_hat]
                 feed_dict = {
                     self.x_ph: xs,
                     self.y_ph: ys,
-                    self.y_train: y_trains,
                     self.x_len_ph: x_lens
                 }
                 loss, x, y, y_hat = self.sess.run(fetches, feed_dict)
