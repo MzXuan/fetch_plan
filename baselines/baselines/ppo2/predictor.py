@@ -39,6 +39,13 @@ class DatasetStru(object):
         return seq
 
 
+class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
+    def sample(self, *args, **kwargs):
+        result = super().sample(*args, **kwargs)
+        # print("result size")
+        # print(result)
+        result.set_shape([1,3])
+        return result
 
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
@@ -128,19 +135,15 @@ class Predictor(object):
         self.go_token = np.full((self.out_dim),1.0, dtype=np.float32)
 
     def init_sess(self):
-        ## initialize global variables
-        if self.train_flag:
-            # delete existing and dataset to avoid overlap problem
-            # initialize new model
-            self.sess.run(tf.global_variables_initializer())
 
-        else:
-            try:
-                self.load_net(("./model/"+self.model_name+"/{}").format(
-                    self.point
-                ))
-            except:
-                self.sess.run(tf.global_variables_initializer())
+        self.sess.run(tf.global_variables_initializer())
+        filename = ("./model/" + self.model_name + "/{}").format(self.point)
+        try:
+            self.load_net(filename)
+            print("load net {} successfully".format(filename))
+        except:
+            print("Can not load net {}".format(filename))
+            self.sess.run(tf.global_variables_initializer())
 
     def _build_encoder(self):
         ## encoder
@@ -187,23 +190,30 @@ class Predictor(object):
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
 
-            print("final_outputs shape:")
-            print(training_decoder_outputs)
-
-            # self.y_hat = training_decoder_outputs[0]
-
         #Inference Decoder
         with tf.variable_scope("predictor", reuse=True):
+
+
             ## inference decorder
             start_tokens = tf.constant(
                 self.go_token, shape=[self.batch_size, self.out_dim])
 
-            inference_helper = tf.contrib.seq2seq.InferenceHelper(
-                sample_fn=lambda outputs: outputs,
-                sample_shape=[self.out_dim],
-                sample_dtype=tf.float32,
-                start_inputs=start_tokens,
-                end_fn=lambda sample_ids: False)
+
+            if self.batch_size == 1:
+                inference_helper = FixedHelper(
+                    sample_fn=lambda outputs: outputs,
+                    sample_shape=[self.out_dim],
+                    sample_dtype=tf.float32,
+                    start_inputs=start_tokens,
+                    end_fn=lambda sample_ids: False)
+
+            else:
+                inference_helper = tf.contrib.seq2seq.InferenceHelper(
+                    sample_fn=lambda outputs: outputs,
+                    sample_shape=[self.out_dim],
+                    sample_dtype=tf.float32,
+                    start_inputs=start_tokens,
+                    end_fn=lambda sample_ids: False)
 
             inference_decoder = tf.contrib.seq2seq.BasicDecoder(
                 cell=dec_cell, helper=inference_helper,
@@ -213,8 +223,6 @@ class Predictor(object):
                 decoder=inference_decoder, output_time_major=False,
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
-
-            # self.y_hat = final_outputs[0]
         return training_decoder_outputs, inference_decoder_outputs
 
     def _build_net(self):
@@ -236,7 +244,7 @@ class Predictor(object):
         )
         self.train_op = tf.train.AdamOptimizer(self.lr).minimize(
             self.loss, var_list=var_list)
-        
+
         ## save summary
         tf.summary.scalar('loss', self.loss)
         self.merged_summary = tf.summary.merge_all()
@@ -275,8 +283,10 @@ class Predictor(object):
 
 
         ## reset requences that reaches destination
-        seqs_done = []
+        seqs_done, seqs_all = [], []
         for idx, done in enumerate(dones):
+            seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                          self.x_mean, self.x_var))
             if done:
                 # create a container saving reseted sequences for future usage
                 seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
@@ -285,7 +295,8 @@ class Predictor(object):
                 self.x_lens[idx] = 0
                 self.x_mean = np.zeros(self.in_dim)
                 self.x_var = np.zeros(self.in_dim)
-        return seqs_done
+
+        return seqs_done, seqs_all
 
     def _create_dataset(self, seqs_done):
         """
@@ -305,7 +316,6 @@ class Predictor(object):
             self.dataset_idx+=1
             self.dataset=[]
             self.dataset=[]
-
 
     def _revert_data(self,data,mean,var):
         return(data*(var+1e-8)+mean)
@@ -354,22 +364,23 @@ class Predictor(object):
             y = data.x[id:id_end,-3:]
             x_len = id
 
-
-        # y_train = y.copy()
-        # y_train = np.roll(y_train,1,axis=0)
-        # y_train[0,:] = np.ones(self.out_dim)
         return x, y, x_len
 
-
-    def _feed_online_data(self, data):
+    def _feed_online_data(self, sequences):
         xs, ys, x_lens = [], [], []
-        for id in range(0,data.x_len):
-            x, y, x_len = self._feed_one_data(data, id)
-            xs.append(x)
-            ys.append(y)
-            x_lens.append(x_len)
+        for data in sequences:
+            length = len(data.x_len)
+            if length < self.in_timesteps_max+self.out_timesteps:
+                x = np.zeros(self.in_timesteps_max, self.in_dim)
+                y = np.zeros((self.out_timesteps, self.out_dim))
+                x_len = 0
+            else:
+                id = length-self.out_timesteps
+                x, y, x_len = self._feed_one_data(data, id)
+                xs.append(x)
+                ys.append(y)
+                x_lens.append(x_len)
         return xs, ys, x_lens
-
 
     def run_training(self):
         #function: train the model according to saved dataset
@@ -472,7 +483,6 @@ class Predictor(object):
 
         print("finish training")
 
-
     def collect(self, obs, dones, mean=None, var=None):
         """
         function: collect sequence dataset
@@ -483,13 +493,12 @@ class Predictor(object):
         """
 
         #create input sequence
-        seqs_done = self._create_seq(obs, dones, mean, var)
+        seqs_done, _ = self._create_seq(obs, dones, mean, var)
 
         #create training dataset for future training
         if len(seqs_done) > 0:
             if self.train_flag:
                 self._create_dataset(seqs_done)
-
 
     def predict(self, obs, dones, mean=None, var=None):
         """
@@ -501,36 +510,33 @@ class Predictor(object):
         :return:
         """
         # create input sequence
-        self._create_seq(obs, dones, mean, var)
+        _, seqs_all = self._create_seq(obs, dones, mean, var)
 
         # ---predict input data---#
         # todo: rewrite this function, we need to feed data from a sequence
-        for seq in seqs_done:
-            xs, ys, x_lens = self._feed_online_data(seq)
-            fetches = [self.loss, self.y_ph, self.y_hat]
-            feed_dict = {
-                self.x_ph: xs,
-                self.y_ph: ys,
-                self.x_len_ph: x_lens
-            }
+        xs, ys, x_lens = self._feed_online_data(seqs_all)
+        fetches = [self.loss_pred, self.y_ph, self.y_hat_pred]
+        feed_dict = {
+            self.x_ph: xs,
+            self.y_ph: ys,
+            self.x_len_ph: x_lens
+        }
 
-            loss, y, y_hat, y_train = self.sess.run(fetches, feed_dict)
-
-            batch_loss = self._get_batch_loss(y, y_hat)
+        loss_pred, y, y_hat_pred = self.sess.run(fetches, feed_dict)
 
         ## display information
         if (self.iteration % self.display_interval) is 0:
             print('\n')
-            print("pred = {}, true goal = {},y_train = {}".format(y_hat[0], y[0], y_train[0]))
-            print('predict loss = {} '.format(loss))
+            print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+            print('predict loss = {} '.format(loss_pred))
 
         # #------plot predicted data-----------
         # import visualize
         # visualize.plot_3d_pred(xs[0],y[0],y_hat[0])
         # #------------------------------------#
-        # print("batch loss")
-        # print(batch_loss)
-
+        print("loss pred")
+        print(loss_pred)
+        return loss_pred
 
     def save_net(self, save_path):
         params = tf.get_collection(
@@ -595,7 +601,7 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         if train_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 16, 10,
+            rnn_model = Predictor(sess, FLAGS, 2, 10,
                                   train_flag=True, reset_flag=False)
 
             rnn_model.init_sess()
@@ -605,7 +611,7 @@ if __name__ == '__main__':
             #     dones = rand_bools_int_func(32)
             #     # run the model
             #     rnn_model.predict(obs, dones)
-
+            #
             # rnn_model.save_dataset()
             rnn_model.run_training()
 
