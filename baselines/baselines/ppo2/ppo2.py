@@ -103,7 +103,7 @@ class Runner(object):
         self.predictor_flag = predictor_flag
         self.dones = [False for _ in range(nenv)]
         sess = tf.get_default_session()
-        self.predictor = Predictor(sess, FLAGS, nenv, 30, train_flag=predictor_flag)
+        self.predictor = Predictor(sess, FLAGS, nenv, 10, train_flag=predictor_flag)
         self.predictor.init_sess()
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
@@ -380,7 +380,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
     load(load_path)
 
-    predictor = Predictor(sess, FLAGS, 1, 30, train_flag=False)
+    predictor = Predictor(sess, FLAGS, 1, 10, train_flag=False)
     predictor.init_sess()
 
 

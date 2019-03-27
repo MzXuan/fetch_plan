@@ -11,9 +11,6 @@ flags.DEFINE_string('model_name','iteration1','name of the model')
 
 
 ## model hyper-parameters
-flags.DEFINE_integer('num_units_cls', 32, 'number of units of a rnn cell in encoder or decoder')
-flags.DEFINE_integer('num_units', 32, 'number of units of a rnn cell in encoder or decoder')
-flags.DEFINE_integer('num_stacks', 1, 'number of stacked rnn cells in encoder or decoder')
 
 flags.DEFINE_integer('in_dim', 10, 'dimensionality of each timestep input')
 flags.DEFINE_integer('out_dim', 3, 'dimensionality of each timestep output')
@@ -41,8 +38,6 @@ flags.DEFINE_integer('display_interval', 100, 'interval of displaying informatio
 
 ## log directory 
 stamp = 'stamp' + datetime.now().strftime("%Y%m%d-%H%M-%S")
-num_units = 'units' + str(flags.FLAGS.num_units)
-num_stacks = 'stacks' + str(flags.FLAGS.num_stacks)
 in_dim = 'indim' + str(flags.FLAGS.in_dim)
 out_dim = 'outdim' + str(flags.FLAGS.out_dim)
 
