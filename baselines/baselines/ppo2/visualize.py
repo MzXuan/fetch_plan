@@ -96,21 +96,21 @@ def plot_3d_seqs(x, y, y_hat=None):
     ax = fig3d.gca(projection='3d')
     plt.ion()
 
-    ax.set_xlim(-3, 3)
-    ax.set_ylim(-3, 3)
-    ax.set_zlim(-3, 3)
+    # ax.set_xlim(-1.5, 1.5)
+    # ax.set_ylim(-1.5, 1.5)
+    # ax.set_zlim(-1.5, 1.5)
 
     # print("obs_list[:,0]")
     # print(obs_list[:,0])
     ax.plot(x[:, -3], x[:, -2], x[:, -1],
-            '-o', linewidth=2, color="blue", label="x")
+            '-+', linewidth=2, color="blue", label="x")
 
     ax.plot(y[:, -3], y[:, -2], y[:, -1],
-            '-o', linewidth=2, color="brown", label="y")
+            '-+', linewidth=2, color="green", label="y")
 
     if y_hat is not None:
         ax.plot(y_hat[:, -3], y_hat[:, -2], y_hat[:, -1],
-                marker='o', markersize=10, color="red", label="pred")
+                '-+', linewidth=2, color="red", label="pred")
 
     ax.legend()
     plt.pause(0.1)

@@ -56,14 +56,14 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="20000"):
+                 reset_flag=True, point="30000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
 
         self.batch_size = batch_size
         self.in_timesteps_max = max_timestep
-        self.out_timesteps = 5
+        self.out_timesteps = 10
         self.train_flag = train_flag
         self.point = point
 
@@ -144,11 +144,11 @@ class Predictor(object):
     def _build_encoder(self):
         ## encoder
         enc_inputs = self.x_ph
-        # gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
-        # gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
-        # enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
+        gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
+        gru_rnn2 = tf.nn.rnn_cell.GRUCell(32)
+        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
 
-        enc_cell = tf.nn.rnn_cell.GRUCell(16)
+        # enc_cell = tf.nn.rnn_cell.GRUCell(16)
         _, enc_state = tf.nn.dynamic_rnn(
             enc_cell, enc_inputs,
             sequence_length=self.x_len_ph, dtype=tf.float32
@@ -157,21 +157,21 @@ class Predictor(object):
 
     def _build_decoder(self, enc_state):
         ## decoder
-        # dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
-        # dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
-        # dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
+        dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
+        dec_rnn2 = tf.nn.rnn_cell.GRUCell(32)
+        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
         #
 
-        dec_cell = tf.nn.rnn_cell.GRUCell(16)
+        # dec_cell = tf.nn.rnn_cell.GRUCell(16)
 
         #Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
 
 
         #Training Decoder
-        with tf.variable_scope("predictor"):
+        with tf.variable_scope("pred_dec"):
             ## training decorder
-            go_tokens = tf.constant(self.go_token, shape=[self.batch_size,1, self.out_dim])
+            go_tokens = tf.constant(self.go_token, shape=[self.batch_size, 1, self.out_dim])
             dec_input = tf.concat([go_tokens, self.y_ph], axis=1)
 
             seq_length = tf.constant(self.out_timesteps, shape=[self.batch_size])
@@ -195,9 +195,7 @@ class Predictor(object):
             # print(training_decoder_state)
 
         #Inference Decoder
-        with tf.variable_scope("predictor", reuse=True):
-
-
+        with tf.variable_scope("pred_dec", reuse=True):
             ## inference decorder
             start_tokens = tf.constant(
                 self.go_token, shape=[self.batch_size, self.out_dim])
@@ -232,16 +230,17 @@ class Predictor(object):
     def _build_net(self):
 
         ## encoder
-        enc_state = self._build_encoder()
+        with tf.variable_scope("predictor"):
+            enc_state = self._build_encoder()
 
-        ## docoder
-        training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state)
-        self.y_hat_train = training_decoder_outputs[0]
-        self.y_hat_pred = inference_decoder_outputs[0]
+            ## docoder
+            training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state)
+            self.y_hat_train = training_decoder_outputs[0]
+            self.y_hat_pred = inference_decoder_outputs[0]
 
-        ## setup optimization
-        self.loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat_train)
-        self.loss_pred = tf.losses.mean_squared_error(self.y_ph, self.y_hat_pred)
+            ## setup optimization
+            self.loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat_train)
+            self.loss_pred = tf.losses.mean_squared_error(self.y_ph, self.y_hat_pred)
 
         var_list = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, scope="predictor"
@@ -330,24 +329,28 @@ class Predictor(object):
     # def _revert_y(self,delta_y, x):
     #     return delta_y+x
 
-    def _accumulate_data(self, delta_x, delta_y):
-        x = np.add.accumulate(delta_x)
-        y = np.add.accumulate(delta_y) + x[-1]
+    def _accumulate_data(self, delta_x, delta_y, x_start):
+        # x = np.add.accumulate(delta_x)
+        # y = np.add.accumulate(delta_y) + x[-1]
+        x = delta_x+x_start
+        y = delta_y+x_start
         return x, y
 
     def _feed_training_data(self,dataset):
-        xs, ys, x_lens = [], [], []
+        xs, ys, x_lens, xs_start = [], [], [], []
 
         for _ in range(0, self.batch_size):
             idx = random.randint(0, len(dataset) - 1)
             data = dataset[idx]
             length = data.x_len
-            id = random.randint(2, length - 1)
-            x, y, x_len = self._feed_one_data(data, id)
+            id = random.randint(3, length - 1)
+            x, y, x_len, x_start = self._feed_one_data(data, id)
             xs.append(x)
             ys.append(y)
             x_lens.append(x_len)
-        return xs, ys, x_lens
+            xs_start.append(x_start)
+
+        return xs, ys, x_lens, xs_start
 
     def _feed_one_data(self,data,id):
         """
@@ -386,27 +389,27 @@ class Predictor(object):
         #
         # y = np.diff(x_seq[id-1:id_end, -3:], axis=0)
 
-
-
         if id_start>0:
-            x_origin = x_seq[id_start:id, -3:]
-            x_start = x_seq[id_start]
-            x = x_origin-x_seq[id_start-1, -3:]
-            y = x_seq[id:id_end, -3:] - x_seq[id_start - 1, -3:]
+            x_origin = x_seq[id_start:id, 0:7]
+            x_start = x_seq[id_start-1, 0:7]
+
+            x = x_origin-x_start
+            y = x_seq[id:id_end, 0:7] - x_start
             x_len = self.in_timesteps_max
 
         elif id_start<=0:
-            x_origin = x_seq[0:id, -3:]
-            x_start = x_seq[0]
-            x[0:id] = x_origin-x_seq[0, -3:]
-            y = x_seq[id:id_end, -3:] - x_seq[0, -3:]
+            x_origin = x_seq[0:id, 0:7]
+            x_start = x_seq[0, 0:7]
+            x = np.full((self.in_timesteps_max, self.in_dim), (x_seq[id, 0:7]-x_start))
+            x[0:id] = x_origin-x_start
+            y = x_seq[id:id_end, 0:7] - x_start
             x_len = id
 
         # print("id {}, length {}".format(id, length))
-        return x, y, x_len
+        return x, y, x_len, x_start
 
     def _feed_online_data(self, sequences):
-        xs, ys, x_lens = [], [], []
+        xs, ys, x_lens, xs_start = [], [], [], []
         for data in sequences:
             length = data.x_len
             print("current data length")
@@ -414,17 +417,21 @@ class Predictor(object):
             if length < self.in_timesteps_max+self.out_timesteps:
                 x = np.zeros((self.in_timesteps_max, self.in_dim))
                 y = np.zeros((self.out_timesteps, self.out_dim))
+                x_start = np.zeros((3,))
                 x_len = 0
                 xs.append(x)
                 ys.append(y)
                 x_lens.append(x_len)
+                xs_start.append(x_start)
             else:
                 id = length-self.out_timesteps
-                x, y, x_len = self._feed_one_data(data, id)
+                x, y, x_len, x_start = self._feed_one_data(data, id)
                 xs.append(x)
                 ys.append(y)
                 x_lens.append(x_len)
-        return xs, ys, x_lens
+                xs_start.append(x_start)
+
+        return xs, ys, x_lens, xs_start
 
     def run_training(self):
         #function: train the model according to saved dataset
@@ -436,30 +443,28 @@ class Predictor(object):
 
         ## check saved data set
         filelist = [f for f in os.listdir("./model/") if f.endswith(".pkl")]
-        num_sets = len(filelist)-1
+        num_sets = len(filelist) - 1
         self.dataset_idx = 0
-
 
         ## prepare threshold to switch dataset
         max_iteration = int(self.point)
-        iter_range = range(0,max_iteration,500)
-        iter_idx=0
-        print("iter_range")
-        print(iter_range)
+        iter_range = range(0, max_iteration, 500)
+        iter_idx = 0
+        print("iter_range: ", iter_range)
         ## run training
-        while self.iteration<max_iteration:
+        while self.iteration < max_iteration:
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
-                if self.iteration==iter_range[iter_idx]:
+                if self.iteration == iter_range[iter_idx]:
                     print("switch to...{}".format(filelist[self.dataset_idx]))
-                    iter_idx+=1
+                    iter_idx += 1
                     if self.load_dataset(filelist[self.dataset_idx]) == 0:
                         return 0
-                    self.dataset_idx+=1
+                    self.dataset_idx += 1
                     if self.dataset_idx >= num_sets:
                         self.dataset_idx = 0
             #-----create training data----#
-            xs, ys, x_lens=self._feed_training_data(self.dataset)
+            xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset)
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat_train]
@@ -476,21 +481,20 @@ class Predictor(object):
             self.iteration += 1
 
             # save model
-            if (self.iteration % self.checkpoint_interval) is 0:
+            if (self.iteration % self.checkpoint_interval) == 0:
                 self.save_net(("./model/" + self.model_name + "/{}").format(
                     self.iteration
                 ))
 
-
             #----------validate process--------#
             ## validate model
-            if (self.iteration % self.validation_interval) is 0:
+            if (self.iteration % self.validation_interval) == 0:
                 print("load validate dataset {}".format(filelist[-1]))
                 validate_set = \
                     pickle.load(open(os.path.join("./model/", filelist[-1]), "rb"))
 
                 ## create validate data
-                xs, ys, x_lens = self._feed_training_data(validate_set)
+                xs, ys, x_lens, xs_start = self._feed_training_data(validate_set)
 
                 ## run validation
                 fetches = [self.loss_pred, self.x_ph, self.y_ph, self.y_hat_pred]
@@ -511,10 +515,15 @@ class Predictor(object):
                     print('\n')
                     print("x = {}".format(x[0]))
                     print("x_len={}".format(x_lens[0]))
-                    print("pred = {}, true goal = {}".format(y[0], y_hat_pred[0]))
+                    print("pred = \n {},\n true goal = \n{}, \n delta = \n {}".format(
+                        y_hat_pred[0], y[0], y[0] - y_hat_pred[0]))
                     print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
 
-
+                # # ------plot predicted data-----------
+                # import visualize
+                # origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+                # _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
+                # visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
 
         print("finish training")
 
@@ -541,7 +550,7 @@ class Predictor(object):
         for i in range(1,100):
         #----------test process--------#
             ## create validate data
-            xs, ys, x_lens = self._feed_training_data(test_set)
+            xs, ys, x_lens, xs_start = self._feed_training_data(test_set)
 
             ## run validation
             fetches = [self.loss_pred, self.x_ph, self.y_ph, self.y_hat_pred]
@@ -566,8 +575,8 @@ class Predictor(object):
 
             # ------plot predicted data-----------
             import visualize
-            origin_x, origin_y = self._accumulate_data(xs[0],ys[0])
-            _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0])
+            origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+            _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
             visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
             time.sleep(3)
 
@@ -603,7 +612,7 @@ class Predictor(object):
         _, seqs_all = self._create_seq(obs, dones, mean, var)
 
         # ---predict input data---#
-        xs, ys, x_lens = self._feed_online_data(seqs_all)
+        xs, ys, x_lens, xs_start = self._feed_online_data(seqs_all)
 
         fetches = [self.loss_pred, self.y_ph, self.y_hat_pred]
         feed_dict = {
@@ -617,17 +626,17 @@ class Predictor(object):
         batch_loss = self._get_batch_loss(y, y_hat_pred)
 
         ## display information
-        if (self.iteration % self.display_interval) is 0:
+        if (self.iteration % self.display_interval) == 0:
             print('\n')
             print("x = {}".format(xs[0]))
-            print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+            print("pred = \n{}, true goal = \n{}".format(y_hat_pred[0], y[0]))
             print('predict loss = {} '.format(loss_pred))
             # print("batch_loss = {}".format(batch_loss))
 
         # ------plot predicted data-----------
         import visualize
-        origin_x, origin_y = self._accumulate_data(xs[0], ys[0])
-        _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0])
+        origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+        _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
         visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
         #---------------------------
 
@@ -700,7 +709,7 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         if train_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 16, 10,
+            rnn_model = Predictor(sess, FLAGS, 256, 10,
                                   train_flag=True, reset_flag=False)
 
             rnn_model.init_sess()
@@ -719,7 +728,7 @@ if __name__ == '__main__':
         else:
             #plot all the validate data step by step
             rnn_model = Predictor(sess, FLAGS, 1, 10,
-                                  train_flag=False, reset_flag=False)
+                                  train_flag=False, reset_flag=False, point='20000')
 
             rnn_model.init_sess()
             rnn_model.load()

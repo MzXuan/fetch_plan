@@ -360,8 +360,9 @@ def display(policy, env, nsteps, nminibatches, load_path):
     train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True)
     params = tf.trainable_variables()
 
-    predictor = Predictor(sess, FLAGS, 1, 10, train_flag=False)
+    predictor = Predictor(sess, FLAGS, 1, 10, train_flag=False, point="20000")
     predictor.init_sess()
+    predictor.load()
 
 
 

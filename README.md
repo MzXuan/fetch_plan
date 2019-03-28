@@ -2,9 +2,11 @@
 
 ---
 ## TODO List
-+ Check bugs at sequence generation (@xuanz)
+
 + Run the whole process (@xuanz)
-+ A shell script for training (@xuanz) 
++ A shell script for training (@xuanz)
++ 7 DOF (joint angle) prediction (@xuanz)
++ robot arm visulization of prediction (@xuanz)
 + Two reward structure (@tingxfan)
 
 ---
