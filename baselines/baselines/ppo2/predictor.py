@@ -265,7 +265,20 @@ class Predictor(object):
         :param var: variations of observations
         :return: done sequences
         """
-        # todo: the format of this funtion need tobe edited
+
+        ##reset requences that reaches destination
+        seqs_done, seqs_all = [], []
+        for idx, done in enumerate(dones):
+            if done:
+                # create a container saving reseted sequences for future usage
+                seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                            self.x_mean, self.x_var))
+                self.xs[idx] = []
+                self.x_lens[idx] = 0
+                self.x_mean = np.zeros(self.in_dim)
+                self.x_var = np.zeros(self.in_dim)
+
+
         if mean is not None and var is not None:
             ## save mean and var
             self.x_mean = np.concatenate((mean[6:13],
@@ -278,20 +291,9 @@ class Predictor(object):
             self.xs[idx].append(np.concatenate((data[6:13],
                                                     data[0:3])))
             self.x_lens[idx] += 1
-
-        ## reset requences that reaches destination
-        seqs_done, seqs_all = [], []
-        for idx, done in enumerate(dones):
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                           self.x_mean, self.x_var))
-            if done:
-                # create a container saving reseted sequences for future usage
-                seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                            self.x_mean, self.x_var))
-                self.xs[idx] = []
-                self.x_lens[idx] = 0
-                self.x_mean = np.zeros(self.in_dim)
-                self.x_var = np.zeros(self.in_dim)
+
 
         return seqs_done, seqs_all
 
@@ -359,12 +361,15 @@ class Predictor(object):
 
         if id_start>=0:
             x = x_seq[id_start:id,-3:]
-            y = x_seq[id:id_end,-3:] - x_seq[id-1,-3:]
             x_len = self.in_timesteps_max
         elif id_start<0:
             x[0:id] = x_seq[0:id,-3:]
-            y = x_seq[id:id_end,-3:] - x_seq[id-1,-3:]
             x_len = id
+
+        origin_y = x_seq[id:id_end, -3:]
+        y = origin_y - x_seq[id - 1, -3:]
+
+        # print("id {}, length {}".format(id, length))
 
         return x, y, x_len
 
@@ -531,18 +536,20 @@ class Predictor(object):
             validate_summary.value.add(tag="validate rmse", simple_value=loss_pred)
             self.file_writer.add_summary(validate_summary, self.iteration)
 
-            # ------plot predicted data-----------
-            import visualize
-            origin_y = self._revert_y(y[0],xs[0][x_lens[0]-1,-3:])
-            origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0]-1, -3:])
-            visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
-            time.sleep(3)
             # ------display information-----------#
             print('\n')
             # print("x = {}".format(x[0]))
             print("x_len={}".format(x_lens[0]))
             print("pred = {}, true goal = {}".format(y[0], y_hat_pred[0]))
             print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
+
+            # ------plot predicted data-----------
+
+            import visualize
+            origin_y = self._revert_y(y[0], xs[0][x_lens[0] - 1, -3:])
+            origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0] - 1, -3:])
+            visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
+            time.sleep(3)
 
 
         print("finish testing")
@@ -598,8 +605,11 @@ class Predictor(object):
             # print("batch_loss = {}".format(batch_loss))
 
         #------plot predicted data-----------
+        #todo: change to new version
         import visualize
-        visualize.plot_3d_seqs(xs[0],y[0],y_hat_pred[0])
+        origin_y = self._revert_y(y[0], xs[0][x_lens[0] - 1, -3:])
+        origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0] - 1, -3:])
+        visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
         #------------------------------------#
         return batch_loss
 
@@ -659,7 +669,7 @@ class Predictor(object):
 if __name__ == '__main__':
     from flags import flags
 
-    train_flag=True
+    train_flag=False
     FLAGS = flags.FLAGS
 
     def rand_bools_int_func(n):
