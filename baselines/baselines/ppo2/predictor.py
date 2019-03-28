@@ -50,13 +50,13 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
         result = super().sample(*args, **kwargs)
         # print("result size")
         # print(result)
-        result.set_shape([1,3]) #[batch_size, dimension]
+        result.set_shape([1,7]) #[batch_size, dimension]
         return result
 
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="30000"):
+                 reset_flag=True, point="20000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -310,7 +310,7 @@ class Predictor(object):
         :return:
         """
         for data in seqs_done:
-            if data.x_len > 5 and data.x_len < 300:
+            if data.x_len > self.in_timesteps_max and data.x_len < 300:
                 self.dataset.append(data)
             # print("datasets size: {}".format(len(self.dataset)))
 
@@ -343,7 +343,7 @@ class Predictor(object):
             idx = random.randint(0, len(dataset) - 1)
             data = dataset[idx]
             length = data.x_len
-            id = random.randint(3, length - 1)
+            id = random.randint(self.in_timesteps_max, length - 1)
             x, y, x_len, x_start = self._feed_one_data(data, id)
             xs.append(x)
             ys.append(y)
@@ -355,7 +355,7 @@ class Predictor(object):
     def _feed_one_data(self,data,id):
         """
         #id: start index of this data
-        #e.g.: x = data[id-self.in_timesteps:id];
+        #e.g.: x = data[id-self.in_timesteps:id] - data[id-self.in_timesteps];
         #      y = data[id:id+out_timesteps]
         :param data: a sequence data in DatasetStru format
         :return:
@@ -374,20 +374,6 @@ class Predictor(object):
             x_seq = data.padding(data.x,id_end)
         else:
             x_seq = data.x
-
-        # if id_start>=0:
-        #     x_start = np.expand_dims(x_seq[id_start, -3:], axis=0)
-        #     x_origin = x_seq[id_start:id, -3:]
-        #     x = np.concatenate((x_start, np.diff(x_origin, axis=0)), axis=0)
-        #     x_len = self.in_timesteps_max
-        #
-        # elif id_start<0:
-        #     x_start = np.expand_dims(x_seq[0, -3:], axis=0)
-        #     x_origin = x_seq[0:id, -3:]
-        #     x[0:id] = np.concatenate((x_start, np.diff(x_origin, axis=0)), axis = 0)
-        #     x_len = id
-        #
-        # y = np.diff(x_seq[id-1:id_end, -3:], axis=0)
 
         if id_start>0:
             x_origin = x_seq[id_start:id, 0:7]
@@ -414,22 +400,25 @@ class Predictor(object):
             length = data.x_len
             print("current data length")
             print(data.x_len)
-            if length < self.in_timesteps_max+self.out_timesteps:
+            if length < self.in_timesteps_max:
                 x = np.zeros((self.in_timesteps_max, self.in_dim))
                 y = np.zeros((self.out_timesteps, self.out_dim))
                 x_start = np.zeros((3,))
                 x_len = 0
-                xs.append(x)
-                ys.append(y)
-                x_lens.append(x_len)
-                xs_start.append(x_start)
+
+            elif length < self.in_timesteps_max+self.out_timesteps:
+                x, y, x_len, x_start = self._feed_one_data(data, self.in_timesteps_max)
+                # y = np.zeros((self.out_timesteps, self.out_dim))
+                # x_start = np.zeros((3,))
+                # x_len = 0
             else:
                 id = length-self.out_timesteps
                 x, y, x_len, x_start = self._feed_one_data(data, id)
-                xs.append(x)
-                ys.append(y)
-                x_lens.append(x_len)
-                xs_start.append(x_start)
+
+            xs.append(x)
+            ys.append(y)
+            x_lens.append(x_len)
+            xs_start.append(x_start)
 
         return xs, ys, x_lens, xs_start
 
