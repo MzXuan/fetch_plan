@@ -7,7 +7,7 @@ import tensorflow as tf
 flags = tf.app.flags
 
 ##model name
-flags.DEFINE_string('model_name','iteration0','name of the model')
+flags.DEFINE_string('model_name','features_2','name of the model')
 
 
 ## model hyper-parameters
@@ -23,8 +23,6 @@ flags.DEFINE_integer('out_dim_wgt3', 1, 'The 3th weight for each dimensionality 
 flags.DEFINE_integer('in_timesteps_max', 50, 'input max timesteps')
 
 ## optimization hyper-parameters
-flags.DEFINE_integer('cls_max_iteration', 30000, 'max iteration of classification model')
-flags.DEFINE_integer('max_iteration', 30000, 'max iteration of training model')
 flags.DEFINE_float('learning_rate', 0.0001, 'learning rate of optimization')
 
 ## todo & can be adjusted

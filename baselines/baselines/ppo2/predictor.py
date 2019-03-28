@@ -56,7 +56,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="15000"):
+                 reset_flag=True, point="20000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -100,8 +100,7 @@ class Predictor(object):
         self.display_interval = FLAGS.display_interval
         self.checkpoint_dir = FLAGS.check_dir_cls
         self.sample_dir = FLAGS.sample_dir_cls
-        
-        self.max_iteration = FLAGS.cls_max_iteration
+
         
         self.lr = FLAGS.learning_rate
         
@@ -145,9 +144,11 @@ class Predictor(object):
     def _build_encoder(self):
         ## encoder
         enc_inputs = self.x_ph
-        gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
-        gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
-        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
+        # gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
+        # gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
+        # enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
+
+        enc_cell = tf.nn.rnn_cell.GRUCell(16)
         _, enc_state = tf.nn.dynamic_rnn(
             enc_cell, enc_inputs,
             sequence_length=self.x_len_ph, dtype=tf.float32
@@ -156,9 +157,12 @@ class Predictor(object):
 
     def _build_decoder(self, enc_state):
         ## decoder
-        dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
-        dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
-        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
+        # dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
+        # dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
+        # dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
+        #
+
+        dec_cell = tf.nn.rnn_cell.GRUCell(16)
 
         #Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
@@ -185,6 +189,10 @@ class Predictor(object):
                 decoder=training_decoder, output_time_major=False,
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
+            # print("training_decoder_outputs")
+            # print(training_decoder_outputs)
+            # print("training_decoder_state")
+            # print(training_decoder_state)
 
         #Inference Decoder
         with tf.variable_scope("predictor", reuse=True):
@@ -303,7 +311,7 @@ class Predictor(object):
         :return:
         """
         for data in seqs_done:
-            if data.x_len > 1 and data.x_len < 300:
+            if data.x_len > 5 and data.x_len < 300:
                 self.dataset.append(data)
             # print("datasets size: {}".format(len(self.dataset)))
 
@@ -319,8 +327,13 @@ class Predictor(object):
     def _revert_data(self,data,mean,var):
         return(data*(var+1e-8)+mean)
 
-    def _revert_y(self,delta_y, x):
-        return delta_y+x
+    # def _revert_y(self,delta_y, x):
+    #     return delta_y+x
+
+    def _accumulate_data(self, delta_x, delta_y):
+        x = np.add.accumulate(delta_x)
+        y = np.add.accumulate(delta_y) + x[-1]
+        return x, y
 
     def _feed_training_data(self,dataset):
         xs, ys, x_lens = [], [], []
@@ -329,7 +342,7 @@ class Predictor(object):
             idx = random.randint(0, len(dataset) - 1)
             data = dataset[idx]
             length = data.x_len
-            id = random.randint(1, length - 1)
+            id = random.randint(2, length - 1)
             x, y, x_len = self._feed_one_data(data, id)
             xs.append(x)
             ys.append(y)
@@ -359,24 +372,45 @@ class Predictor(object):
         else:
             x_seq = data.x
 
-        if id_start>=0:
-            x = x_seq[id_start:id,-3:]
+        # if id_start>=0:
+        #     x_start = np.expand_dims(x_seq[id_start, -3:], axis=0)
+        #     x_origin = x_seq[id_start:id, -3:]
+        #     x = np.concatenate((x_start, np.diff(x_origin, axis=0)), axis=0)
+        #     x_len = self.in_timesteps_max
+        #
+        # elif id_start<0:
+        #     x_start = np.expand_dims(x_seq[0, -3:], axis=0)
+        #     x_origin = x_seq[0:id, -3:]
+        #     x[0:id] = np.concatenate((x_start, np.diff(x_origin, axis=0)), axis = 0)
+        #     x_len = id
+        #
+        # y = np.diff(x_seq[id-1:id_end, -3:], axis=0)
+
+
+
+        if id_start>0:
+            x_origin = x_seq[id_start:id, -3:]
+            x_start = x_seq[id_start]
+            x = x_origin-x_seq[id_start-1, -3:]
+            y = x_seq[id:id_end, -3:] - x_seq[id_start - 1, -3:]
             x_len = self.in_timesteps_max
-        elif id_start<0:
-            x[0:id] = x_seq[0:id,-3:]
+
+        elif id_start<=0:
+            x_origin = x_seq[0:id, -3:]
+            x_start = x_seq[0]
+            x[0:id] = x_origin-x_seq[0, -3:]
+            y = x_seq[id:id_end, -3:] - x_seq[0, -3:]
             x_len = id
 
-        origin_y = x_seq[id:id_end, -3:]
-        y = origin_y - x_seq[id - 1, -3:]
-
         # print("id {}, length {}".format(id, length))
-
         return x, y, x_len
 
     def _feed_online_data(self, sequences):
         xs, ys, x_lens = [], [], []
         for data in sequences:
             length = data.x_len
+            print("current data length")
+            print(data.x_len)
             if length < self.in_timesteps_max+self.out_timesteps:
                 x = np.zeros((self.in_timesteps_max, self.in_dim))
                 y = np.zeros((self.out_timesteps, self.out_dim))
@@ -447,12 +481,6 @@ class Predictor(object):
                     self.iteration
                 ))
 
-            # ## display information
-            # if (self.iteration % self.display_interval) is 0:
-            #     print('\n')
-            #     print("pred = {}, true goal = {}".format(y_hat[0], y[0]))
-            #     print('iteration = {}, training loss = {} '.format(self.iteration,loss))
-
 
             #----------validate process--------#
             ## validate model
@@ -478,21 +506,14 @@ class Predictor(object):
                 validate_summary.value.add(tag="validate rmse", simple_value=loss_pred)
                 self.file_writer.add_summary(validate_summary, self.iteration)
 
-                # # ------plot predicted data-----------
-                # import visualize
-                # origin_y = self._revert_y(y[0],xs[0][x_lens[0]-1,-3:])
-                # origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0]-1, -3:])
-                # visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
-                # time.sleep(1)
-                # # ------------------------------------#
-
                 #----display info-------#
                 if (self.iteration % self.display_interval) is 0:
                     print('\n')
-                    # print("x = {}".format(x[0]))
+                    print("x = {}".format(x[0]))
                     print("x_len={}".format(x_lens[0]))
                     print("pred = {}, true goal = {}".format(y[0], y_hat_pred[0]))
                     print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
+
 
 
         print("finish training")
@@ -502,7 +523,7 @@ class Predictor(object):
         run test on validation set
         """
 
-        ## check saved data set
+        ## check saved data se
         filelist = [f for f in os.listdir("./model/") if f.endswith(".pkl")]
         num_sets = len(filelist)-1
         self.dataset_idx = 0
@@ -538,17 +559,16 @@ class Predictor(object):
 
             # ------display information-----------#
             print('\n')
-            # print("x = {}".format(x[0]))
+            print("x = {}".format(xs[0]))
             print("x_len={}".format(x_lens[0]))
-            print("pred = {}, true goal = {}".format(y[0], y_hat_pred[0]))
+            print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
             print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
 
             # ------plot predicted data-----------
-
             import visualize
-            origin_y = self._revert_y(y[0], xs[0][x_lens[0] - 1, -3:])
-            origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0] - 1, -3:])
-            visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
+            origin_x, origin_y = self._accumulate_data(xs[0],ys[0])
+            _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0])
+            visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
             time.sleep(3)
 
 
@@ -583,7 +603,6 @@ class Predictor(object):
         _, seqs_all = self._create_seq(obs, dones, mean, var)
 
         # ---predict input data---#
-        # todo: rewrite this function, we need to feed data from a sequence
         xs, ys, x_lens = self._feed_online_data(seqs_all)
 
         fetches = [self.loss_pred, self.y_ph, self.y_hat_pred]
@@ -600,17 +619,18 @@ class Predictor(object):
         ## display information
         if (self.iteration % self.display_interval) is 0:
             print('\n')
+            print("x = {}".format(xs[0]))
             print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
             print('predict loss = {} '.format(loss_pred))
             # print("batch_loss = {}".format(batch_loss))
 
-        #------plot predicted data-----------
-        #todo: change to new version
+        # ------plot predicted data-----------
         import visualize
-        origin_y = self._revert_y(y[0], xs[0][x_lens[0] - 1, -3:])
-        origin_y_pred = self._revert_y(y_hat_pred[0], xs[0][x_lens[0] - 1, -3:])
-        visualize.plot_3d_seqs(xs[0], origin_y, origin_y_pred)
-        #------------------------------------#
+        origin_x, origin_y = self._accumulate_data(xs[0], ys[0])
+        _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0])
+        visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+        #---------------------------
+
         return batch_loss
 
     def save_net(self, save_path):
@@ -698,7 +718,7 @@ if __name__ == '__main__':
 
         else:
             #plot all the validate data step by step
-            rnn_model = Predictor(sess, FLAGS, 16, 10,
+            rnn_model = Predictor(sess, FLAGS, 1, 10,
                                   train_flag=False, reset_flag=False)
 
             rnn_model.init_sess()
