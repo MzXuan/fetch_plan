@@ -403,7 +403,7 @@ class Predictor(object):
             if length < self.in_timesteps_max:
                 x = np.zeros((self.in_timesteps_max, self.in_dim))
                 y = np.zeros((self.out_timesteps, self.out_dim))
-                x_start = np.zeros((3,))
+                x_start = np.zeros((self.in_dim,))
                 x_len = 0
 
             elif length < self.in_timesteps_max+self.out_timesteps:
