@@ -255,11 +255,22 @@ class Predictor(object):
             self.checkpoint_dir, self.sess.graph
             )
 
-    def _get_batch_loss(self, y, y_hat):
+    def _get_batch_loss(self, y, y_hat, x_lens):
+        """
+        calculate the mean square error between ground truth and prediction
+        if ground truth y equals 0 (no ground truth), we set mean square error to 0
+        :param y: output
+        :param y_hat: prediction
+        :return:
+        """
         error = []
-        for t,p in zip(y, y_hat):
-            error.append(np.linalg.norm((t-p)))
-        # error = np.sqrt(np.mean((y - y_hat)**2,axis=2))
+        for t,p,l in zip(y, y_hat, x_lens):
+            if not np.any(t[-1]):
+                error.append(0)
+            else:
+                error.append(np.linalg.norm((t-p)))
+
+        print("error is: {}".format(error))
         return error
 
     def _create_seq(self, obs, dones, mean, var):
@@ -370,7 +381,6 @@ class Predictor(object):
 
         if id_end>length:
             #pading dataset
-            #todo: be careful, need to debug this function
             x_seq = data.padding(data.x,id_end)
         else:
             x_seq = data.x
@@ -388,11 +398,11 @@ class Predictor(object):
             x_start = x_seq[0, 0:7]
             x = np.full((self.in_timesteps_max, self.in_dim), (x_seq[id, 0:7]-x_start))
             x[0:id] = x_origin-x_start
+            x[0] = x[1]
             y = x_seq[id:id_end, 0:7] - x_start
             x_len = id
-
-        # print("id {}, length {}".format(id, length))
         return x, y, x_len, x_start
+
 
     def _feed_online_data(self, sequences):
         xs, ys, x_lens, xs_start = [], [], [], []
@@ -400,17 +410,17 @@ class Predictor(object):
             length = data.x_len
             print("current data length")
             print(data.x_len)
-            if length < self.in_timesteps_max:
-                x = np.zeros((self.in_timesteps_max, self.in_dim))
+            if length <= self.in_timesteps_max:
+                x, y, x_len, x_start = self._feed_one_data(data, length)
                 y = np.zeros((self.out_timesteps, self.out_dim))
-                x_start = np.zeros((self.in_dim,))
-                x_len = 0
 
             elif length < self.in_timesteps_max+self.out_timesteps:
                 x, y, x_len, x_start = self._feed_one_data(data, self.in_timesteps_max)
-                # y = np.zeros((self.out_timesteps, self.out_dim))
-                # x_start = np.zeros((3,))
-                # x_len = 0
+                y[-1,:] = np.zeros(self.out_dim)
+            elif length < self.in_timesteps_max+self.out_timesteps+2:
+                id = length - self.out_timesteps
+                x, y, x_len, x_start = self._feed_one_data(data, id)
+                y[-1, :] = np.zeros(self.out_dim)
             else:
                 id = length-self.out_timesteps
                 x, y, x_len, x_start = self._feed_one_data(data, id)
@@ -612,21 +622,22 @@ class Predictor(object):
 
         loss_pred, y, y_hat_pred = self.sess.run(fetches, feed_dict)
 
-        batch_loss = self._get_batch_loss(y, y_hat_pred)
+        batch_loss = self._get_batch_loss(y, y_hat_pred, x_lens)
 
-        ## display information
-        if (self.iteration % self.display_interval) == 0:
-            print('\n')
-            print("x = {}".format(xs[0]))
-            print("pred = \n{}, true goal = \n{}".format(y_hat_pred[0], y[0]))
-            print('predict loss = {} '.format(loss_pred))
-            # print("batch_loss = {}".format(batch_loss))
+        # ## display information
+        # if (self.iteration % self.display_interval) == 0:
+        #     print('\n')
+        #     print("x = {}".format(xs[0]))
+        #     print("pred = \n{}, true goal = \n{}".format(y_hat_pred[0], y[0]))
+        #     print('predict loss = {} '.format(loss_pred))
+        #     # print("batch_loss = {}".format(batch_loss))
 
         # ------plot predicted data-----------
         import visualize
         origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
         _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
-        visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+        # visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+        visualize.plot_dof_seqs(origin_x, origin_y, origin_y_pred)
         #---------------------------
 
         return batch_loss
