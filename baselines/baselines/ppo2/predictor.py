@@ -13,6 +13,7 @@ from tensorflow.python import keras
 from tensorflow.contrib.seq2seq import BasicDecoder, TrainingHelper
 
 # for plot saved dataset
+import flags
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.font_manager import FontProperties
@@ -101,13 +102,8 @@ class Predictor(object):
         self.checkpoint_dir = FLAGS.check_dir_cls
         self.sample_dir = FLAGS.sample_dir_cls
 
-        
         self.lr = FLAGS.learning_rate
-        
-        self.out_dim_wgts = [FLAGS.out_dim_wgt1, 
-                             FLAGS.out_dim_wgt2, 
-                             FLAGS.out_dim_wgt3]
-    
+
         self.run_mode = FLAGS.run_mode
 
     def _build_ph(self):
@@ -696,10 +692,10 @@ class Predictor(object):
 
 
 if __name__ == '__main__':
-    from flags import flags
 
-    train_flag=False
-    FLAGS = flags.FLAGS
+
+    train_flag=True
+    FLAGS = flags.InitParameter()
 
     def rand_bools_int_func(n):
         import random

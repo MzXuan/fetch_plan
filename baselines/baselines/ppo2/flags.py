@@ -3,58 +3,38 @@ import os
 from datetime import datetime
 import tensorflow as tf
 
+def InitParameter(model_name = "test1"):
+    flags = tf.app.flags
 
-flags = tf.app.flags
+    ##model name
+    flags.DEFINE_string('model_name',model_name,'name of the model')
 
-##model name
-flags.DEFINE_string('model_name','dof_0','name of the model')
+    ## model hyper-parameters
+    flags.DEFINE_integer('in_dim', 7, 'dimensionality of each timestep input')
+    flags.DEFINE_integer('out_dim', 7, 'dimensionality of each timestep output')
 
+    flags.DEFINE_integer('in_timesteps_max', 50, 'input max timesteps')
 
-## model hyper-parameters
-flags.DEFINE_integer('in_dim', 7, 'dimensionality of each timestep input')
-flags.DEFINE_integer('out_dim', 7, 'dimensionality of each timestep output')
+    ## optimization hyper-parameters
+    flags.DEFINE_float('learning_rate', 1e-3, 'learning rate of optimization')
 
-# add weights for each dimensionality of output
-flags.DEFINE_integer('out_dim_wgt1', 1, 'The 1th weight for each dimensionality of output')
-flags.DEFINE_integer('out_dim_wgt2', 1, 'The 2th weight for each dimensionality of output')
-flags.DEFINE_integer('out_dim_wgt3', 1, 'The 3th weight for each dimensionality of output')
+    ## todo & can be adjusted
+    flags.DEFINE_integer("run_mode", 0, "0: training; 1: testing; 2: test by trajectory; 3: testing online")
 
-flags.DEFINE_integer('in_timesteps_max', 50, 'input max timesteps')
-
-## optimization hyper-parameters
-flags.DEFINE_float('learning_rate', 1e-3, 'learning rate of optimization')
-
-## todo & can be adjusted
-flags.DEFINE_integer("run_mode", 0, "0: training; 1: testing; 2: test by trajectory; 3: testing online")
-
-## log hyper-parameters
-flags.DEFINE_integer('validation_interval', 50, 'interval of performing validation')
-flags.DEFINE_integer('checkpoint_interval', 500, 'interval of saving checkpoint')
-flags.DEFINE_integer('sample_interval', 500, 'interval of sampling datapoints')
-flags.DEFINE_integer('display_interval', 100, 'interval of displaying information')
-
-## log directory 
-stamp = 'stamp' + datetime.now().strftime("%Y%m%d-%H%M-%S")
-in_dim = 'indim' + str(flags.FLAGS.in_dim)
-out_dim = 'outdim' + str(flags.FLAGS.out_dim)
+    ## log hyper-parameters
+    flags.DEFINE_integer('validation_interval', 50, 'interval of performing validation')
+    flags.DEFINE_integer('checkpoint_interval', 500, 'interval of saving checkpoint')
+    flags.DEFINE_integer('sample_interval', 500, 'interval of sampling datapoints')
+    flags.DEFINE_integer('display_interval', 100, 'interval of displaying information')
 
 
-model_name = flags.FLAGS.model_name
+    # model_name = flags.FLAGS.model_name
 
-# save directory of classifier
-check_dir_cls = './model/'+model_name+'/checkpoint_'
-sample_dir_cls = './model/'+model_name+'/sample_'
+    # save directory of classifier
+    check_dir_cls = './model/'+model_name+'/checkpoint_'
+    sample_dir_cls = './model/'+model_name+'/sample_'
 
-flags.DEFINE_string('check_dir_cls', check_dir_cls, 'Directory name to save checkpoints')
-flags.DEFINE_string('sample_dir_cls', sample_dir_cls, 'Directory name to save datapoints')
+    flags.DEFINE_string('check_dir_cls', check_dir_cls, 'Directory name to save checkpoints')
+    flags.DEFINE_string('sample_dir_cls', sample_dir_cls, 'Directory name to save datapoints')
 
-
-# # save directory of generator
-# checkpoint_dir = './model/'+model_name+'/gen'+'/checkpoint_' + postfix
-# sample_dir = './model/'+model_name+'/gen'+'/sample_' + postfix
-#
-# flags.DEFINE_string('checkpoint_dir', checkpoint_dir, 'Directory name to save class checkpoints')
-# flags.DEFINE_string('sample_dir', sample_dir, 'Directory name to save class datapoints')
-
-
-FLAGS = flags.FLAGS
+    return flags.FLAGS
