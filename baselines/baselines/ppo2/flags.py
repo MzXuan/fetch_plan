@@ -7,16 +7,12 @@ import tensorflow as tf
 flags = tf.app.flags
 
 ##model name
-flags.DEFINE_string('model_name','iteration1','name of the model')
+flags.DEFINE_string('model_name','dof_0','name of the model')
 
 
 ## model hyper-parameters
-flags.DEFINE_integer('num_units_cls', 32, 'number of units of a rnn cell in encoder or decoder')
-flags.DEFINE_integer('num_units', 32, 'number of units of a rnn cell in encoder or decoder')
-flags.DEFINE_integer('num_stacks', 1, 'number of stacked rnn cells in encoder or decoder')
-
-flags.DEFINE_integer('in_dim', 10, 'dimensionality of each timestep input')
-flags.DEFINE_integer('out_dim', 3, 'dimensionality of each timestep output')
+flags.DEFINE_integer('in_dim', 7, 'dimensionality of each timestep input')
+flags.DEFINE_integer('out_dim', 7, 'dimensionality of each timestep output')
 
 # add weights for each dimensionality of output
 flags.DEFINE_integer('out_dim_wgt1', 1, 'The 1th weight for each dimensionality of output')
@@ -26,9 +22,7 @@ flags.DEFINE_integer('out_dim_wgt3', 1, 'The 3th weight for each dimensionality 
 flags.DEFINE_integer('in_timesteps_max', 50, 'input max timesteps')
 
 ## optimization hyper-parameters
-flags.DEFINE_integer('cls_max_iteration', 30000, 'max iteration of classification model')
-flags.DEFINE_integer('max_iteration', 30000, 'max iteration of training model')
-flags.DEFINE_float('learning_rate', 0.0001, 'learning rate of optimization')
+flags.DEFINE_float('learning_rate', 1e-3, 'learning rate of optimization')
 
 ## todo & can be adjusted
 flags.DEFINE_integer("run_mode", 0, "0: training; 1: testing; 2: test by trajectory; 3: testing online")
@@ -41,8 +35,6 @@ flags.DEFINE_integer('display_interval', 100, 'interval of displaying informatio
 
 ## log directory 
 stamp = 'stamp' + datetime.now().strftime("%Y%m%d-%H%M-%S")
-num_units = 'units' + str(flags.FLAGS.num_units)
-num_stacks = 'stacks' + str(flags.FLAGS.num_stacks)
 in_dim = 'indim' + str(flags.FLAGS.in_dim)
 out_dim = 'outdim' + str(flags.FLAGS.out_dim)
 

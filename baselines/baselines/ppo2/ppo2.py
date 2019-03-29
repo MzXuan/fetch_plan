@@ -103,10 +103,11 @@ class Runner(object):
         self.predictor_flag = predictor_flag
         self.dones = [False for _ in range(nenv)]
         sess = tf.get_default_session()
-        self.predictor = Predictor(sess, FLAGS, nenv, 30, train_flag=predictor_flag)
+        self.predictor = Predictor(sess, FLAGS, nenv, 10, train_flag=predictor_flag)
         self.predictor.init_sess()
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
+            self.predictor.load()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
@@ -127,27 +128,17 @@ class Runner(object):
             # print(rewards)
             # # ----end debug----#
 
-            predict_weight =0.0005
+            # predict_weight =0.0005
             if self.predictor_flag:
-                # -----for dubug----#
-                # print("self.env.mean:")
-                # print(self.env.mean)
-                # print("self.env.var:")
-                # print(self.env.var)
-                # ----end debug----#
-                predict_loss = self.predictor.predict(self.obs[:], self.dones,
+                self.predictor.predict(self.obs[:], self.dones,
                                            self.env.mean, self.env.var)
-                print("squred loss: ")
-                print(np.square(predict_loss))
-                rewards = -predict_loss*np.square(predict_weight)+rewards
+                # print("squred loss: ")
+                # print(np.square(predict_loss))
+                # rewards = -predict_loss*np.square(predict_weight)+rewards
             else:
-                predict_loss = self.predictor.predict(self.obs[:], self.dones,
-                                           self.env.ob_rms.mean, self.env.ob_rms.var)
-                rewards = -predict_loss * np.square(predict_weight) + rewards
-            # # ---print rewards----
-            # print("reward")
-            # print(rewards)
-            # #----end print
+                self.predictor.collect(self.obs[:], self.dones)
+                # self.predictor.collect(self.obs[:], self.dones,
+                #                        self.env.ob_rms.mean, self.env.ob_rms.var)
 
             mb_rewards.append(rewards)
 
@@ -317,8 +308,8 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr, 
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
-            save_interval=50, load=True, point='00100', init_targ=0.1,
-            predictor_flag=True):
+            save_interval=50, load=True, point='00200', init_targ=0.1,
+            predictor_flag=False):
 
     total_timesteps = int(total_timesteps)
 
@@ -369,6 +360,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
     train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True)
     params = tf.trainable_variables()
 
+    predictor = Predictor(sess, FLAGS, 1, 10, train_flag=False, point="20000")
+    predictor.init_sess()
+    predictor.load()
+
 
 
     def load(load_path):
@@ -380,8 +375,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
     load(load_path)
 
-    predictor = Predictor(sess, FLAGS, 1, 30, train_flag=False)
-    predictor.init_sess()
+
 
 
     def run_episode(env, agent):
