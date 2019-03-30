@@ -21,8 +21,15 @@ cp -R ${rl_model} "./models/log_${counter}"
 cp -R ${pred_model} "./models/pred_${counter}"
 
 # run new training cycle
-python run.py -t=True -l=True
+if [ ${counter} -eq 1 ]
+then
+	python run.py -t=True -l=True -p='00350'
+else
+	python run.py -t=True -l=True -p='00100'
+fi
+sleep 1
 python run.py -l=True
+sleep 1
 python predictor.py
 
 ((counter++))
