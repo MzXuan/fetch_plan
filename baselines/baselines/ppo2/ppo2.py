@@ -133,8 +133,8 @@ class Runner(object):
             if self.predictor_flag:
                 predict_loss = self.predictor.predict(self.obs[:], self.dones,
                                            self.env.mean, self.env.var)
-                # print("squred loss: ")
-                # print(np.square(predict_loss))
+                print("squred loss: ")
+                print(np.square(predict_loss))
                 rewards -= predict_loss*np.square(predict_weight)+rewards
             else:
                 self.predictor.collect(self.obs[:], self.dones)

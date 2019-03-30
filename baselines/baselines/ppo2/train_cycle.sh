@@ -11,7 +11,7 @@ rl_model="./log"
 pred_model="./pred"
 
 
-counter=0
+counter=1
 while [ $counter -le 10 ]
 do
 echo $counter
