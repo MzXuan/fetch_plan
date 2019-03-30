@@ -127,7 +127,7 @@ class Runner(object):
             predict_weight = 0.0005
             if self.predictor_flag:
                 predict_loss = self.predictor.predict(self.obs[:], self.dones)
-                rewards -= predict_loss*predict_weight+rewards
+                rewards -= predict_loss*predict_weight
             else:
                 self.predictor.collect(self.obs[:], self.dones)
 
