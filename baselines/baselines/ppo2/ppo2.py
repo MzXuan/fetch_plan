@@ -129,17 +129,17 @@ class Runner(object):
             # # ----end debug----#
 
             #---- todo: add predict reward
-            # # predict_weight =0.0005
-            # if self.predictor_flag:
-            #     self.predictor.predict(self.obs[:], self.dones,
-            #                                self.env.mean, self.env.var)
-            #     # print("squred loss: ")
-            #     # print(np.square(predict_loss))
-            #     # rewards = -predict_loss*np.square(predict_weight)+rewards
-            # else:
-            #     self.predictor.collect(self.obs[:], self.dones)
-            #     # self.predictor.collect(self.obs[:], self.dones,
-            #     #                        self.env.ob_rms.mean, self.env.ob_rms.var)
+            predict_weight = 1
+            if self.predictor_flag:
+                predict_loss = self.predictor.predict(self.obs[:], self.dones,
+                                           self.env.mean, self.env.var)
+                # print("squred loss: ")
+                # print(np.square(predict_loss))
+                rewards -= predict_loss*np.square(predict_weight)+rewards
+            else:
+                self.predictor.collect(self.obs[:], self.dones)
+                # self.predictor.collect(self.obs[:], self.dones,
+                #                        self.env.ob_rms.mean, self.env.ob_rms.var)
 
             mb_rewards.append(rewards)
 
