@@ -131,8 +131,9 @@ class Runner(object):
             #---- todo: add predict reward
             predict_weight = 1
             if self.predictor_flag:
-                predict_loss = self.predictor.predict(self.obs[:], self.dones,
-                                           self.env.mean, self.env.var)
+                # predict_loss = self.predictor.predict(self.obs[:], self.dones,
+                #                            self.env.mean, self.env.var)
+                predict_loss = self.predictor.predict(self.obs[:], self.dones)
                 # print("squred loss: ")
                 # print(np.square(predict_loss))
                 rewards -= predict_loss*np.square(predict_weight)+rewards
@@ -142,9 +143,6 @@ class Runner(object):
                 #                        self.env.ob_rms.mean, self.env.ob_rms.var)
 
             mb_rewards.append(rewards)
-
-            if self.predictor_flag:
-                continue
 
             for info in infos:
                 maybeepinfo = info.get('episode')

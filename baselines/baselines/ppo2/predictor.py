@@ -267,7 +267,7 @@ class Predictor(object):
             else:
                 error.append(np.linalg.norm((t-p)))
 
-        print("error is: {}".format(error))
+        # print("error is: {}".format(error))
         return error
 
     def _create_seq(self, obs, dones, mean, var):
@@ -405,8 +405,8 @@ class Predictor(object):
         xs, ys, x_lens, xs_start = [], [], [], []
         for data in sequences:
             length = data.x_len
-            print("current data length")
-            print(data.x_len)
+            # print("current data length")
+            # print(data.x_len)
             if length <= self.in_timesteps_max:
                 x, y, x_len, x_start = self._feed_one_data(data, length)
                 y = np.zeros((self.out_timesteps, self.out_dim))
@@ -629,13 +629,13 @@ class Predictor(object):
         #     print('predict loss = {} '.format(loss_pred))
         #     # print("batch_loss = {}".format(batch_loss))
 
-        # ------plot predicted data-----------
-        import visualize
-        origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
-        _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
-        # visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
-        visualize.plot_dof_seqs(origin_x, origin_y, origin_y_pred)
-        #---------------------------
+        # # ------plot predicted data-----------
+        # import visualize
+        # origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+        # _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
+        # # visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+        # visualize.plot_dof_seqs(origin_x, origin_y, origin_y_pred)
+        # #---------------------------
 
         return batch_loss
 
