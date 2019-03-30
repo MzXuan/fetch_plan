@@ -4,6 +4,7 @@ import joblib
 import pickle
 import os
 import time
+import argparse
 
 import random
 import numpy as np
@@ -13,6 +14,7 @@ from tensorflow.python import keras
 from tensorflow.contrib.seq2seq import BasicDecoder, TrainingHelper
 
 # for plot saved dataset
+
 import flags
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -57,7 +59,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="10000"):
+                 reset_flag=True, point="3000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -267,7 +269,8 @@ class Predictor(object):
             else:
                 error.append(np.linalg.norm((t-p)))
 
-        print("error is: {}".format(error))
+        # print("error is: {}".format(error))
+        error = np.asarray(error)
         return error
 
     def _create_seq(self, obs, dones, mean, var):
@@ -323,7 +326,7 @@ class Predictor(object):
             # print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        if len(self.dataset) > 4000:
+        if len(self.dataset) > 2000:
             print("save dataset...")
             pickle.dump(self.dataset, open("./pred/"
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
@@ -405,8 +408,8 @@ class Predictor(object):
         xs, ys, x_lens, xs_start = [], [], [], []
         for data in sequences:
             length = data.x_len
-            print("current data length")
-            print(data.x_len)
+            # print("current data length")
+            # print(data.x_len)
             if length <= self.in_timesteps_max:
                 x, y, x_len, x_start = self._feed_one_data(data, length)
                 y = np.zeros((self.out_timesteps, self.out_dim))
@@ -629,13 +632,13 @@ class Predictor(object):
         #     print('predict loss = {} '.format(loss_pred))
         #     # print("batch_loss = {}".format(batch_loss))
 
-        # ------plot predicted data-----------
-        import visualize
-        origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
-        _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
-        # visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
-        visualize.plot_dof_seqs(origin_x, origin_y, origin_y_pred)
-        #---------------------------
+        # # ------plot predicted data-----------
+        # import visualize
+        # origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+        # _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
+        # # visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+        # visualize.plot_dof_seqs(origin_x, origin_y, origin_y_pred)
+        # #---------------------------
 
         return batch_loss
 
@@ -692,8 +695,11 @@ class Predictor(object):
 
 
 
-if __name__ == '__main__':
 
+def main():
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--point', default='3000')
+    args = parser.parse_args()
 
     train_flag=True
     FLAGS = flags.InitParameter()
@@ -707,7 +713,7 @@ if __name__ == '__main__':
         if train_flag:
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
-                                  train_flag=True, reset_flag=False)
+                                  train_flag=True, reset_flag=False, point=args.point)
 
             rnn_model.init_sess()
             # rnn_model.load()
@@ -725,12 +731,18 @@ if __name__ == '__main__':
         else:
             #plot all the validate data step by step
             rnn_model = Predictor(sess, FLAGS, 1, 10,
-                                  train_flag=False, reset_flag=False, point='20000')
+                                  train_flag=False, reset_flag=False, point='3000')
 
             rnn_model.init_sess()
             rnn_model.load()
             rnn_model.run_test()
 
+
+if __name__ == '__main__':
+    main()
+
+
+ 
 
 
 
