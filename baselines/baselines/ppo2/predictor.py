@@ -268,6 +268,7 @@ class Predictor(object):
                 error.append(np.linalg.norm((t-p)))
 
         # print("error is: {}".format(error))
+        error = np.asarray(error)
         return error
 
     def _create_seq(self, obs, dones, mean, var):
