@@ -46,6 +46,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
         self.maxi_accerl = max_accel
+        self.maxi_vel = 0.5
         self.last_distance = 0.0
 
         self.current_qvel = np.zeros(7)
@@ -186,6 +187,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.last_qpos = self.current_qpos
         delta_v = np.clip(action-self.last_qvel, -self.maxi_accerl, self.maxi_accerl)
         action_clip = delta_v+self.last_qvel
+        action_clip = np.clip(action_clip, -self.maxi_vel, self.maxi_vel)
+
 
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = self.last_qpos+(action_clip+1e-8)*dt

@@ -90,10 +90,12 @@ class Predictor(object):
         self._build_net()
 
     def _build_flag(self, FLAGS):
-        self.model_name = FLAGS.model_name
+
         
         self.in_dim = FLAGS.in_dim
         self.out_dim = FLAGS.out_dim
+
+        self.model_name = FLAGS.model_name
 
         self.validation_interval = FLAGS.validation_interval
         self.checkpoint_interval = FLAGS.checkpoint_interval
@@ -104,7 +106,6 @@ class Predictor(object):
 
         self.lr = FLAGS.learning_rate
 
-        self.run_mode = FLAGS.run_mode
 
     def _build_ph(self):
         self.x_ph = tf.placeholder(
