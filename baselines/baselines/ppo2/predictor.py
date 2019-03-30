@@ -80,9 +80,9 @@ class Predictor(object):
         ## prepare containers for saving input dataset
         self.dataset = []
         if reset_flag:
-            filelist = [f for f in os.listdir("./model/") if f.endswith(".pkl")]
+            filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
             for f in filelist:
-                os.remove(os.path.join("./model/", f))
+                os.remove(os.path.join("./pred/", f))
         self.dataset_idx=0 # for counting the saved dataset index
 
         ## build model
@@ -325,7 +325,7 @@ class Predictor(object):
         # if dataset is large, save it
         if len(self.dataset) > 4000:
             print("save dataset...")
-            pickle.dump(self.dataset, open("./model/"
+            pickle.dump(self.dataset, open("./pred/"
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
             self.dataset_idx+=1
             self.dataset=[]
@@ -438,7 +438,7 @@ class Predictor(object):
             return 0
 
         ## check saved data set
-        filelist = [f for f in os.listdir("./model/") if f.endswith(".pkl")]
+        filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
         num_sets = len(filelist) - 1
         self.dataset_idx = 0
 
@@ -478,7 +478,7 @@ class Predictor(object):
 
             # save model
             if (self.iteration % self.checkpoint_interval) == 0:
-                self.save_net(("./model/" + self.model_name + "/{}").format(
+                self.save_net(("./pred/" + self.model_name + "/{}").format(
                     self.iteration
                 ))
 
@@ -487,7 +487,7 @@ class Predictor(object):
             if (self.iteration % self.validation_interval) == 0:
                 print("load validate dataset {}".format(filelist[-1]))
                 validate_set = \
-                    pickle.load(open(os.path.join("./model/", filelist[-1]), "rb"))
+                    pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
 
                 ## create validate data
                 xs, ys, x_lens, xs_start = self._feed_training_data(validate_set)
@@ -529,13 +529,13 @@ class Predictor(object):
         """
 
         ## check saved data se
-        filelist = [f for f in os.listdir("./model/") if f.endswith(".pkl")]
+        filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
         num_sets = len(filelist)-1
         self.dataset_idx = 0
 
         print("load validate dataset {}".format(filelist[-1]))
         test_set = \
-            pickle.load(open(os.path.join("./model/", filelist[-1]), "rb"))
+            pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
         # ## prepare threshold to switch dataset
         # max_iteration = int(self.point)
         # iter_range = range(0,max_iteration,500)
@@ -653,7 +653,7 @@ class Predictor(object):
         joblib.dump(ps, save_path)
 
     def load(self):
-        filename = ("./model/" + self.model_name + "/{}").format(self.point)
+        filename = ("./pred/" + self.model_name + "/{}").format(self.point)
         self.load_net(filename)
 
     def load_net(self, load_path):
@@ -673,7 +673,7 @@ class Predictor(object):
             print("Not in training process, saving failed")
             return 0
         else:
-            pickle.dump(self.dataset, open("./model/"
+            pickle.dump(self.dataset, open("./pred/"
                                             +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
             print("saving dataset successfully")
             self.dataset = []
@@ -682,7 +682,7 @@ class Predictor(object):
         ## load dataset
 
         try:
-            self.dataset = pickle.load(open(os.path.join("./model/", file_name), "rb"))
+            self.dataset = pickle.load(open(os.path.join("./pred/", file_name), "rb"))
             # random.shuffle(self.dataset)
         except:
             print("Can not load dataset. Please first run the training stage to save dataset.")
