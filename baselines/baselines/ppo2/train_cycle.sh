@@ -25,10 +25,10 @@ if [ ${counter} -eq 1 ]
 then
 	python run.py -t=True -l=True -p='00350'
 else
-	python run.py -t=True -l=True -p='00100'
+	python run.py -t=True -l=True -p='00200'
 fi
 sleep 1
-python run.py -l=True
+python run.py -l=True -p='00200'
 sleep 1
 python predictor.py
 

@@ -699,6 +699,7 @@ class Predictor(object):
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--point', default='3000')
+    parser.add_argument('--load', default=False)
     args = parser.parse_args()
 
     train_flag=True
@@ -711,21 +712,16 @@ def main():
 
     with tf.Session() as sess:
         if train_flag:
+
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
                                   train_flag=True, reset_flag=False, point=args.point)
 
             rnn_model.init_sess()
-            # rnn_model.load()
 
-            # for _ in range(5000):
-            #     #create fake data
-            #     obs = np.random.rand(32, 20)
-            #     dones = rand_bools_int_func(32)
-            #     # run the model
-            #     rnn_model.predict(obs, dones)
-            #
-            # rnn_model.save_dataset()
+            if args.load:
+                rnn_model.load()
+
             rnn_model.run_training()
 
         else:
