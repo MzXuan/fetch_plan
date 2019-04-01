@@ -11,8 +11,8 @@ rl_model="./log"
 pred_model="./pred"
 
 
-counter=1
-while [ $counter -le 10 ]
+counter=30
+while [ $counter -le 50 ]
 do
 echo $counter
 # copy saved file and rename
@@ -30,10 +30,12 @@ fi
 sleep 1
 python run.py -l=True -p='00200'
 sleep 1
-python predictor.py
+python predictor.py -l=True
 
 ((counter++))
 
-
 done
+
+cp -R ${rl_model} "./models/log_${counter}"
+cp -R ${pred_model} "./models/pred_${counter}"
 echo All done

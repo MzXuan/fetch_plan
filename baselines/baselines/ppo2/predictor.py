@@ -59,7 +59,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="3000"):
+                 reset_flag=True, point="8000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -698,8 +698,8 @@ class Predictor(object):
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--point', default='3000')
-    parser.add_argument('--load', default=False)
+    parser.add_argument('--point', default='8000')
+    parser.add_argument('-l', '--load', default=False)
     args = parser.parse_args()
 
     train_flag=True
