@@ -1,5 +1,7 @@
 import argparse
 import os, sys
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import numpy as np
 from baselines import bench, logger
 

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import time, os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import joblib
 import pickle
 import os
@@ -19,6 +21,7 @@ import flags
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.font_manager import FontProperties
+from tqdm import tqdm
 
 class DatasetStru(object):
     def __init__(self, x, x_len, x_mean, x_var):
@@ -458,7 +461,7 @@ class Predictor(object):
         iter_idx = 0
         print("iter_range: ", iter_range)
         ## run training
-        while self.iteration < max_iteration:
+        for self.iteration in tqdm(range(max_iteration)):
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
                 if self.iteration == iter_range[iter_idx]:
@@ -482,8 +485,6 @@ class Predictor(object):
 
             _, merged_summary, \
             loss, y, y_hat_train = self.sess.run(fetches, feed_dict)
-
-            self.iteration += 1
 
             # write summary
             if (self.iteration % self.sample_interval) == 0:
