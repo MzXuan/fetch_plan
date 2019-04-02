@@ -7,14 +7,14 @@ class InitParameter():
     def __init__(self, model_name="test1"):
         self.model_name = model_name
 
-        self.in_dim = 7
-        self.out_dim = 7
+        self.in_dim = 10
+        self.out_dim = 10
         self.in_timesteps_max = 50
         self.learning_rate = 1e-3
 
         self.validation_interval = 50
         self.checkpoint_interval = 500
-        self.sample_interval = 500
+        self.sample_interval = 50
         self.display_interval = 100
 
         self.check_dir_cls = './pred/' + model_name + '/checkpoint_'

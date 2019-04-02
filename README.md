@@ -2,12 +2,8 @@
 
 ---
 ## TODO List
-
-+ Run the whole process (@xuanz)
-+ A shell script for training (@xuanz)
-+ 7 DOF (joint angle) prediction (@xuanz)
 + robot arm visulization of prediction (@xuanz)
-+ Two reward structure (@tingxfan)
+
 
 ---
 ## Environment
@@ -134,3 +130,7 @@ def predict(self, obs, dones, mean=None, var=None);
 5. 0.3.6
 * change prediction to sequence to sequence mode
 * use new tensorflow seq2seq api
+
+6.0.4.0
+* add a script for training
+* finish two reward framework
