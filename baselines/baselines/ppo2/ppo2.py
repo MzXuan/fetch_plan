@@ -90,7 +90,7 @@ class Model(object):
 class Runner(object):
     def __init__(self, *, env, model, 
                  nsteps, gamma, lam, load, point, 
-                predictor_flag=False):
+                predictor_flag=False, pred_weight=0.01):
         self.env = env
         self.model = model
         nenv = env.num_envs
@@ -101,6 +101,7 @@ class Runner(object):
         self.nsteps = nsteps
         self.states = model.initial_state
         self.predictor_flag = predictor_flag
+        self.pred_weight = pred_weight
         self.dones = [False for _ in range(nenv)]
         sess = tf.get_default_session()
         self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag)
@@ -123,11 +124,11 @@ class Runner(object):
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
 
             #---- predict reward
-            predict_weight = 0.02
-            if self.predictor_flag:
+            pred_weight = self.pred_weight
+            if self.predictor_flag and pred_weight != 0.0:
                 predict_loss = self.predictor.predict(self.obs[:], self.dones)
-                rewards -= predict_weight*np.square(predict_loss)
-            else:
+                rewards -= pred_weight*np.square(predict_loss)
+            elif pred_weight != 0.0:
                 self.predictor.collect(self.obs[:], self.dones)
 
             mb_rewards.append(rewards)
@@ -178,7 +179,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
             save_interval=50, load=False, point='00100', init_targ=0.1,
-            predictor_flag=False):
+            predictor_flag=False, pred_weight=0.01):
 
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
@@ -203,7 +204,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     runner = Runner(
         env=env, model=model, 
         nsteps=nsteps, gamma=gamma, lam=lam, load=load, point=point,
-        predictor_flag=predictor_flag)
+        predictor_flag=predictor_flag, pred_weight=pred_weight)
 
     epinfobuf = deque(maxlen=100)
     tfirststart = time.time()

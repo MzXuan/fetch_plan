@@ -13,26 +13,31 @@ pred_model="./pred"
 
 counter=0
 save_counter=0
-while [ ${counter} -le 20 ]
+while [ ${counter} -le ${1} ]
 do
 echo $counter
 
-# copy saved file and rename
-if [ ${counter} -eq ${save_counter} ]
+# train rl
+if [ ${counter} -eq 0 ]
 then
-    cp -R ${rl_model} "./models/log_${counter}"
-    cp -R ${pred_model} "./models/pred_${counter}"
-    save_counter=$[save_counter+5]
+    python run.py -t=True -l=True -p='00200' --pred_weight=0.0
+else
+    python run.py -t=True -l=True -p='00200' --pred_weight=${2}
 fi
 
+# copy saved file and rename
+cp -R ${rl_model} "./models/log_${counter}"
+cp -R ${pred_model} "./models/pred_${counter}"
+
 # run new training cycle
-python run.py -t=True -l=True -p='00200'
 sleep 1
 
+# sample dataset
 python run.py -l=True -p='00200'
 sleep 1
 
-python predictor.py -l=True
+# train seq2seq
+python predictor.py -l=True --iter=${counter}
 
 ((counter++))
 
