@@ -121,26 +121,15 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
-            # # -----for dubug----#
-            # print("self.obs[:]:")
-            # print(self.obs[0,14:17])
-            # print("reward")
-            # print(rewards)
-            # # ----end debug----#
 
-            #---- todo: add predict reward
+            #---- add predict reward
             predict_weight = 0.2
             if self.predictor_flag:
-                # predict_loss = self.predictor.predict(self.obs[:], self.dones,
-                #                            self.env.mean, self.env.var)
+
                 predict_loss = self.predictor.predict(self.obs[:], self.dones)
-                # print("squred loss: ")
-                # print(np.square(predict_loss))
                 rewards -= predict_loss*predict_weight+rewards
             else:
                 self.predictor.collect(self.obs[:], self.dones)
-                # self.predictor.collect(self.obs[:], self.dones,
-                #                        self.env.ob_rms.mean, self.env.ob_rms.var)
 
             mb_rewards.append(rewards)
 

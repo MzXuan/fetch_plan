@@ -510,10 +510,10 @@ class Predictor(object):
                 #----display info-------#
                 if (self.iteration % self.display_interval) is 0:
                     print('\n')
-                    print("x = {}".format(x[0]))
-                    print("x_len={}".format(x_lens[0]))
-                    print("pred = \n {},\n true goal = \n{}, \n delta = \n {}".format(
-                        y_hat_pred[0], y[0], y[0] - y_hat_pred[0]))
+                    # print("x = {}".format(x[0]))
+                    # print("x_len={}".format(x_lens[0]))
+                    # print("pred = \n {},\n true goal = \n{}, \n delta = \n {}".format(
+                    #     y_hat_pred[0], y[0], y[0] - y_hat_pred[0]))
                     print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
 
                 # # ------plot predicted data-----------
