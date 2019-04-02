@@ -75,40 +75,12 @@ For displaying performance, please set
 ```
 
 ### For training predictor
-1. training the policy 
-```
---train=True
---display=False
---load=False
-```
-2. "test" the policy 
-```
---train=False
---display=False
---load=True
-```
-3. train the predictor
-```
-python predictor.py
-```
-4. show the result by running "display" policy
-```
---train=False
---display=True
-```
+1. pretrain rl without predictor
 
-### Functions in predictor
-collect training data for lstm network:
-```
-def collect(self, obs, dones, mean=None, var=None)
-```
-
-predict data using existing network:
-```
-def predict(self, obs, dones, mean=None, var=None);
-...
-    return batch_loss
-```
+2. joint training RL policy with seq2seq predictor
+``` shell
+bash train_cycle.sh ${ITER_STEP} ${PRED_WEIGHT}
+``` 
 
 
 ---

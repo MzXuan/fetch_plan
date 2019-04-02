@@ -124,11 +124,11 @@ class Runner(object):
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
 
             #---- predict reward
-            predict_weight = self.pred_weight
-            if self.predictor_flag:
+            pred_weight = self.pred_weight
+            if self.predictor_flag and pred_weight != 0.0:
                 predict_loss = self.predictor.predict(self.obs[:], self.dones)
-                rewards -= predict_weight*np.square(predict_loss)
-            else:
+                rewards -= pred_weight*np.square(predict_loss)
+            elif pred_weight != 0.0:
                 self.predictor.collect(self.obs[:], self.dones)
 
             mb_rewards.append(rewards)
