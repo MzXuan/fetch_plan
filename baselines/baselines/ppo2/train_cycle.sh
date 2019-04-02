@@ -11,8 +11,8 @@ rl_model="./log"
 pred_model="./pred"
 
 
-counter=30
-while [ $counter -le 50 ]
+counter=90
+while [ $counter -le 120 ]
 do
 echo $counter
 # copy saved file and rename
