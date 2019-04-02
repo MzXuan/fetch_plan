@@ -53,7 +53,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
         result = super().sample(*args, **kwargs)
         # print("result size")
         # print(result)
-        result.set_shape([1,7]) #[batch_size, dimension]
+        result.set_shape([1,10]) #[batch_size, dimension]
         return result
 
 class Predictor(object):
@@ -263,11 +263,17 @@ class Predictor(object):
         :return:
         """
         error = []
+        eff_weight=0.7
         for t,p,l in zip(y, y_hat, x_lens):
             if not np.any(t[-1]):
                 error.append(0)
             else:
-                error.append(np.linalg.norm((t-p)))
+                err1 = (1-eff_weight)*\
+                       np.sum(np.square(t[:, 0:7]-p[:, 0:7]))
+                err2 = eff_weight*\
+                       np.sum(np.square(t[:, 7:10] - p[:, 7:10]))
+                error.append((np.sqrt(err1+err2)))
+                # error.append(np.linalg.norm((t-p)))
 
         # print("error is: {}".format(error))
         error = np.asarray(error)
@@ -386,20 +392,20 @@ class Predictor(object):
             x_seq = data.x
 
         if id_start>0:
-            x_origin = x_seq[id_start:id, 0:7]
-            x_start = x_seq[id_start-1, 0:7]
+            x_origin = x_seq[id_start:id, :]
+            x_start = x_seq[id_start-1, :]
 
             x = x_origin-x_start
-            y = x_seq[id:id_end, 0:7] - x_start
+            y = x_seq[id:id_end, :] - x_start
             x_len = self.in_timesteps_max
 
         elif id_start<=0:
-            x_origin = x_seq[0:id, 0:7]
-            x_start = x_seq[0, 0:7]
-            x = np.full((self.in_timesteps_max, self.in_dim), (x_seq[id, 0:7]-x_start))
+            x_origin = x_seq[0:id, :]
+            x_start = x_seq[0, :]
+            x = np.full((self.in_timesteps_max, self.in_dim), (x_seq[id, :]-x_start))
             x[0:id] = x_origin-x_start
             x[0] = x[1]
-            y = x_seq[id:id_end, 0:7] - x_start
+            y = x_seq[id:id_end, :] - x_start
             x_len = id
         return x, y, x_len, x_start
 
@@ -476,8 +482,11 @@ class Predictor(object):
             _, merged_summary, \
             loss, y, y_hat_train = self.sess.run(fetches, feed_dict)
 
-            self.file_writer.add_summary(merged_summary, self.iteration)
             self.iteration += 1
+
+            # write summary
+            if (self.iteration % self.sample_interval) == 0:
+                self.file_writer.add_summary(merged_summary, self.iteration)
 
             # save model
             if (self.iteration % self.checkpoint_interval) == 0:
@@ -566,10 +575,12 @@ class Predictor(object):
             self.file_writer.add_summary(validate_summary, self.iteration)
 
             # ------display information-----------#
-            print('\n')
-            print("x = {}".format(xs[0]))
-            print("x_len={}".format(x_lens[0]))
-            print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+            batch_loss = self._get_batch_loss(ys, y_hat_pred, x_lens)
+            print("\nbatch_loss = {}".format(batch_loss))
+            # print('\n')
+            # print("x = {}".format(xs[0]))
+            # print("x_len={}".format(x_lens[0]))
+            # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
             print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
 
             # ------plot predicted data-----------
@@ -577,7 +588,7 @@ class Predictor(object):
             origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
             _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
             visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
-            time.sleep(3)
+            time.sleep(2)
 
 
         print("finish testing")
@@ -702,7 +713,7 @@ def main():
     parser.add_argument('-l', '--load', default=False)
     args = parser.parse_args()
 
-    train_flag=True
+    train_flag=False
     FLAGS = flags.InitParameter()
 
     def rand_bools_int_func(n):
@@ -727,7 +738,7 @@ def main():
         else:
             #plot all the validate data step by step
             rnn_model = Predictor(sess, FLAGS, 1, 10,
-                                  train_flag=False, reset_flag=False, point='3000')
+                                  train_flag=False, reset_flag=False, point=args.point)
 
             rnn_model.init_sess()
             rnn_model.load()
