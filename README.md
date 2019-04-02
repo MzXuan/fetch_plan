@@ -3,7 +3,7 @@
 ---
 ## TODO List
 + robot arm visulization of prediction (@xuanz)
-
++ GUI (@xuanz)
 
 ---
 ## Environment
@@ -38,14 +38,24 @@ pip install -e .
 ```
 
 ---
-## Test
-### Test env
-run test script as follows
+
+## Run
+1. Download pretrained [model](https://www.dropbox.com/s/xngkz330rnw70f8/models.zip?dl=0)
+
+
+2. joint training RL policy with seq2seq predictor
+``` shell
+bash train_cycle.sh ${ITER_STEP} ${PRED_WEIGHT}
+``` 
+
+---
+## Unit Test
+1. Env code
 ``` shell
 python env_test.py
 ```
 
-## Run
+2. RL code
 ``` shell
 cd baselines/baselines/ppo2
 python run.py 
@@ -74,14 +84,10 @@ For displaying performance, please set
 --point="$YOUR_CHECKPOINT_NUMBER"
 ```
 
-### For training predictor
-1. pretrain rl without predictor
-
-2. joint training RL policy with seq2seq predictor
+3. seq2seq code
 ``` shell
-bash train_cycle.sh ${ITER_STEP} ${PRED_WEIGHT}
-``` 
-
+python predictor.py
+```
 
 ---
 ## Change log
@@ -103,6 +109,9 @@ bash train_cycle.sh ${ITER_STEP} ${PRED_WEIGHT}
 * change prediction to sequence to sequence mode
 * use new tensorflow seq2seq api
 
-6.0.4.0
+6. 0.4.0
 * add a script for training
 * finish two reward framework
+
+7. 0.5.0
+* joint training
