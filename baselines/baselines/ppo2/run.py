@@ -3,7 +3,8 @@ import os, sys
 import numpy as np
 from baselines import bench, logger
 
-def train(env_id, num_timesteps, seed, d_targ, load, point):
+def train(env_id, num_timesteps, seed, d_targ, load, point,
+          pred_weight=0.01):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalize
     from baselines.ppo2 import ppo2
@@ -58,7 +59,8 @@ def train(env_id, num_timesteps, seed, d_targ, load, point):
         load=load,
         point=point,
         init_targ=d_targ,
-        predictor_flag=False)
+        predictor_flag=True,
+        pred_weight=pred_weight)
 
 def test(env_id, num_timesteps, seed, d_targ, load, point):
     from baselines.common import set_global_seeds
@@ -106,7 +108,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
         load=True,
         point=point,
         init_targ=d_targ,
-        predictor_flag=True)
+        predictor_flag=False)
 
 def display(env_id, num_timesteps, seed, curr_path, point):
     from baselines.common import set_global_seeds
@@ -144,11 +146,12 @@ def main():
     parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
     parser.add_argument('--num-timesteps', type=int, default=int(2e6))
-    parser.add_argument('--train', type=bool, default=True)
-    parser.add_argument('--display', type=bool, default=False)
-    parser.add_argument('--load', type=bool, default=True)
+    parser.add_argument('-t', '--train', type=bool, default=False)
+    parser.add_argument('-d','--display', type=bool, default=False)
+    parser.add_argument('-l', '--load', type=bool, default=False)
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('--point', type=str, default='00300')
+    parser.add_argument('-p', '--point', type=str, default='00200')
+    parser.add_argument('--pred_weight', default=0.01, type=float)
     args = parser.parse_args()
 
     curr_path = sys.path[0]
@@ -158,7 +161,8 @@ def main():
     elif args.train:
         logger.configure(dir='{}/log'.format(curr_path))
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            d_targ=args.d_targ, load=args.load, point=args.point)
+            d_targ=args.d_targ, load=args.load, point=args.point,
+              pred_weight=args.pred_weight)
     else:
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
