@@ -4,6 +4,7 @@ import joblib
 import pickle
 import os
 import time
+import argparse
 
 import random
 import numpy as np
@@ -13,6 +14,7 @@ from tensorflow.python import keras
 from tensorflow.contrib.seq2seq import BasicDecoder, TrainingHelper
 
 # for plot saved dataset
+
 import flags
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -57,7 +59,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="20000"):
+                 reset_flag=True, point="8000"):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -324,7 +326,7 @@ class Predictor(object):
             # print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        if len(self.dataset) > 4000:
+        if len(self.dataset) > 2000:
             print("save dataset...")
             pickle.dump(self.dataset, open("./pred/"
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
@@ -693,8 +695,12 @@ class Predictor(object):
 
 
 
-if __name__ == '__main__':
 
+def main():
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--point', default='8000')
+    parser.add_argument('-l', '--load', default=False)
+    args = parser.parse_args()
 
     train_flag=True
     FLAGS = flags.InitParameter()
@@ -706,32 +712,33 @@ if __name__ == '__main__':
 
     with tf.Session() as sess:
         if train_flag:
+
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
-                                  train_flag=True, reset_flag=False)
+                                  train_flag=True, reset_flag=False, point=args.point)
 
             rnn_model.init_sess()
-            # rnn_model.load()
 
-            # for _ in range(5000):
-            #     #create fake data
-            #     obs = np.random.rand(32, 20)
-            #     dones = rand_bools_int_func(32)
-            #     # run the model
-            #     rnn_model.predict(obs, dones)
-            #
-            # rnn_model.save_dataset()
+            if args.load:
+                rnn_model.load()
+
             rnn_model.run_training()
 
         else:
             #plot all the validate data step by step
             rnn_model = Predictor(sess, FLAGS, 1, 10,
-                                  train_flag=False, reset_flag=False, point='20000')
+                                  train_flag=False, reset_flag=False, point='3000')
 
             rnn_model.init_sess()
             rnn_model.load()
             rnn_model.run_test()
 
+
+if __name__ == '__main__':
+    main()
+
+
+ 
 
 
 
