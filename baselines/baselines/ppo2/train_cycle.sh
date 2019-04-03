@@ -26,11 +26,7 @@ else
     python run.py -t=True -l=True -p='00200' --pred_weight=${2}
 fi
 
-# copy saved file and rename
-cp -R ${rl_model} "./models/log_${counter}"
-cp -R ${pred_model} "./models/pred_${counter}"
 
-rm -rf "${pred_model}/test1/checkpoint_" 
 # run new training cycle
 sleep 1
 
@@ -39,17 +35,23 @@ python run.py -l=True -p='00200'
 sleep 1
 
 # train seq2seq
-if [ ${counter} -eq 0]
-then
-	python predictor.py --iter=${counter}
-else
-	python predictor.py -l=True --iter=${counter}
-fi
+python predictor.py -l=True --iter=${counter}
+
+# if [ ${counter} -eq 0]
+# then
+# 	python predictor.py --iter=${counter}
+# else
+# 	python predictor.py -l=True --iter=${counter}
+# fi
+
+# copy saved file and rename
+cp -R ${rl_model} "./models/log_${counter}"
+cp -R ${pred_model} "./models/pred_${counter}"
+
+rm -rf "${pred_model}/test1/checkpoint_" 
 
 ((counter++))
 
 done
 
-cp -R ${rl_model} "./models/log_${counter}"
-cp -R ${pred_model} "./models/pred_${counter}"
 echo All done

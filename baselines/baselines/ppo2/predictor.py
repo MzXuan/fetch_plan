@@ -452,7 +452,7 @@ class Predictor(object):
         iter_idx = 0
         print("iter_range: ", iter_range)
         ## run training
-        for self.iteration in tqdm(range(max_iteration)):
+        for self.iteration in tqdm(range(max_iteration+1)):
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
                 if self.iteration == iter_range[iter_idx]:
@@ -721,7 +721,11 @@ def main():
             rnn_model.init_sess()
 
             if args.load:
-                rnn_model.load()
+                try:
+                    rnn_model.load()
+                    print("load model successfully")
+                except:
+                    rnn_model.init_sess()
 
             rnn_model.run_training()
 
