@@ -73,7 +73,7 @@ class Predictor(object):
         self.out_timesteps = 10
         self.train_flag = train_flag
         self.point = point
-
+        # self.validate_part = 0.1
         
         self.iteration = 0
             
@@ -333,7 +333,10 @@ class Predictor(object):
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
             self.dataset_idx+=1
             self.dataset=[]
-            self.dataset=[]
+        if self.dataset_idx == 5    
+            return True
+        else
+            return False
 
     def _revert_data(self,data,mean,var):
         return(data*(var+1e-8)+mean)
@@ -600,7 +603,7 @@ class Predictor(object):
 
         #create training dataset for future training
         if len(seqs_done) > 0:
-            self._create_dataset(seqs_done)
+            return self._create_dataset(seqs_done)
 
     def predict(self, obs, dones, mean=None, var=None):
         """
