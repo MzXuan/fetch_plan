@@ -13,7 +13,7 @@ pred_model="./pred"
 
 counter=0
 save_counter=0
-while [ ${counter} -le 50 ]
+while [ ${counter} -le ${1} ]
 do
 echo $counter
 
@@ -35,7 +35,7 @@ sleep 1
 python run.py -l=True -p='00200'
 sleep 1
 
-python predictor.py -l=True
+python predictor.py -l=True --iter=${counter}
 
 ((counter++))
 

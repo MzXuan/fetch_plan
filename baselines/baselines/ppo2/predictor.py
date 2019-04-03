@@ -59,7 +59,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="10000"):
+                 reset_flag=True, point="10000", iter_start=0):
         ## extract FLAGS
         self.sess = sess
         self._build_flag(FLAGS)
@@ -70,6 +70,7 @@ class Predictor(object):
         self.train_flag = train_flag
         self.point = point
 
+        self.start_iter = iter_start * int(point)
         self.iteration = 0
             
         ## prepare sequcne containers
@@ -486,7 +487,7 @@ class Predictor(object):
 
             # write summary
             if (self.iteration % self.sample_interval) == 0:
-                self.file_writer.add_summary(merged_summary, self.iteration)
+                self.file_writer.add_summary(merged_summary, self.start_iter + self.iteration)
 
             # save model
             if (self.iteration % self.checkpoint_interval) == 0:
@@ -516,7 +517,7 @@ class Predictor(object):
                 ## write summary
                 validate_summary = tf.Summary()
                 validate_summary.value.add(tag="validate rmse", simple_value=loss_pred)
-                self.file_writer.add_summary(validate_summary, self.iteration)
+                self.file_writer.add_summary(validate_summary, self.start_iter + self.iteration)
 
                 #----display info-------#
                 if (self.iteration % self.display_interval) is 0:
@@ -711,6 +712,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--point', default='10000')
     parser.add_argument('-l', '--load', default=False)
+    parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
 
     train_flag=True
@@ -726,7 +728,8 @@ def main():
 
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
-                                  train_flag=True, reset_flag=False, point=args.point)
+                                  train_flag=True, reset_flag=False, point=args.point,
+                                  iter_start=args.iter)
 
             rnn_model.init_sess()
 
