@@ -39,7 +39,12 @@ python run.py -l=True -p='00200'
 sleep 1
 
 # train seq2seq
-python predictor.py -l=True --iter=${counter}
+if [ ${counter} -eq 0]
+then
+	python predictor.py --iter=${counter}
+else
+	python predictor.py -l=True --iter=${counter}
+fi
 
 ((counter++))
 
