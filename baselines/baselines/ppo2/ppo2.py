@@ -8,6 +8,7 @@ from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
 from predictor import Predictor
+from tqdm import tqdm
 import flags
 
 
@@ -212,7 +213,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     lrnow = 3e-4
     kl = 0.01
     nupdates = total_timesteps//nbatch
-    for update in range(1, nupdates+1):
+    for update in tqdm(range(1, nupdates+1)):
         assert nbatch % nminibatches == 0
         nbatch_train = nbatch // nminibatches
         tstart = time.time()

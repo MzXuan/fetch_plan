@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import time, os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import joblib
 import pickle
 import os
@@ -19,6 +21,7 @@ import flags
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.font_manager import FontProperties
+from tqdm import tqdm
 
 class DatasetStru(object):
     def __init__(self, x, x_len, x_mean, x_var):
@@ -92,9 +95,7 @@ class Predictor(object):
         self._build_ph()
         self._build_net()
 
-    def _build_flag(self, FLAGS):
-
-        
+    def _build_flag(self, FLAGS):        
         self.in_dim = FLAGS.in_dim
         self.out_dim = FLAGS.out_dim
 
@@ -107,8 +108,8 @@ class Predictor(object):
         self.checkpoint_dir = FLAGS.check_dir_cls
         self.sample_dir = FLAGS.sample_dir_cls
 
-        self.lr = FLAGS.learning_rate
-
+        lr_param = 0.1 ** (self.start_iter // 10)
+        self.lr = FLAGS.learning_rate * lr_param
 
     def _build_ph(self):
         self.x_ph = tf.placeholder(
@@ -160,13 +161,9 @@ class Predictor(object):
         dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
         dec_rnn2 = tf.nn.rnn_cell.GRUCell(32)
         dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
-        #
-
-        # dec_cell = tf.nn.rnn_cell.GRUCell(16)
 
         #Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
-
 
         #Training Decoder
         with tf.variable_scope("pred_dec"):
@@ -189,10 +186,6 @@ class Predictor(object):
                 decoder=training_decoder, output_time_major=False,
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
-            # print("training_decoder_outputs")
-            # print(training_decoder_outputs)
-            # print("training_decoder_state")
-            # print(training_decoder_state)
 
         #Inference Decoder
         with tf.variable_scope("pred_dec", reuse=True):
@@ -421,15 +414,15 @@ class Predictor(object):
                 x, y, x_len, x_start = self._feed_one_data(data, length)
                 y = np.zeros((self.out_timesteps, self.out_dim))
 
-            elif length < self.in_timesteps_max+self.out_timesteps:
+            elif length < self.in_timesteps_max + self.out_timesteps:
                 x, y, x_len, x_start = self._feed_one_data(data, self.in_timesteps_max)
                 y[-1,:] = np.zeros(self.out_dim)
-            elif length < self.in_timesteps_max+self.out_timesteps+2:
+            elif length < self.in_timesteps_max + self.out_timesteps + 2:
                 id = length - self.out_timesteps
                 x, y, x_len, x_start = self._feed_one_data(data, id)
                 y[-1, :] = np.zeros(self.out_dim)
             else:
-                id = length-self.out_timesteps
+                id = length - self.out_timesteps
                 x, y, x_len, x_start = self._feed_one_data(data, id)
 
             xs.append(x)
@@ -458,7 +451,7 @@ class Predictor(object):
         iter_idx = 0
         print("iter_range: ", iter_range)
         ## run training
-        while self.iteration < max_iteration:
+        for self.iteration in tqdm(range(max_iteration)):
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
                 if self.iteration == iter_range[iter_idx]:
@@ -482,8 +475,6 @@ class Predictor(object):
 
             _, merged_summary, \
             loss, y, y_hat_train = self.sess.run(fetches, feed_dict)
-
-            self.iteration += 1
 
             # write summary
             if (self.iteration % self.sample_interval) == 0:
@@ -695,7 +686,6 @@ class Predictor(object):
 
     def load_dataset(self, file_name):
         ## load dataset
-
         try:
             self.dataset = pickle.load(open(os.path.join("./pred/", file_name), "rb"))
             # random.shuffle(self.dataset)
@@ -704,9 +694,6 @@ class Predictor(object):
             return 0
 
         return 1
-
-
-
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -725,7 +712,6 @@ def main():
 
     with tf.Session() as sess:
         if train_flag:
-
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
                                   train_flag=True, reset_flag=False, point=args.point,
@@ -746,7 +732,6 @@ def main():
             rnn_model.init_sess()
             rnn_model.load()
             rnn_model.run_test()
-
 
 if __name__ == '__main__':
     main()
