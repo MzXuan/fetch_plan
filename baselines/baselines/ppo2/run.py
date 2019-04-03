@@ -1,9 +1,12 @@
 import argparse
 import os, sys
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import numpy as np
 from baselines import bench, logger
 
-def train(env_id, num_timesteps, seed, d_targ, load, point):
+def train(env_id, num_timesteps, seed, d_targ, load, point,
+          pred_weight=0.01):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalize
     from baselines.ppo2 import ppo2
@@ -58,7 +61,8 @@ def train(env_id, num_timesteps, seed, d_targ, load, point):
         load=load,
         point=point,
         init_targ=d_targ,
-        predictor_flag=True)
+        predictor_flag=True,
+        pred_weight=pred_weight)
 
 def test(env_id, num_timesteps, seed, d_targ, load, point):
     from baselines.common import set_global_seeds
@@ -149,6 +153,7 @@ def main():
     parser.add_argument('-l', '--load', type=bool, default=False)
     parser.add_argument('--d_targ', type=float, default=0.012)
     parser.add_argument('-p', '--point', type=str, default='00200')
+    parser.add_argument('--pred_weight', default=0.01, type=float)
     args = parser.parse_args()
 
     curr_path = sys.path[0]
@@ -158,7 +163,8 @@ def main():
     elif args.train:
         logger.configure(dir='{}/log'.format(curr_path))
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            d_targ=args.d_targ, load=args.load, point=args.point)
+            d_targ=args.d_targ, load=args.load, point=args.point,
+              pred_weight=args.pred_weight)
     else:
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)

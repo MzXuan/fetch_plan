@@ -1,7 +1,9 @@
+.DS_Store
 *.pyc
 gym_fetch.egg-info
 model/
 MUJOCO_LOG.TXT
 baselines/baselines/ppo2/log
-baselines/baselines/ppo2/model
+baselines/baselines/ppo2/pred
+baselines/baselines/ppo2/models
 .idea

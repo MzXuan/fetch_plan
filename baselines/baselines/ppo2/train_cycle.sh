@@ -10,6 +10,7 @@ function finish() {
 rl_model="./log"
 pred_model="./pred"
 
+rm -rf "./models/*"
 
 counter=0
 save_counter=0
@@ -17,24 +18,27 @@ while [ ${counter} -le ${1} ]
 do
 echo $counter
 
-# # copy saved file and rename
-# if [ ${counter} -eq ${save_counter} ]
-# then
-#     cp -R ${rl_model} "./models/log_${counter}"
-#     cp -R ${pred_model} "./models/pred_${counter}"
-#     save_counter=$[save_counter+3]
-# fi
+# train rl
+if [ ${counter} -eq 0 ]
+then
+    python run.py -t=True --pred_weight=0.0
+else
+    python run.py -t=True -l=True -p='00200' --pred_weight=${2}
+fi
 
+# copy saved file and rename
 cp -R ${rl_model} "./models/log_${counter}"
 cp -R ${pred_model} "./models/pred_${counter}"
 
+rm -rf "${pred_model}/test1/checkpoint_" 
 # run new training cycle
-python run.py -t=True -l=True -p='00200'
 sleep 1
 
+# sample dataset
 python run.py -l=True -p='00200'
 sleep 1
 
+# train seq2seq
 python predictor.py -l=True --iter=${counter}
 
 ((counter++))
