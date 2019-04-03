@@ -7,3 +7,4 @@ baselines/baselines/ppo2/log
 baselines/baselines/ppo2/pred
 baselines/baselines/ppo2/models
 .idea
+.DS_Store
