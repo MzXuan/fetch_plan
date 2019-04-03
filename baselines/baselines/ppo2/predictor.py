@@ -721,7 +721,11 @@ def main():
             rnn_model.init_sess()
 
             if args.load:
-                rnn_model.load()
+                try:
+                    rnn_model.load()
+                    print("load model successfully")
+                except:
+                    rnn_model.init_sess()
 
             rnn_model.run_training()
 
