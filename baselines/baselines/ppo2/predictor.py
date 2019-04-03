@@ -452,7 +452,7 @@ class Predictor(object):
         iter_idx = 0
         print("iter_range: ", iter_range)
         ## run training
-        for self.iteration in tqdm(range(max_iteration)):
+        for self.iteration in tqdm(range(max_iteration+1)):
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
                 if self.iteration == iter_range[iter_idx]:
