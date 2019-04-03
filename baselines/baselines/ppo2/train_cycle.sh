@@ -10,6 +10,7 @@ function finish() {
 rl_model="./log"
 pred_model="./pred"
 
+rm -rf "./models/*"
 
 counter=0
 save_counter=0
@@ -29,6 +30,7 @@ fi
 cp -R ${rl_model} "./models/log_${counter}"
 cp -R ${pred_model} "./models/pred_${counter}"
 
+rm -rf "${pred_model}/test1/checkpoint_" 
 # run new training cycle
 sleep 1
 

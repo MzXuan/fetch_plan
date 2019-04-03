@@ -147,7 +147,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
-    parser.add_argument('--num-timesteps', type=int, default=int(2e6))
+    parser.add_argument('--num-timesteps', type=int, default=int(1.8e6))
     parser.add_argument('-t', '--train', type=bool, default=False)
     parser.add_argument('-d','--display', type=bool, default=False)
     parser.add_argument('-l', '--load', type=bool, default=False)

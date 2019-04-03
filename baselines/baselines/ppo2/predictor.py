@@ -65,6 +65,7 @@ class Predictor(object):
                  reset_flag=True, point="10000", iter_start=0):
         ## extract FLAGS
         self.sess = sess
+        self.start_iter = iter_start * int(point)
         self._build_flag(FLAGS)
 
         self.batch_size = batch_size
@@ -73,7 +74,7 @@ class Predictor(object):
         self.train_flag = train_flag
         self.point = point
 
-        self.start_iter = iter_start * int(point)
+        
         self.iteration = 0
             
         ## prepare sequcne containers
@@ -321,12 +322,12 @@ class Predictor(object):
         :return:
         """
         for data in seqs_done:
-            if data.x_len > self.in_timesteps_max and data.x_len < 300:
+            if data.x_len > self.in_timesteps_max and data.x_len < 500:
                 self.dataset.append(data)
             # print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        if len(self.dataset) > 2000:
+        if len(self.dataset) > 1000:
             print("save dataset...")
             pickle.dump(self.dataset, open("./pred/"
                                            +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
@@ -702,7 +703,7 @@ def main():
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
 
-    train_flag=False
+    train_flag=True
     FLAGS = flags.InitParameter()
 
     def rand_bools_int_func(n):
