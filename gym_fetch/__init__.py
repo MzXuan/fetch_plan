@@ -1,5 +1,6 @@
 from gym.envs.registration import register
 
+
 register(
     id='FetchPlan-v0',
     entry_point='gym_fetch.envs:FetchPlanEnv',
@@ -11,4 +12,5 @@ register(
     entry_point='gym_fetch.envs:FetchPlanTestEnv',
     max_episode_steps=400
 )
+
 
