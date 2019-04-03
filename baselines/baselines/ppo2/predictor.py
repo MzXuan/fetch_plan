@@ -604,6 +604,7 @@ class Predictor(object):
         #create training dataset for future training
         if len(seqs_done) > 0:
             return self._create_dataset(seqs_done)
+        return False
 
     def predict(self, obs, dones, mean=None, var=None):
         """
