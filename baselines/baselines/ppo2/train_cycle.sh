@@ -30,7 +30,6 @@ else
     python run.py -t=True -l=True --num-timesteps=1860000 -p='00200' --pred_weight=${2}
 fi
 
-
 # run new training cycle
 sleep 1
 

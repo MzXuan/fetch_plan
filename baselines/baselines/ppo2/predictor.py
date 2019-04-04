@@ -85,9 +85,15 @@ class Predictor(object):
         self.dataset = []
         if reset_flag:
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
+            # remove old files
             for f in filelist:
-                if not f.endswith(str(self.start_iter-1)+".pkl"):
+                if not (f.endswith("new.pkl")):
                     os.remove(os.path.join("./pred/", f))
+            # change last dataset to old dataset
+            for f in filelist:
+                if f.endswith("new.pkl"):
+                    os.rename(f, "dataset_old.pkl")
+
         self.dataset_idx=0 # for counting the saved dataset index
 
         self.collect_flag = False
@@ -329,11 +335,11 @@ class Predictor(object):
             print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        set_size = 1000
+        set_size = 5000
         if len(self.dataset) > set_size:
             print("save dataset...The size of dataset is {}".format(set_size))
             pickle.dump(self.dataset, open("./pred/"
-                                           + "/dataset_" + str(self.start_iter) + ".pkl", "wb"))
+                                           + "/dataset_new" + ".pkl", "wb"))
             self.collect_flag = True
             return
 
