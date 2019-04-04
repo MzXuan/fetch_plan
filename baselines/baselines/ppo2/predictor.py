@@ -92,7 +92,7 @@ class Predictor(object):
             # change last dataset to old dataset
             for f in filelist:
                 if f.endswith("new.pkl"):
-                    os.rename(f, "dataset_old.pkl")
+                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
 
         self.dataset_idx=0 # for counting the saved dataset index
 
