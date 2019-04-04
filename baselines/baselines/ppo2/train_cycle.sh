@@ -8,11 +8,8 @@ function finish() {
 }
 
 # preparation
-if [ ! -f "./models" ]; then
-    mkdir "./models"
-else
-    rm -rf "./models/*"
-fi
+rm -rf "./models"
+mkdir "./models"
 
 rl_model="./log/"
 pred_model="./pred/"
