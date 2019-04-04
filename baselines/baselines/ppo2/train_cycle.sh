@@ -28,9 +28,9 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py -t=True --pred_weight=0.0
+    python run.py -t=True --num-timesteps=1.8e6 --pred_weight=0.0
 else
-    python run.py -t=True -l=True -p='00050' --pred_weight=${2}
+    python run.py -t=True -l=True --num-timesteps=1.8e6 -p='00200' --pred_weight=${2}
 fi
 
 
@@ -38,7 +38,7 @@ fi
 sleep 1
 
 # sample dataset
-python run.py -l=True -p='00050'
+python run.py -l=True -p='00200'
 sleep 1
 
 # train seq2seq
