@@ -59,7 +59,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="10000", iter_start=0):
+                 reset_flag=False, point="10000", iter_start=0):
         ## extract FLAGS
         self.sess = sess
         self.start_iter = iter_start * int(point)

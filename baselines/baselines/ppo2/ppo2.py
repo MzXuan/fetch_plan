@@ -105,7 +105,13 @@ class Runner(object):
         self.pred_weight = pred_weight
         self.dones = [False for _ in range(nenv)]
         sess = tf.get_default_session()
-        self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag)
+        if (not self.predictor_flag) and pred_weight != 0.0:
+            # collect data
+            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
+        else:
+            # train and display
+            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
+
         self.predictor.init_sess()
         self.collect_flag = False
         if load:
