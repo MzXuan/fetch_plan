@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from gym import utils
 from gym_fetch.envs import fetch_LSTM_reward_env
 
@@ -56,7 +57,24 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, TEST_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.05, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.1, max_accel=0.2,
             initial_qpos=initial_qpos, reward_type=reward_type)
         utils.EzPickle.__init__(self)
 
+    def _sample_goal(self):
+        # todo: random choose a site object as the goal
+        # check mujoco_py api about how to list all the site object
+
+        goal = np.zeros(3)
+        goal[0] = self.initial_gripper_xpos[0] + self.np_random.uniform(-0.20, 0.20, size=1)
+        goal[1] = self.initial_gripper_xpos[1] + self.np_random.uniform(-0.40, 0.40, size=1)
+        goal[2] = self.initial_gripper_xpos[2] + self.np_random.uniform(-0.4, 0.40, size=1)
+
+        return goal.copy()
+
+    def _render_callback(self):
+        # Visualize a small ball on selected target
+        sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
+        site_id = self.sim.model.site_name2id('target0')
+        self.sim.model.site_pos[site_id] = self.goal - sites_offset[0]
+        self.sim.forward()
