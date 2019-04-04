@@ -107,6 +107,7 @@ class Runner(object):
         sess = tf.get_default_session()
         self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag)
         self.predictor.init_sess()
+        self.collect_flag = False
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
             self.predictor.load()
@@ -130,7 +131,7 @@ class Runner(object):
                 predict_loss = self.predictor.predict(self.obs[:], self.dones)
                 rewards -= pred_weight*np.square(predict_loss)
             elif pred_weight != 0.0:
-                self.predictor.collect(self.obs[:], self.dones)
+                self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
 
             mb_rewards.append(rewards)
 
@@ -331,9 +332,8 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
     load(load_path)
     
-    for i in range(100):
+    while (not runner.collect_flag):
         runner.run() #pylint: disable=E0632
-        print("the size of dataset: ", (i+1) * nbatch)
         
     env.close()
 
