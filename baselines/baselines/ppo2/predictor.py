@@ -109,7 +109,7 @@ class Predictor(object):
         self.checkpoint_dir = FLAGS.check_dir_cls
         self.sample_dir = FLAGS.sample_dir_cls
 
-        lr_param = 0.1 ** (self.start_iter // 10)
+        lr_param = 1.0 ** (self.start_iter // 10)
         self.lr = FLAGS.learning_rate * lr_param
 
     def _build_ph(self):
