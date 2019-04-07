@@ -3,6 +3,8 @@ import numpy as np
 from gym import utils
 from gym_fetch.envs import fetch_LSTM_reward_env
 
+import random
+
 # Ensure we get the path separator correct on windows
 MODEL_XML_PATH = os.path.join('fetch','jointvel.xml')
 TEST_MODEL_XML_PATH = os.path.join('fetch', 'jointvel_test.xml')
@@ -62,13 +64,16 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
         utils.EzPickle.__init__(self)
 
     def _sample_goal(self):
-        # todo: random choose a site object as the goal
-        # check mujoco_py api about how to list all the site object
+        '''random select pre-defined target as the final target
+        '''
+        #get all the targets ids
+        body_num = self.sim.model.body_name2id('targets')
+        site_body_list = self.sim.model.site_bodyid
+        index = np.where(site_body_list==body_num)[0]
 
-        goal = np.zeros(3)
-        goal[0] = self.initial_gripper_xpos[0] + self.np_random.uniform(-0.20, 0.20, size=1)
-        goal[1] = self.initial_gripper_xpos[1] + self.np_random.uniform(-0.40, 0.40, size=1)
-        goal[2] = self.initial_gripper_xpos[2] + self.np_random.uniform(-0.4, 0.40, size=1)
+        # random select one as the goal
+        id = np.random.choice(a=index,size=1)
+        goal = self.sim.data.site_xpos[id].reshape(3,)
 
         return goal.copy()
 
