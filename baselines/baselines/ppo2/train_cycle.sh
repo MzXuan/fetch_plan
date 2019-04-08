@@ -7,11 +7,15 @@ function finish() {
         exit
 }
 
-rl_model="./log"
-pred_model="./pred"
+# preparation
+rm -rf "./models"
+mkdir "./models"
 
-rm -rf "./models/*"
+rl_model="./log/"
+pred_model="./pred/"
 
+
+# start training
 counter=0
 save_counter=0
 while [ ${counter} -le ${1} ]
@@ -21,16 +25,11 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py -t=True --pred_weight=0.0
+    python run.py -t=True --num-timesteps=1860000 --pred_weight=0.0
 else
-    python run.py -t=True -l=True -p='00200' --pred_weight=${2}
+    python run.py -t=True -l=True --num-timesteps=1860000 -p='00200' --pred_weight=${2}
 fi
 
-# copy saved file and rename
-cp -R ${rl_model} "./models/log_${counter}"
-cp -R ${pred_model} "./models/pred_${counter}"
-
-rm -rf "${pred_model}/test1/checkpoint_" 
 # run new training cycle
 sleep 1
 
@@ -39,17 +38,16 @@ python run.py -l=True -p='00200'
 sleep 1
 
 # train seq2seq
-if [ ${counter} -eq 0]
-then
-	python predictor.py --iter=${counter}
-else
-	python predictor.py -l=True --iter=${counter}
-fi
+python predictor.py -l=True --iter=${counter}
 
-((counter++))
 
-done
-
+# copy saved file and rename
 cp -R ${rl_model} "./models/log_${counter}"
 cp -R ${pred_model} "./models/pred_${counter}"
+
+rm -rf "${pred_model}/test1/checkpoint_" 
+
+((counter++))
+done
+
 echo All done

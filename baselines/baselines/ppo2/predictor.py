@@ -12,11 +12,8 @@ import random
 import numpy as np
 
 import tensorflow as tf
-from tensorflow.python import keras
-from tensorflow.contrib.seq2seq import BasicDecoder, TrainingHelper
 
 # for plot saved dataset
-
 import flags
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -62,7 +59,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="10000", iter_start=0):
+                 reset_flag=False, point="10000", iter_start=0):
         ## extract FLAGS
         self.sess = sess
         self.start_iter = iter_start * int(point)
@@ -73,7 +70,7 @@ class Predictor(object):
         self.out_timesteps = 10
         self.train_flag = train_flag
         self.point = point
-
+        self.validate_ratio = 0.1
         
         self.iteration = 0
             
@@ -88,10 +85,18 @@ class Predictor(object):
         self.dataset = []
         if reset_flag:
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
+            # remove old files
             for f in filelist:
-                os.remove(os.path.join("./pred/", f))
+                if not (f.endswith("new.pkl")):
+                    os.remove(os.path.join("./pred/", f))
+            # change last dataset to old dataset
+            for f in filelist:
+                if f.endswith("new.pkl"):
+                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
+
         self.dataset_idx=0 # for counting the saved dataset index
 
+        self.collect_flag = False
         ## build model
         self._build_ph()
         self._build_net()
@@ -109,7 +114,7 @@ class Predictor(object):
         self.checkpoint_dir = FLAGS.check_dir_cls
         self.sample_dir = FLAGS.sample_dir_cls
 
-        lr_param = 0.1 ** (self.start_iter // 10)
+        lr_param = 1.0 ** (self.start_iter // 10)
         self.lr = FLAGS.learning_rate * lr_param
 
     def _build_ph(self):
@@ -324,16 +329,19 @@ class Predictor(object):
         for data in seqs_done:
             if data.x_len > self.in_timesteps_max and data.x_len < 500:
                 self.dataset.append(data)
-            # print("datasets size: {}".format(len(self.dataset)))
+
+        # show dataset size
+        if len(self.dataset)%100 == 0:
+            print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        if len(self.dataset) > 1000:
-            print("save dataset...")
+        set_size = 5000
+        if len(self.dataset) > set_size:
+            print("save dataset...The size of dataset is {}".format(set_size))
             pickle.dump(self.dataset, open("./pred/"
-                                           +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
-            self.dataset_idx+=1
-            self.dataset=[]
-            self.dataset=[]
+                                           + "/dataset_new" + ".pkl", "wb"))
+            self.collect_flag = True
+            return
 
     def _revert_data(self,data,mean,var):
         return(data*(var+1e-8)+mean)
@@ -452,7 +460,7 @@ class Predictor(object):
         iter_idx = 0
         print("iter_range: ", iter_range)
         ## run training
-        for self.iteration in tqdm(range(max_iteration)):
+        for self.iteration in tqdm(range(max_iteration+1)):
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
                 if self.iteration == iter_range[iter_idx]:
@@ -464,7 +472,8 @@ class Predictor(object):
                     if self.dataset_idx >= num_sets:
                         self.dataset_idx = 0
             #-----create training data----#
-            xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset)
+            valid_len = int(self.validate_ratio*len(self.dataset))
+            xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[0:-valid_len])
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat_train]
@@ -490,12 +499,12 @@ class Predictor(object):
             #----------validate process--------#
             ## validate model
             if (self.iteration % self.validation_interval) == 0:
-                print("load validate dataset {}".format(filelist[-1]))
-                validate_set = \
-                    pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
+                # print("load validate dataset {}".format(filelist[-1]))
+                # validate_set = \
+                #     pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
 
                 ## create validate data
-                xs, ys, x_lens, xs_start = self._feed_training_data(validate_set)
+                xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[-valid_len:-1])
 
                 ## run validation
                 fetches = [self.loss_pred, self.x_ph, self.y_ph, self.y_hat_pred]
@@ -601,6 +610,8 @@ class Predictor(object):
         #create training dataset for future training
         if len(seqs_done) > 0:
             self._create_dataset(seqs_done)
+
+        return self.collect_flag
 
     def predict(self, obs, dones, mean=None, var=None):
         """
@@ -711,6 +722,11 @@ def main():
         r = random.getrandbits(n)
         return [bool((r>>i)&1) for i in range(n)]
 
+    dir_exist = os.path.isdir("./pred")
+    if not dir_exist:
+        os.mkdir("./pred")
+
+
     with tf.Session() as sess:
         if train_flag:
             # create and initialize session
@@ -721,7 +737,11 @@ def main():
             rnn_model.init_sess()
 
             if args.load:
-                rnn_model.load()
+                try:
+                    rnn_model.load()
+                    print("load model successfully")
+                except:
+                    rnn_model.init_sess()
 
             rnn_model.run_training()
 

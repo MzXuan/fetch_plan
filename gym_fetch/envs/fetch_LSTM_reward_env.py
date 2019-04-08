@@ -201,7 +201,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # action = delta_v + self.sim.data.qvel[6:13]
         # self.sim.data.qvel[6:13] = action
 
-
         #-----------directly control position------------------------
 
         # self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = action

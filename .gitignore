@@ -1,4 +1,5 @@
 .DS_Store
+dist/*
 *.pyc
 gym_fetch.egg-info
 model/
