@@ -145,7 +145,7 @@ class MlpPolicy(object):
             logstd = tf.get_variable(name="logstd", shape=[1, actdim], 
                 initializer=tf.zeros_initializer()) - 1.0
 
-        pdparam = tf.concat([pi, logstd], axis=1)
+        pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
 
         self.pdtype = make_pdtype(ac_space)
         self.pd = self.pdtype.pdfromflat(pdparam)
