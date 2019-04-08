@@ -12,7 +12,6 @@ from tqdm import tqdm
 import flags
 
 
-
 class Model(object):
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
                 nsteps, ent_coef, vf_coef, max_grad_norm):
