@@ -43,8 +43,7 @@ class Model(object):
         approxkl = .5 * tf.reduce_mean(tf.square(neglogpac - OLDNEGLOGPAC))
         clipfrac = tf.reduce_mean(tf.to_float(tf.greater(tf.abs(ratio - 1.0), CLIPRANGE)))
         loss = pg_loss - entropy * ent_coef + vf_loss * vf_coef
-        with tf.variable_scope('model'):
-            params = tf.trainable_variables()
+        params = tf.trainable_variables()
         grads = tf.gradients(loss, params)
         if max_grad_norm is not None:
             grads, _grad_norm = tf.clip_by_global_norm(grads, max_grad_norm)
@@ -67,10 +66,16 @@ class Model(object):
         self.loss_names = ['policy_loss', 'value_loss', 'policy_entropy', 'approxkl', 'clipfrac']
 
         def save(save_path):
+            params = tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+                )
             ps = sess.run(params)
             joblib.dump(ps, save_path)
 
         def load(load_path):
+            params = tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+                )
             loaded_params = joblib.load(load_path)
             restores = []
             for p, loaded_p in zip(params, loaded_params):
@@ -325,9 +330,10 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         predictor_flag=predictor_flag)
 
     def load(load_path):
-
         sess = tf.get_default_session()
-        params = tf.trainable_variables()
+        params = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+        )
         loaded_params = joblib.load(load_path)
         restores = []
         for p, loaded_p in zip(params, loaded_params):
@@ -352,7 +358,9 @@ def display(policy, env, nsteps, nminibatches, load_path):
     sess = tf.get_default_session()
     act_model = policy(sess, ob_space, ac_space, 1, 1, reuse=False)
     train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True)
-    params = tf.trainable_variables()
+    params = tf.get_collection(
+        tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+        )
 
     predictor = Predictor(sess, flags.InitParameter(), 1, 10, train_flag=False)
     predictor.init_sess()
