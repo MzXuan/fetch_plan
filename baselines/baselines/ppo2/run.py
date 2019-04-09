@@ -152,7 +152,7 @@ def main():
     parser.add_argument('-d','--display', type=bool, default=False)
     parser.add_argument('-l', '--load', type=bool, default=False)
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('-p', '--point', type=str, default='00200')
+    parser.add_argument('-p', '--point', type=str, default='00100')
     parser.add_argument('--pred_weight', default=0.01, type=float)
     args = parser.parse_args()
 
