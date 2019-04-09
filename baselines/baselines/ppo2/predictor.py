@@ -710,7 +710,7 @@ class Predictor(object):
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--point', default='10000')
-    parser.add_argument('-l', '--load', default=False)
+    parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
 
