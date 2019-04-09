@@ -2,7 +2,12 @@
 
 ---
 ## TODO List
-+ robot arm visulization of prediction (@xuanz)
++ Reduce RL traning steps
++ Baseline training
++ Whether fine-tuning for predictor training
++ Whether smooth training process (two datasets)
++ Different predictor network sizes
++ Visualize RL training process which should include tensorboard and result_plotter.py (@tingxfan)
 + GUI (@xuanz)
 
 ---
@@ -16,7 +21,7 @@
 1. install the latest [gym](https://github.com/openai/gym)
  version
 
-2. install [mujoco-py](https://github.com/openai/mujoco-py#obtaining-the-binaries-and-license-key)
+2. install [mujoco-py](https://github.com/openai/mujoco-py#obtaining-the-binaries-and-license-key) == 1.5.1.1
 
 3. setup environment
 ``` shell
@@ -115,3 +120,7 @@ python predictor.py
 
 7. 0.5.0
 * joint training
+
+8. 0.6.0
+* smooth traning process (two datasets)
+* reset entropy for rl training
