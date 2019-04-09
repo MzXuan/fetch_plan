@@ -47,11 +47,15 @@ pip install -e .
 ## Run
 1. Download pretrained [model](https://www.dropbox.com/s/xngkz330rnw70f8/models.zip?dl=0)
 
-
 2. joint training RL policy with seq2seq predictor
 ``` shell
 bash train_cycle.sh ${ITER_STEP} ${PRED_WEIGHT}
 ``` 
+
+3. visualize rl training process
+``` shell
+python results_plotter.py --log_num=${ITER_STEP}
+```
 
 ---
 ## Unit Test
