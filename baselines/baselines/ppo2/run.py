@@ -154,14 +154,21 @@ def main():
     parser.add_argument('--d_targ', type=float, default=0.012)
     parser.add_argument('-p', '--point', type=str, default='00100')
     parser.add_argument('--pred_weight', default=0.01, type=float)
+    parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
+
+    each_iter_num = 150
 
     curr_path = sys.path[0]
     if args.display:
         display(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             curr_path=curr_path, point=args.point)
     elif args.train:
-        logger.configure(dir='{}/log'.format(curr_path))
+        logger.configure(dir='{}/log'.format(curr_path), format_strs=['stdout',
+                                                                      'log',
+                                                                      'csv',
+                                                                      'tensorboard'])
+        logger.tb_start_step(args.iter * each_iter_num, 3)
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=args.load, point=args.point,
               pred_weight=args.pred_weight)

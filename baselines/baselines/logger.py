@@ -8,7 +8,7 @@ import datetime
 import tempfile
 from mpi4py import MPI
 
-LOG_OUTPUT_FORMATS = ['stdout', 'log', 'csv', 'tensorboard']
+LOG_OUTPUT_FORMATS = ['stdout', 'log', 'csv']
 # Also valid: json, tensorboard
 
 DEBUG = 10
@@ -192,6 +192,9 @@ def make_output_format(format, ev_dir):
 # ================================================================
 # API
 # ================================================================
+
+def tb_start_step(i, tb_num):
+    Logger.CURRENT.output_formats[tb_num].step = i
 
 def logkv(key, val):
     """
