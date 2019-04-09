@@ -451,7 +451,7 @@ class Predictor(object):
 
         ## check saved data set
         filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
-        num_sets = len(filelist) - 1
+        num_sets = len(filelist)
         self.dataset_idx = 0
 
         ## prepare threshold to switch dataset
