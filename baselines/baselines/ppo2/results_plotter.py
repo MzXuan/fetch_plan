@@ -46,13 +46,14 @@ def plot_curves(xy_list, xaxis, title):
     minx = 0
     for (i, (x, y)) in enumerate(xy_list):
         color = COLORS[i]
-        plt.scatter(x, y, s=2)
+        # plt.scatter(x, y, s=2)
         x, y_mean = window_func(x, y, EPISODES_WINDOW, np.mean) #So returns average of last EPISODE_WINDOW episodes
-        plt.plot(x, y_mean, color=color)
+        plt.plot(x, y_mean, color=color, label=str(i))
     plt.xlim(minx, maxx)
     plt.title(title)
     plt.xlabel(xaxis)
     plt.ylabel("Episode Rewards")
+    plt.legend(loc=0)
     plt.tight_layout()
 
 def plot_results(dirs, num_timesteps, xaxis, task_name):
@@ -74,13 +75,18 @@ def main():
     import argparse
     import os
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--dirs', help='List of log directories', nargs = '*', default=['./ppo2/log'])
+    parser.add_argument('--log_num', type=int, default=0)
+    parser.add_argument('--dir', help='List of log directories', nargs = '*', default=['./log'])
     parser.add_argument('--num_timesteps', type=int, default=int(499e5))
     parser.add_argument('--xaxis', help = 'Varible on X-axis', default = X_TIMESTEPS)
     parser.add_argument('--task_name', help = 'Title of plot', default = 'Roboschool')
     args = parser.parse_args()
-    args.dirs = [os.path.abspath(dir) for dir in args.dirs]
-    plot_results(args.dirs, args.num_timesteps, args.xaxis, args.task_name)
+    if args.log_num > 0:
+        dirs = ['./models/log_{}'.format(i) for i in range(args.log_num)]
+    else:
+        dirs = args.dirs
+    dirs = [os.path.abspath(dir) for dir in dirs]
+    plot_results(dirs, args.num_timesteps, args.xaxis, args.task_name)
     plt.show()
 
 if __name__ == '__main__':

@@ -110,7 +110,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # In this case, we just keep randomizing until we eventually achieve a valid initial
         # configuration.
         self._reset_arm()
-
+        self.prev_act = np.zeros(7)
         did_reset_sim = False
         while not did_reset_sim:
             did_reset_sim = self._reset_sim()
@@ -125,7 +125,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self.sim.step()
-        self._set_action(action)
+        real_act = self._set_action(action)
         self._step_callback()
         obs = self._get_obs()
         done = False
@@ -136,6 +136,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             'is_collision': self._contact_dection()
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
+        reward -= 0.1 * np.linalg.norm(real_act - self.prev_act)
+        self.prev_act = real_act.copy()
         if info["is_success"] or info["is_collision"]:
             done = True
         return obs, reward, done, info
@@ -196,11 +198,12 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.current_qvel = action_clip
         self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
 
+        return action_clip
+
         # #-----------directly control velocity------------------------
         # delta_v = np.clip(action - self.sim.data.qvel[6:13], -self.maxi_accerl, self.maxi_accerl)
         # action = delta_v + self.sim.data.qvel[6:13]
         # self.sim.data.qvel[6:13] = action
-
 
         #-----------directly control position------------------------
 
@@ -216,7 +219,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #
         # # Apply action to simulation.
         # utils.ctrl_set_action(self.sim, action)
-        return 0
 
     def _get_obs(self):
         # positions

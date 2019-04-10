@@ -193,6 +193,9 @@ def make_output_format(format, ev_dir):
 # API
 # ================================================================
 
+def tb_start_step(i, tb_num):
+    Logger.CURRENT.output_formats[tb_num].step = i
+
 def logkv(key, val):
     """
     Log a value of some diagnostic

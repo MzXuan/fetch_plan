@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import time, os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import joblib
 import pickle
 import os
@@ -10,15 +12,13 @@ import random
 import numpy as np
 
 import tensorflow as tf
-from tensorflow.python import keras
-from tensorflow.contrib.seq2seq import BasicDecoder, TrainingHelper
 
 # for plot saved dataset
-
 import flags
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.font_manager import FontProperties
+from tqdm import tqdm
 
 class DatasetStru(object):
     def __init__(self, x, x_len, x_mean, x_var):
@@ -59,9 +59,10 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=True, point="10000", iter_start=0):
+                 reset_flag=False, point="30000", iter_start=0):
         ## extract FLAGS
         self.sess = sess
+        self.start_iter = iter_start * int(point)
         self._build_flag(FLAGS)
 
         self.batch_size = batch_size
@@ -69,8 +70,8 @@ class Predictor(object):
         self.out_timesteps = 10
         self.train_flag = train_flag
         self.point = point
-
-        self.start_iter = iter_start * int(point)
+        self.validate_ratio = 0.1
+        
         self.iteration = 0
             
         ## prepare sequcne containers
@@ -84,17 +85,23 @@ class Predictor(object):
         self.dataset = []
         if reset_flag:
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
+            # remove old files
             for f in filelist:
-                os.remove(os.path.join("./pred/", f))
+                if not (f.endswith("new.pkl")):
+                    os.remove(os.path.join("./pred/", f))
+            # change last dataset to old dataset
+            for f in filelist:
+                if f.endswith("new.pkl"):
+                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
+
         self.dataset_idx=0 # for counting the saved dataset index
 
+        self.collect_flag = False
         ## build model
         self._build_ph()
         self._build_net()
 
-    def _build_flag(self, FLAGS):
-
-        
+    def _build_flag(self, FLAGS):        
         self.in_dim = FLAGS.in_dim
         self.out_dim = FLAGS.out_dim
 
@@ -107,8 +114,8 @@ class Predictor(object):
         self.checkpoint_dir = FLAGS.check_dir_cls
         self.sample_dir = FLAGS.sample_dir_cls
 
-        self.lr = FLAGS.learning_rate
-
+        lr_param = 1.0 ** (self.start_iter // 10)
+        self.lr = FLAGS.learning_rate * lr_param
 
     def _build_ph(self):
         self.x_ph = tf.placeholder(
@@ -160,13 +167,9 @@ class Predictor(object):
         dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
         dec_rnn2 = tf.nn.rnn_cell.GRUCell(32)
         dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
-        #
-
-        # dec_cell = tf.nn.rnn_cell.GRUCell(16)
 
         #Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
-
 
         #Training Decoder
         with tf.variable_scope("pred_dec"):
@@ -189,10 +192,6 @@ class Predictor(object):
                 decoder=training_decoder, output_time_major=False,
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
-            # print("training_decoder_outputs")
-            # print(training_decoder_outputs)
-            # print("training_decoder_state")
-            # print(training_decoder_state)
 
         #Inference Decoder
         with tf.variable_scope("pred_dec", reuse=True):
@@ -328,18 +327,21 @@ class Predictor(object):
         :return:
         """
         for data in seqs_done:
-            if data.x_len > self.in_timesteps_max and data.x_len < 300:
+            if data.x_len > self.in_timesteps_max and data.x_len < 500:
                 self.dataset.append(data)
-            # print("datasets size: {}".format(len(self.dataset)))
+
+        # show dataset size
+        if len(self.dataset)%100 == 0:
+            print("datasets size: {}".format(len(self.dataset)))
 
         # if dataset is large, save it
-        if len(self.dataset) > 2000:
-            print("save dataset...")
+        set_size = 5000
+        if len(self.dataset) > set_size:
+            print("save dataset...The size of dataset is {}".format(set_size))
             pickle.dump(self.dataset, open("./pred/"
-                                           +"/dataset"+str(self.dataset_idx)+".pkl","wb"))
-            self.dataset_idx+=1
-            self.dataset=[]
-            self.dataset=[]
+                                           + "/dataset_new" + ".pkl", "wb"))
+            self.collect_flag = True
+            return
 
     def _revert_data(self,data,mean,var):
         return(data*(var+1e-8)+mean)
@@ -421,15 +423,15 @@ class Predictor(object):
                 x, y, x_len, x_start = self._feed_one_data(data, length)
                 y = np.zeros((self.out_timesteps, self.out_dim))
 
-            elif length < self.in_timesteps_max+self.out_timesteps:
+            elif length < self.in_timesteps_max + self.out_timesteps:
                 x, y, x_len, x_start = self._feed_one_data(data, self.in_timesteps_max)
                 y[-1,:] = np.zeros(self.out_dim)
-            elif length < self.in_timesteps_max+self.out_timesteps+2:
+            elif length < self.in_timesteps_max + self.out_timesteps + 2:
                 id = length - self.out_timesteps
                 x, y, x_len, x_start = self._feed_one_data(data, id)
                 y[-1, :] = np.zeros(self.out_dim)
             else:
-                id = length-self.out_timesteps
+                id = length - self.out_timesteps
                 x, y, x_len, x_start = self._feed_one_data(data, id)
 
             xs.append(x)
@@ -458,7 +460,7 @@ class Predictor(object):
         iter_idx = 0
         print("iter_range: ", iter_range)
         ## run training
-        while self.iteration < max_iteration:
+        for self.iteration in tqdm(range(max_iteration+1)):
             #----- load dataset ----------#
             if iter_idx < len(iter_range):
                 if self.iteration == iter_range[iter_idx]:
@@ -470,7 +472,8 @@ class Predictor(object):
                     if self.dataset_idx >= num_sets:
                         self.dataset_idx = 0
             #-----create training data----#
-            xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset)
+            valid_len = int(self.validate_ratio*len(self.dataset))
+            xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[0:-valid_len])
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat_train]
@@ -482,8 +485,6 @@ class Predictor(object):
 
             _, merged_summary, \
             loss, y, y_hat_train = self.sess.run(fetches, feed_dict)
-
-            self.iteration += 1
 
             # write summary
             if (self.iteration % self.sample_interval) == 0:
@@ -498,12 +499,12 @@ class Predictor(object):
             #----------validate process--------#
             ## validate model
             if (self.iteration % self.validation_interval) == 0:
-                print("load validate dataset {}".format(filelist[-1]))
-                validate_set = \
-                    pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
+                # print("load validate dataset {}".format(filelist[-1]))
+                # validate_set = \
+                #     pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
 
                 ## create validate data
-                xs, ys, x_lens, xs_start = self._feed_training_data(validate_set)
+                xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[-valid_len:-1])
 
                 ## run validation
                 fetches = [self.loss_pred, self.x_ph, self.y_ph, self.y_hat_pred]
@@ -610,6 +611,8 @@ class Predictor(object):
         if len(seqs_done) > 0:
             self._create_dataset(seqs_done)
 
+        return self.collect_flag
+
     def predict(self, obs, dones, mean=None, var=None):
         """
         Online predict sequence through trained model
@@ -695,7 +698,6 @@ class Predictor(object):
 
     def load_dataset(self, file_name):
         ## load dataset
-
         try:
             self.dataset = pickle.load(open(os.path.join("./pred/", file_name), "rb"))
             # random.shuffle(self.dataset)
@@ -705,17 +707,14 @@ class Predictor(object):
 
         return 1
 
-
-
-
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--point', default='10000')
-    parser.add_argument('-l', '--load', default=False)
+    parser.add_argument('--point', default='30000')
+    parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
 
-    train_flag=False
+    train_flag=True
     FLAGS = flags.InitParameter()
 
     def rand_bools_int_func(n):
@@ -723,9 +722,13 @@ def main():
         r = random.getrandbits(n)
         return [bool((r>>i)&1) for i in range(n)]
 
+    dir_exist = os.path.isdir("./pred")
+    if not dir_exist:
+        os.mkdir("./pred")
+
+
     with tf.Session() as sess:
         if train_flag:
-
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
                                   train_flag=True, reset_flag=False, point=args.point,
@@ -734,7 +737,11 @@ def main():
             rnn_model.init_sess()
 
             if args.load:
-                rnn_model.load()
+                try:
+                    rnn_model.load()
+                    print("load model successfully")
+                except:
+                    rnn_model.init_sess()
 
             rnn_model.run_training()
 
@@ -746,7 +753,6 @@ def main():
             rnn_model.init_sess()
             rnn_model.load()
             rnn_model.run_test()
-
 
 if __name__ == '__main__':
     main()

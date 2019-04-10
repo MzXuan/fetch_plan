@@ -8,8 +8,8 @@ from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
 from predictor import Predictor
+from tqdm import tqdm
 import flags
-
 
 
 class Model(object):
@@ -43,8 +43,7 @@ class Model(object):
         approxkl = .5 * tf.reduce_mean(tf.square(neglogpac - OLDNEGLOGPAC))
         clipfrac = tf.reduce_mean(tf.to_float(tf.greater(tf.abs(ratio - 1.0), CLIPRANGE)))
         loss = pg_loss - entropy * ent_coef + vf_loss * vf_coef
-        with tf.variable_scope('model'):
-            params = tf.trainable_variables()
+        params = tf.trainable_variables()
         grads = tf.gradients(loss, params)
         if max_grad_norm is not None:
             grads, _grad_norm = tf.clip_by_global_norm(grads, max_grad_norm)
@@ -67,10 +66,16 @@ class Model(object):
         self.loss_names = ['policy_loss', 'value_loss', 'policy_entropy', 'approxkl', 'clipfrac']
 
         def save(save_path):
+            params = tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+                )
             ps = sess.run(params)
             joblib.dump(ps, save_path)
 
         def load(load_path):
+            params = tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+                )
             loaded_params = joblib.load(load_path)
             restores = []
             for p, loaded_p in zip(params, loaded_params):
@@ -104,8 +109,15 @@ class Runner(object):
         self.pred_weight = pred_weight
         self.dones = [False for _ in range(nenv)]
         sess = tf.get_default_session()
-        self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag)
+        if (not self.predictor_flag) and pred_weight != 0.0:
+            # collect data
+            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
+        else:
+            # train and display
+            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
+
         self.predictor.init_sess()
+        self.collect_flag = False
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
             self.predictor.load()
@@ -129,7 +141,7 @@ class Runner(object):
                 predict_loss = self.predictor.predict(self.obs[:], self.dones)
                 rewards -= pred_weight*np.square(predict_loss)
             elif pred_weight != 0.0:
-                self.predictor.collect(self.obs[:], self.dones)
+                self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
 
             mb_rewards.append(rewards)
 
@@ -212,7 +224,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     lrnow = 3e-4
     kl = 0.01
     nupdates = total_timesteps//nbatch
-    for update in range(1, nupdates+1):
+    for update in tqdm(range(1, nupdates+1)):
         assert nbatch % nminibatches == 0
         nbatch_train = nbatch // nminibatches
         tstart = time.time()
@@ -318,9 +330,10 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         predictor_flag=predictor_flag)
 
     def load(load_path):
-
         sess = tf.get_default_session()
-        params = tf.trainable_variables()
+        params = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+        )
         loaded_params = joblib.load(load_path)
         restores = []
         for p, loaded_p in zip(params, loaded_params):
@@ -330,9 +343,8 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
     load(load_path)
     
-    for i in range(100):
+    while (not runner.collect_flag):
         runner.run() #pylint: disable=E0632
-        print("the size of dataset: ", (i+1) * nbatch)
         
     env.close()
 
@@ -346,7 +358,9 @@ def display(policy, env, nsteps, nminibatches, load_path):
     sess = tf.get_default_session()
     act_model = policy(sess, ob_space, ac_space, 1, 1, reuse=False)
     train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True)
-    params = tf.trainable_variables()
+    params = tf.get_collection(
+        tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
+        )
 
     predictor = Predictor(sess, flags.InitParameter(), 1, 10, train_flag=False)
     predictor.init_sess()
