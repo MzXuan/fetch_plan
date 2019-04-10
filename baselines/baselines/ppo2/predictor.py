@@ -356,11 +356,15 @@ class Predictor(object):
         y = delta_y+x_start
         return x, y
 
-    def _feed_training_data(self,dataset):
+    def _feed_training_data(self,dataset, data_idx=None):
         xs, ys, x_lens, xs_start = [], [], [], []
 
-        for _ in range(0, self.batch_size):
-            idx = random.randint(0, len(dataset) - 1)
+        for i in range(0, self.batch_size):
+            if data_idx is None:
+                idx = random.randint(0, len(dataset) - 1)
+            else:
+                idx=data_idx[i]
+
             data = dataset[idx]
             length = data.x_len
             id = random.randint(self.in_timesteps_max, length - 1)
@@ -372,7 +376,7 @@ class Predictor(object):
 
         return xs, ys, x_lens, xs_start
 
-    def _feed_one_data(self,data,id):
+    def _feed_one_data(self ,data,id):
         """
         #id: start index of this data
         #e.g.: x = data[id-self.in_timesteps:id] - data[id-self.in_timesteps];
@@ -453,12 +457,23 @@ class Predictor(object):
         # ---- load dataset -----#
         self._load_train_set()
 
+        valid_len = int(self.validate_ratio * len(self.dataset))
+        train_set = self.dataset[0:-valid_len]
+        valid_set = self.dataset[-valid_len:-1]
         ## run training
         max_iteration = int(self.point)
+        ind_len = list(range(len(train_set)))
+        random.shuffle(ind_len)
+        set_id = 0
         for self.iteration in tqdm(range(max_iteration+1)):
             #-----create training data----#
-            valid_len = int(self.validate_ratio*len(self.dataset))
-            xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[0:-valid_len])
+            start = set_id
+            end = (set_id+1)*self.batch_size
+            set_id+=1
+            if set_id>=len(ind_len)-self.batch_size:
+                set_id=0
+
+            xs, ys, x_lens, xs_start = self._feed_training_data(train_set, ind_len[start:end])
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat_train]
@@ -486,7 +501,7 @@ class Predictor(object):
             if (self.iteration % self.validation_interval) == 0:
 
                 ## create validate data
-                xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[-valid_len:-1])
+                xs, ys, x_lens, xs_start = self._feed_training_data(valid_set)
 
                 ## run validation
                 fetches = [self.loss_pred, self.x_ph, self.y_ph, self.y_hat_pred]
