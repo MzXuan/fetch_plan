@@ -157,7 +157,8 @@ class Predictor(object):
         enc_inputs = self.x_ph
         gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
         gru_rnn2 = tf.nn.rnn_cell.GRUCell(32)
-        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
+        gru_rnn3 = tf.nn.rnn_cell.GRUCell(32)
+        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2, gru_rnn3])
 
         # enc_cell = tf.nn.rnn_cell.GRUCell(16)
         _, enc_state = tf.nn.dynamic_rnn(
@@ -170,7 +171,8 @@ class Predictor(object):
         ## decoder
         dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
         dec_rnn2 = tf.nn.rnn_cell.GRUCell(32)
-        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
+        dec_rnn3 = tf.nn.rnn_cell.GRUCell(32)
+        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2, dec_rnn3])
 
         #Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
@@ -721,6 +723,7 @@ class Predictor(object):
                 return 0
             else:
                 self.dataset.extend(dataset)
+        random.shuffle(self.dataset)
 
 
 def main():
