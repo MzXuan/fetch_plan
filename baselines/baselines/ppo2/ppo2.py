@@ -95,7 +95,7 @@ class Model(object):
 class Runner(object):
     def __init__(self, *, env, model, 
                  nsteps, gamma, lam, load, point, 
-                predictor_flag=False, pred_weight=0.01):
+                predictor_flag=False, pred_weight=0., test_flag=False):
         self.env = env
         self.model = model
         nenv = env.num_envs
@@ -107,6 +107,7 @@ class Runner(object):
         self.states = model.initial_state
         self.predictor_flag = predictor_flag
         self.pred_weight = pred_weight
+        self.test_flag = test_flag
         self.dones = [False for _ in range(nenv)]
         sess = tf.get_default_session()
         if (not self.predictor_flag) and pred_weight != 0.0:
@@ -127,7 +128,7 @@ class Runner(object):
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
-            actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
+            actions, values, self.states, neglogpacs = self.model.step(self.obs, test_flag=self.test_flag)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
             mb_values.append(values)
@@ -309,7 +310,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
             save_interval=50, load=True, point='00200', init_targ=0.1,
-            predictor_flag=False):
+            pred_weight=0.02, predictor_flag=False):
 
     total_timesteps = int(total_timesteps)
 
@@ -327,7 +328,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     runner = Runner(
         env=env, model=model, 
         nsteps=nsteps, gamma=gamma, lam=lam, load=False, point=point,
-        predictor_flag=predictor_flag)
+        pred_weight = pred_weight, predictor_flag=predictor_flag, test_flag=True)
 
     def load(load_path):
         sess = tf.get_default_session()
