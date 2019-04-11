@@ -87,12 +87,16 @@ class Predictor(object):
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
             # remove old files
             for f in filelist:
-                if not (f.endswith("new.pkl")):
-                    os.remove(os.path.join("./pred/", f))
-            # change last dataset to old dataset
-            for f in filelist:
-                if f.endswith("new.pkl"):
-                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
+                os.remove(os.path.join("./pred/", f))
+
+            # # remove old files
+            # for f in filelist:
+            #     if not (f.endswith("new.pkl")):
+            #         os.remove(os.path.join("./pred/", f))
+            # # change last dataset to old dataset
+            # for f in filelist:
+            #     if f.endswith("new.pkl"):
+            #         os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
 
         self.dataset_idx=0 # for counting the saved dataset index
 
@@ -329,6 +333,7 @@ class Predictor(object):
         for data in seqs_done:
             if data.x_len > self.in_timesteps_max and data.x_len < 500:
                 self.dataset.append(data)
+                # print("datasets size: {}".format(len(self.dataset)))
 
         # show dataset size
         if len(self.dataset)%100 == 0:
