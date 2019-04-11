@@ -7,6 +7,7 @@
 + Whether fine-tuning for predictor training
 + Whether smooth training process (two datasets)
 + Different predictor network sizes
++ Predict only end-effector
 + GUI (@xuanz)
 
 ---
