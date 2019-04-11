@@ -7,6 +7,7 @@
 + Whether fine-tuning for predictor training
 + Whether smooth training process (two datasets)
 + Different predictor network sizes
++ Visualize RL training process which should include tensorboard and result_plotter.py (@tingxfan)
 + GUI (@xuanz)
 
 ---

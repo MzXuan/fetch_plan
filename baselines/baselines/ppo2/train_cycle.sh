@@ -25,9 +25,9 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=1300000 --pred_weight=0.0
 else
-    python run.py --train --load --num-timesteps=1300000 -p='00150' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=1300000 -p='00150' --pred_weight=${2}
 fi
 
 # run new training cycle

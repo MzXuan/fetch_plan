@@ -59,7 +59,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=False, point="20000", iter_start=0):
+                 reset_flag=False, point="30000", iter_start=0):
         ## extract FLAGS
         self.sess = sess
         self.start_iter = iter_start * int(point)
@@ -87,16 +87,12 @@ class Predictor(object):
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
             # remove old files
             for f in filelist:
-                os.remove(os.path.join("./pred/", f))
-
-            # # remove old files
-            # for f in filelist:
-            #     if not (f.endswith("new.pkl")):
-            #         os.remove(os.path.join("./pred/", f))
-            # # change last dataset to old dataset
-            # for f in filelist:
-            #     if f.endswith("new.pkl"):
-            #         os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
+                if not (f.endswith("new.pkl")):
+                    os.remove(os.path.join("./pred/", f))
+            # change last dataset to old dataset
+            for f in filelist:
+                if f.endswith("new.pkl"):
+                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
 
         self.dataset_idx=0 # for counting the saved dataset index
 
@@ -333,7 +329,6 @@ class Predictor(object):
         for data in seqs_done:
             if data.x_len > self.in_timesteps_max and data.x_len < 500:
                 self.dataset.append(data)
-                # print("datasets size: {}".format(len(self.dataset)))
 
         # show dataset size
         if len(self.dataset)%100 == 0:
@@ -361,15 +356,11 @@ class Predictor(object):
         y = delta_y+x_start
         return x, y
 
-    def _feed_training_data(self,dataset, data_idx=None):
+    def _feed_training_data(self,dataset):
         xs, ys, x_lens, xs_start = [], [], [], []
 
-        for i in range(0, self.batch_size):
-            if data_idx is None:
-                idx = random.randint(0, len(dataset) - 1)
-            else:
-                idx=data_idx[i]
-
+        for _ in range(0, self.batch_size):
+            idx = random.randint(0, len(dataset) - 1)
             data = dataset[idx]
             length = data.x_len
             id = random.randint(self.in_timesteps_max, length - 1)
@@ -381,7 +372,7 @@ class Predictor(object):
 
         return xs, ys, x_lens, xs_start
 
-    def _feed_one_data(self ,data,id):
+    def _feed_one_data(self,data,id):
         """
         #id: start index of this data
         #e.g.: x = data[id-self.in_timesteps:id] - data[id-self.in_timesteps];
@@ -450,7 +441,6 @@ class Predictor(object):
 
         return xs, ys, x_lens, xs_start
 
-
     def run_training(self):
         #function: train the model according to saved dataset
 
@@ -459,26 +449,31 @@ class Predictor(object):
             print("Not in training process,return...")
             return 0
 
-        # ---- load dataset -----#
-        self._load_train_set()
+        ## check saved data set
+        filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
+        num_sets = len(filelist)
+        self.dataset_idx = 0
 
-        valid_len = int(self.validate_ratio * len(self.dataset))
-        train_set = self.dataset[0:-valid_len]
-        valid_set = self.dataset[-valid_len:-1]
-        ## run training
+        ## prepare threshold to switch dataset
         max_iteration = int(self.point)
-        ind_len = list(range(len(train_set)))
-        random.shuffle(ind_len)
-        set_id = 0
+        iter_range = range(0, max_iteration, 500)
+        iter_idx = 0
+        print("iter_range: ", iter_range)
+        ## run training
         for self.iteration in tqdm(range(max_iteration+1)):
+            #----- load dataset ----------#
+            if iter_idx < len(iter_range):
+                if self.iteration == iter_range[iter_idx]:
+                    print("switch to...{}".format(filelist[self.dataset_idx]))
+                    iter_idx += 1
+                    if self.load_dataset(filelist[self.dataset_idx]) == 0:
+                        return 0
+                    self.dataset_idx += 1
+                    if self.dataset_idx >= num_sets:
+                        self.dataset_idx = 0
             #-----create training data----#
-            start = set_id
-            end = (set_id+1)*self.batch_size
-            set_id+=1
-            if set_id>=len(ind_len)-self.batch_size:
-                set_id=0
-
-            xs, ys, x_lens, xs_start = self._feed_training_data(train_set, ind_len[start:end])
+            valid_len = int(self.validate_ratio*len(self.dataset))
+            xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[0:-valid_len])
             #----start training-----#
             fetches = [self.train_op, self.merged_summary]
             fetches += [self.loss, self.y_ph, self.y_hat_train]
@@ -504,9 +499,12 @@ class Predictor(object):
             #----------validate process--------#
             ## validate model
             if (self.iteration % self.validation_interval) == 0:
+                # print("load validate dataset {}".format(filelist[-1]))
+                # validate_set = \
+                #     pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
 
                 ## create validate data
-                xs, ys, x_lens, xs_start = self._feed_training_data(valid_set)
+                xs, ys, x_lens, xs_start = self._feed_training_data(self.dataset[-valid_len:-1])
 
                 ## run validation
                 fetches = [self.loss_pred, self.x_ph, self.y_ph, self.y_hat_pred]
@@ -701,31 +699,17 @@ class Predictor(object):
     def load_dataset(self, file_name):
         ## load dataset
         try:
-            dataset = pickle.load(open(os.path.join("./pred/", file_name), "rb"))
+            self.dataset = pickle.load(open(os.path.join("./pred/", file_name), "rb"))
             # random.shuffle(self.dataset)
         except:
             print("Can not load dataset. Please first run the training stage to save dataset.")
             return 0
 
-        return dataset
-
-    def _load_train_set(self):
-        ## check saved data set
-        filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
-        num_sets = len(filelist)
-
-        self.dataset = []
-        for idx in range(0, num_sets):
-            dataset = self.load_dataset(filelist[idx])
-            if dataset == 0:
-                return 0
-            else:
-                self.dataset.extend(dataset)
-
+        return 1
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--point', default='20000')
+    parser.add_argument('--point', default='30000')
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
