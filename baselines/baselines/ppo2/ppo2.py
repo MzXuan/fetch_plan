@@ -310,7 +310,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
             save_interval=50, load=True, point='00200', init_targ=0.1,
-            predictor_flag=False):
+            pred_weight=0.02, predictor_flag=False):
 
     total_timesteps = int(total_timesteps)
 
@@ -328,7 +328,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     runner = Runner(
         env=env, model=model, 
         nsteps=nsteps, gamma=gamma, lam=lam, load=False, point=point,
-        predictor_flag=predictor_flag, test_flag=True)
+        pred_weight = pred_weight, predictor_flag=predictor_flag, test_flag=True)
 
     def load(load_path):
         sess = tf.get_default_session()
