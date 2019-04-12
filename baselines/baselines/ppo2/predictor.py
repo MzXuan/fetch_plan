@@ -238,13 +238,12 @@ class Predictor(object):
             self.training_loss)
 
         ## save summary
-        tf.summary.scalar('training_loss', self.training_loss)
         self.merged_summary = tf.summary.merge_all()
         self.file_writer = tf.summary.FileWriter(
             self.checkpoint_dir, self.sess.graph
             )
 
-    def _get_batch_loss(self, ys, y_hats, x_lens):
+    def _get_batch_loss(self, ys, y_hats):
         """
         calculate the mean square error between ground truth and prediction
         if ground truth y equals 0 (no ground truth), we set mean square error to 0
@@ -254,7 +253,7 @@ class Predictor(object):
         """
         error = []
         eff_weight = 0.7
-        for y, y_hat, x_len in zip(ys, y_hats, x_lens):
+        for y, y_hat in zip(ys, y_hats):
             if not np.any(y[-1]):
                 error.append(0)
             else:
@@ -300,14 +299,14 @@ class Predictor(object):
 
         return seqs_done, seqs_all
 
-    def _create_dataset(self, seqs_done):
+    def _create_traj(self, trajs):
         """
         create dataset from saved sequences
         :return:
         """
-        for data in seqs_done:
-            if data.x_len > self.in_timesteps_max and data.x_len < 500:
-                self.dataset.append(data)
+        for traj in trajs:
+            if traj.x_len > self.in_timesteps_max and traj.x_len < 500:
+                self.dataset.append(traj)
 
         # show dataset size
         if len(self.dataset) % 100 == 0:
@@ -411,7 +410,7 @@ class Predictor(object):
 
         return xs, ys, x_lens, xs_start
 
-    def run_training(self):
+    def run_training(self, epochs=100):
         ## check whether in training
         if not self.train_flag:
             print("Not in training process,return...")
@@ -450,17 +449,17 @@ class Predictor(object):
                 total_loss.append(loss)
             
             train_loss = np.mean(total_loss)
-            ## add tensorboard
-            summary = tf.Summary()
-            summary.value.add(tag="train_loss", simple_value=train_loss)
-            self.file_writer.add_summary(validate_summary, self.start_iter + e)
             ## validate
             validate_loss = self.validate(valid_set)
             ## save model
             self.save_net(("./pred/{}/{}").format(
                 self.model_name, e
             ))
-            ## print
+            ## add tensorboard
+            summary = tf.Summary()
+            summary.value.add(tag="train_loss", simple_value=train_loss)
+            summary.value.add(tag="validate_loss", simple_value=validate_loss)
+            self.file_writer.add_summary(summary, self.start_iter + e)
             print('epoch {}:  train: {} | validate: {}'.format(
                 e + 1, train_loss, validate_loss))
 
@@ -472,17 +471,12 @@ class Predictor(object):
             self.x_len_ph: validate_set[2][:]
         }
         validate_loss = self.sess.run(self.validate_loss, feed_dict)
-        ## write summary
-        summary = tf.Summary()
-        summary.value.add(tag="validate_loss", simple_value=validate_loss)
-        self.file_writer.add_summary(summary, self.start_iter + e)
         return validate_loss
 
     def run_test(self):
         """
         run test on validation set
         """
-
         ## check saved data se
         filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
         num_sets = len(filelist)-1
@@ -533,9 +527,6 @@ class Predictor(object):
             visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
             time.sleep(2)
 
-
-        print("finish testing")
-
     def collect(self, obs, dones, mean=None, var=None):
         """
         function: collect sequence dataset
@@ -550,7 +541,7 @@ class Predictor(object):
 
         #create training dataset for future training
         if len(seqs_done) > 0:
-            self._create_dataset(seqs_done)
+            self._create_traj(seqs_done)
 
         return self.collect_flag
 
@@ -630,7 +621,6 @@ class Predictor(object):
         # check whether in training process
         if self.train_flag is not True:
             print("Not in training process, saving failed")
-            return 0
         else:
             pickle.dump(self.dataset, open("./pred/"
                                             +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
@@ -641,12 +631,9 @@ class Predictor(object):
         ## load dataset
         try:
             dataset = pickle.load(open(os.path.join("./pred/", file_name), "rb"))
-            # random.shuffle(self.dataset)
+            return dataset
         except:
             print("Can not load dataset. Please first run the training stage to save dataset.")
-            return 0
-
-        return dataset
 
     def _load_train_set(self):
         ## check saved data set
