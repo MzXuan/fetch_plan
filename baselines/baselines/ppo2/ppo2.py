@@ -330,7 +330,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         nsteps=nsteps, gamma=gamma, lam=lam, load=False, point=point,
         pred_weight = pred_weight, predictor_flag=predictor_flag, test_flag=True)
 
-    def load(load_path):
+    def load_net(load_path):
         sess = tf.get_default_session()
         params = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
@@ -340,9 +340,10 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         for p, loaded_p in zip(params, loaded_params):
             restores.append(p.assign(loaded_p))
         sess.run(restores)
+        
     curr_path = sys.path[0]
     load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
-    load(load_path)
+    load_net(load_path)
     
     while (not runner.collect_flag):
         runner.run() #pylint: disable=E0632
@@ -367,8 +368,6 @@ def display(policy, env, nsteps, nminibatches, load_path):
     predictor.init_sess()
     predictor.load()
 
-
-
     def load(load_path):
         loaded_params = joblib.load(load_path)
         restores = []
@@ -377,9 +376,6 @@ def display(policy, env, nsteps, nminibatches, load_path):
         sess.run(restores)
 
     load(load_path)
-
-
-
 
     def run_episode(env, agent):
         import visualize

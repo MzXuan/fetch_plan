@@ -84,7 +84,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
             env = gym.make(env_id)
             keys = env.observation_space.spaces.keys()
             env = gym.wrappers.FlattenDictWrapper(env, dict_keys=list(keys))
-            env.seed(seed + rank)
+            env.seed(seed + rank + 100)
             return env
         return _thunk
 
@@ -95,7 +95,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
     running_var = np.load('{}/log/var.npy'.format(curr_path))
     env = VecNormalizeTest(env, running_mean, running_var)
 
-    set_global_seeds(seed)
+    set_global_seeds(seed + 100)
     policy = MlpPolicy
 
     def constant_lr(lr, kl=0.0, d_targ=0.0):

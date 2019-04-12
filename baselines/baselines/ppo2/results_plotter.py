@@ -80,7 +80,7 @@ def main():
     parser.add_argument('--dir', help='List of log directories', nargs = '*', default=['./log'])
     parser.add_argument('--num_timesteps', type=int, default=int(499e5))
     parser.add_argument('--xaxis', help = 'Varible on X-axis', default = X_TIMESTEPS)
-    parser.add_argument('--task_name', help = 'Title of plot', default = 'Roboschool')
+    parser.add_argument('--task_name', help = 'Title of plot', default = 'Fetch_plan')
     args = parser.parse_args()
     if args.log_num > 0:
         dirs = ['./models/log_{}'.format(i) for i in range(args.log_num)]
