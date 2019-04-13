@@ -82,6 +82,9 @@ class VecNormalizeTest(VecEnv):
         obs = self._obfilt(obs)
         return obs, rews, dones, infos
 
+    def normalize_rew(self, rews):
+        return rews     
+
     def _obfilt(self, obs):
         obs = np.clip((obs - self.mean) / np.sqrt(self.var + self.epsilon), -self.clipob, self.clipob)
         return obs
