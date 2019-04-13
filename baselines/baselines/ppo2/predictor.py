@@ -56,10 +56,10 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=False, point="20000", iter_start=0):
+                 reset_flag=False, epoch="20", iter_start=0):
         ## extract FLAGS
         self.sess = sess
-        self.start_iter = iter_start * int(point)
+        self.start_iter = iter_start * int(epoch)
         self.iteration = 0
 
         self._build_flag(FLAGS)
@@ -68,7 +68,7 @@ class Predictor(object):
         self.in_timesteps_max = max_timestep
         self.out_timesteps = 10
         self.train_flag = train_flag
-        self.point = point
+        self.epochs = epoch
 
         self.validate_ratio = 0.1
 
@@ -243,7 +243,7 @@ class Predictor(object):
             self.checkpoint_dir, self.sess.graph
             )
 
-    def _get_batch_loss(self, ys, y_hats):
+    def _get_batch_loss(self, ys, y_hats, x_lens):
         """
         calculate the mean square error between ground truth and prediction
         if ground truth y equals 0 (no ground truth), we set mean square error to 0
@@ -415,11 +415,13 @@ class Predictor(object):
 
         return xs, ys, x_lens, xs_start
 
-    def run_training(self, epochs=30):
+    def run_training(self):
         ## check whether in training
         if not self.train_flag:
             print("Not in training process,return...")
             return 0
+
+        epochs=int(self.epochs)
 
         ## load dataset
         self._load_train_set()
@@ -627,7 +629,7 @@ class Predictor(object):
         joblib.dump(ps, save_path)
 
     def load(self):
-        filename = ("./pred/" + self.model_name + "/{}").format(self.point)
+        filename = ("./pred/" + self.model_name + "/{}").format(int(self.epochs)-1)
         self.load_net(filename)
 
     def load_net(self, load_path):
@@ -677,7 +679,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--point', default='20000')
+    parser.add_argument('--epoch', default='20')
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
@@ -692,7 +694,7 @@ if __name__ == '__main__':
         if train_flag:
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
-                                  train_flag=True, reset_flag=False, point=args.point,
+                                  train_flag=True, reset_flag=False, epoch=args.epoch,
                                   iter_start=args.iter)
 
             rnn_model.init_sess()
@@ -709,7 +711,7 @@ if __name__ == '__main__':
         else:
             #plot all the validate data step by step
             rnn_model = Predictor(sess, FLAGS, 1, 10,
-                                  train_flag=False, reset_flag=False, point=args.point)
+                                  train_flag=False, reset_flag=False, epoch=args.epoch)
 
             rnn_model.init_sess()
             rnn_model.load()
