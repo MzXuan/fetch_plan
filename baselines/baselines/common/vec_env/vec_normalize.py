@@ -26,13 +26,16 @@ class VecNormalize(VecEnv):
         where 'news' is a boolean vector indicating whether each element is new.
         """
         obs, rews, news, infos = self.venv.step(vac)
-        self.ret = self.ret * self.gamma + rews
         obs = self._obfilt(obs)
+        return obs, rews, news, infos
+
+    def normalize_rew(self, rews):
+        self.ret = self.ret * self.gamma + rews
         if self.ret_rms: 
             self.ret_rms.update(self.ret)
             rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-        return obs, rews, news, infos
-        
+        return rews        
+
     def _obfilt(self, obs):
         if self.ob_rms: 
             self.ob_rms.update(obs)
@@ -78,6 +81,9 @@ class VecNormalizeTest(VecEnv):
         self.origin_obs = obs
         obs = self._obfilt(obs)
         return obs, rews, dones, infos
+
+    def normalize_rew(self, rews):
+        return rews     
 
     def _obfilt(self, obs):
         obs = np.clip((obs - self.mean) / np.sqrt(self.var + self.epsilon), -self.clipob, self.clipob)
