@@ -56,10 +56,10 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=False, point="20000", iter_start=0):
+                 reset_flag=False, epoch="20", iter_start=0):
         ## extract FLAGS
         self.sess = sess
-        self.start_iter = iter_start * int(point)
+        self.start_iter = iter_start * int(epoch)
         self.iteration = 0
 
         self._build_flag(FLAGS)
@@ -68,7 +68,7 @@ class Predictor(object):
         self.in_timesteps_max = max_timestep
         self.out_timesteps = 10
         self.train_flag = train_flag
-        self.point = point
+        self.epochs = epoch
 
         self.validate_ratio = 0.1
 
@@ -243,7 +243,7 @@ class Predictor(object):
             self.checkpoint_dir, self.sess.graph
             )
 
-    def _get_batch_loss(self, ys, y_hats):
+    def _get_batch_loss(self, ys, y_hats, x_lens):
         """
         calculate the mean square error between ground truth and prediction
         if ground truth y equals 0 (no ground truth), we set mean square error to 0
@@ -320,6 +320,7 @@ class Predictor(object):
                                            + "/dataset_new" + ".pkl", "wb"))
             self.collect_flag = True
 
+
     def _revert_data(self, data, mean, var):
         return data * (var + 1e-8) + mean
 
@@ -339,6 +340,10 @@ class Predictor(object):
                 x_lens.append(x_len)
                 xs_start.append(x_start)
 
+        xs=np.asarray(xs)
+        ys=np.asarray(ys)
+        x_lens=np.asarray(x_lens)
+        xs_start=np.asarray(xs_start)
         return [xs, ys, x_lens, xs_start]
 
     def _feed_one_data(self, data, ind):
@@ -410,11 +415,13 @@ class Predictor(object):
 
         return xs, ys, x_lens, xs_start
 
-    def run_training(self, epochs=100):
+    def run_training(self):
         ## check whether in training
         if not self.train_flag:
             print("Not in training process,return...")
             return 0
+
+        epochs=int(self.epochs)
 
         ## load dataset
         self._load_train_set()
@@ -423,16 +430,19 @@ class Predictor(object):
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
         ## run training
 
-        dataset_length = len(train_set[0])
+        print(valid_set[0].shape)
+        dataset_length = train_set[0].shape[0]
         inds = np.arange(dataset_length)
         for e in tqdm(range(epochs)):
             np.random.shuffle(inds)
             total_loss = []
             for i in range(0, dataset_length, self.batch_size):
                 start = i
-                end = start + i
+                end = start + self.batch_size
                 if end >= dataset_length:
                     end = dataset_length
+                    start = end-self.batch_size
+
                 mb_inds = inds[start:end]
                 fetches = [self.train_op, 
                            self.training_loss,
@@ -449,6 +459,7 @@ class Predictor(object):
                 total_loss.append(loss)
             
             train_loss = np.mean(total_loss)
+
             ## validate
             validate_loss = self.validate(valid_set)
             ## save model
@@ -463,14 +474,29 @@ class Predictor(object):
             print('epoch {}:  train: {} | validate: {}'.format(
                 e + 1, train_loss, validate_loss))
 
-    def validate(self, validate_set, e):
+    def validate(self, validate_set):
         ## run validation
-        feed_dict = {
-            self.x_ph: validate_set[0][:],
-            self.y_ph: validate_set[1][:],
-            self.x_len_ph: validate_set[2][:]
-        }
-        validate_loss = self.sess.run(self.validate_loss, feed_dict)
+        validate_length = validate_set[0].shape[0]
+        inds = np.arange(validate_length)
+        total_loss = []
+        for i in range(0, validate_length, self.batch_size):
+            start = i
+            end = start + self.batch_size
+            if end >= validate_length:
+                end = validate_length
+                start = end-self.batch_size
+
+            mb_inds = inds[start:end]
+
+            feed_dict = {
+                self.x_ph: validate_set[0][mb_inds],
+                self.y_ph: validate_set[1][mb_inds],
+                self.x_len_ph: validate_set[2][mb_inds]
+            }
+            loss = self.sess.run(self.validate_loss, feed_dict)
+            total_loss.append(loss)
+
+        validate_loss = np.mean(total_loss)
         return validate_loss
 
     def run_test(self):
@@ -603,7 +629,7 @@ class Predictor(object):
         joblib.dump(ps, save_path)
 
     def load(self):
-        filename = ("./pred/" + self.model_name + "/{}").format(self.point)
+        filename = ("./pred/" + self.model_name + "/{}").format(int(self.epochs)-1)
         self.load_net(filename)
 
     def load_net(self, load_path):
@@ -653,7 +679,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--point', default='20000')
+    parser.add_argument('--epoch', default='20')
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
@@ -668,7 +694,7 @@ if __name__ == '__main__':
         if train_flag:
             # create and initialize session
             rnn_model = Predictor(sess, FLAGS, 256, 10,
-                                  train_flag=True, reset_flag=False, point=args.point,
+                                  train_flag=True, reset_flag=False, epoch=args.epoch,
                                   iter_start=args.iter)
 
             rnn_model.init_sess()
@@ -685,7 +711,7 @@ if __name__ == '__main__':
         else:
             #plot all the validate data step by step
             rnn_model = Predictor(sess, FLAGS, 1, 10,
-                                  train_flag=False, reset_flag=False, point=args.point)
+                                  train_flag=False, reset_flag=False, epoch=args.epoch)
 
             rnn_model.init_sess()
             rnn_model.load()
