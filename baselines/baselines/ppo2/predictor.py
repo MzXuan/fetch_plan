@@ -320,6 +320,7 @@ class Predictor(object):
                                            + "/dataset_new" + ".pkl", "wb"))
             self.collect_flag = True
 
+
     def _revert_data(self, data, mean, var):
         return data * (var + 1e-8) + mean
 
@@ -339,6 +340,10 @@ class Predictor(object):
                 x_lens.append(x_len)
                 xs_start.append(x_start)
 
+        xs=np.asarray(xs)
+        ys=np.asarray(ys)
+        x_lens=np.asarray(x_lens)
+        xs_start=np.asarray(xs_start)
         return [xs, ys, x_lens, xs_start]
 
     def _feed_one_data(self, data, ind):
@@ -410,7 +415,7 @@ class Predictor(object):
 
         return xs, ys, x_lens, xs_start
 
-    def run_training(self, epochs=100):
+    def run_training(self, epochs=30):
         ## check whether in training
         if not self.train_flag:
             print("Not in training process,return...")
@@ -423,16 +428,19 @@ class Predictor(object):
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
         ## run training
 
-        dataset_length = len(train_set[0])
+        print(valid_set[0].shape)
+        dataset_length = train_set[0].shape[0]
         inds = np.arange(dataset_length)
         for e in tqdm(range(epochs)):
             np.random.shuffle(inds)
             total_loss = []
             for i in range(0, dataset_length, self.batch_size):
                 start = i
-                end = start + i
+                end = start + self.batch_size
                 if end >= dataset_length:
                     end = dataset_length
+                    start = end-self.batch_size
+
                 mb_inds = inds[start:end]
                 fetches = [self.train_op, 
                            self.training_loss,
@@ -449,6 +457,7 @@ class Predictor(object):
                 total_loss.append(loss)
             
             train_loss = np.mean(total_loss)
+
             ## validate
             validate_loss = self.validate(valid_set)
             ## save model
@@ -463,14 +472,29 @@ class Predictor(object):
             print('epoch {}:  train: {} | validate: {}'.format(
                 e + 1, train_loss, validate_loss))
 
-    def validate(self, validate_set, e):
+    def validate(self, validate_set):
         ## run validation
-        feed_dict = {
-            self.x_ph: validate_set[0][:],
-            self.y_ph: validate_set[1][:],
-            self.x_len_ph: validate_set[2][:]
-        }
-        validate_loss = self.sess.run(self.validate_loss, feed_dict)
+        validate_length = validate_set[0].shape[0]
+        inds = np.arange(validate_length)
+        total_loss = []
+        for i in range(0, validate_length, self.batch_size):
+            start = i
+            end = start + self.batch_size
+            if end >= validate_length:
+                end = validate_length
+                start = end-self.batch_size
+
+            mb_inds = inds[start:end]
+
+            feed_dict = {
+                self.x_ph: validate_set[0][mb_inds],
+                self.y_ph: validate_set[1][mb_inds],
+                self.x_len_ph: validate_set[2][mb_inds]
+            }
+            loss = self.sess.run(self.validate_loss, feed_dict)
+            total_loss.append(loss)
+
+        validate_loss = np.mean(total_loss)
         return validate_loss
 
     def run_test(self):
