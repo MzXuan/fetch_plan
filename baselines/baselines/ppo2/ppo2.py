@@ -144,13 +144,13 @@ class Runner(object):
             elif pred_weight != 0.0:
                 self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
 
+            rewards = self.env.normalize_rew(rewards)
             mb_rewards.append(rewards)
 
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
 
-            
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
@@ -340,7 +340,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         for p, loaded_p in zip(params, loaded_params):
             restores.append(p.assign(loaded_p))
         sess.run(restores)
-        
+
     curr_path = sys.path[0]
     load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
     load_net(load_path)
