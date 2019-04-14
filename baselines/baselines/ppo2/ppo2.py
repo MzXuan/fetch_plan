@@ -125,6 +125,7 @@ class Runner(object):
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
+        mb_pred_loss, mb_origin_rew = [], []
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
@@ -135,17 +136,24 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
-
+            
+            mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0:
-                predict_loss = self.predictor.predict(self.obs[:], self.dones)
-                rewards -= pred_weight * np.square(predict_loss)
+                predict_loss = pred_weight * self.predictor.predict(self.obs[:], self.dones)
+                # print("predict_loss: {}".format(predict_loss))
+                rewards -= predict_loss
+                # print("final_reward: {}".format(rewards))
             elif pred_weight != 0.0:
                 self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
+                predict_loss = 0.0
+            else:
+                predict_loss = 0.0
 
             rewards = self.env.normalize_rew(rewards)
             mb_rewards.append(rewards)
+            mb_pred_loss.append(np.mean(np.asarray(predict_loss)))
 
             for info in infos:
                 maybeepinfo = info.get('episode')
@@ -174,7 +182,7 @@ class Runner(object):
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
         mb_returns = mb_advs + mb_values
         return (*map(sf01, (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs)), 
-            mb_states, epinfos)
+            mb_states, mb_pred_loss, mb_origin_rew, epinfos)
 # obs, returns, masks, actions, values, neglogpacs, states = runner.run()
 def sf01(arr):
     """
@@ -245,7 +253,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
         lrnow = lr(lrnow, kl, d_targ)
         cliprangenow = cliprange(frac)
-        obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run() #pylint: disable=E0632
+        obs, returns, masks, actions, values, neglogpacs, states, pred_loss, origin_rew, epinfos = runner.run() #pylint: disable=E0632
         epinfobuf.extend(epinfos)
         mblossvals = []
         if states is None: # nonrecurrent version
@@ -288,8 +296,10 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             logger.logkv('eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
             logger.logkv('eplenmean', safemean([epinfo['l'] for epinfo in epinfobuf]))
             logger.logkv('time_elapsed', tnow - tfirststart)
-            logger.logkv('lr', lrnow)
-            logger.logkv('d_targ', d_targ)
+            logger.logkv('pred_loss', np.mean(pred_loss))
+            logger.logkv('origin_rew', np.mean(origin_rew))
+            # logger.logkv('lr', lrnow)
+            # logger.logkv('d_targ', d_targ)
             for (lossval, lossname) in zip(lossvals, model.loss_names):
                 logger.logkv(lossname, lossval)
             logger.dumpkvs()

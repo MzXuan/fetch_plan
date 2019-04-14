@@ -44,7 +44,7 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
         ob_count = np.load('{}/log/ob_count.npy'.format(curr_path))
         ret_mean = np.load('{}/log/ret_mean.npy'.format(curr_path))
         ret_var = np.load('{}/log/ret_var.npy'.format(curr_path))
-        ret_count = 100000
+        ret_count = 10
 
         env = VecNormalize(env,
             ob_mean=ob_mean, ob_var=ob_var, ob_count=ob_count,

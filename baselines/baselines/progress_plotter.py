@@ -20,11 +20,13 @@ def main():
     data = pd.read_csv(filepath)
     df_plot(data, 'time_elapsed', 'policy_entropy')
     df_plot(data, 'time_elapsed', 'eprewmean')
-    df_plot(data, 'time_elapsed', 'policy_loss')
     df_plot(data, 'time_elapsed', 'explained_variance', ylim=(-1, 1))
-    df_plot(data, 'time_elapsed', 'lr')
-    df_plot(data, 'time_elapsed', 'value_loss')
-    df_plot(data, 'time_elapsed', 'approxkl')
+    df_plot(data, 'time_elapsed', 'pred_loss')
+    df_plot(data, 'time_elapsed', 'origin_rew')
+    # df_plot(data, 'time_elapsed', 'lr')
+    # df_plot(data, 'time_elapsed', 'policy_loss')
+    # df_plot(data, 'time_elapsed', 'value_loss')
+    # df_plot(data, 'time_elapsed', 'approxkl')
 
 if __name__ == '__main__':
     main()
