@@ -42,7 +42,7 @@ class Model(object):
         pg_loss = tf.reduce_mean(tf.maximum(pg_losses, pg_losses2))
         approxkl = .5 * tf.reduce_mean(tf.square(neglogpac - OLDNEGLOGPAC))
         clipfrac = tf.reduce_mean(tf.to_float(tf.greater(tf.abs(ratio - 1.0), CLIPRANGE)))
-        loss = pg_loss - entropy * ent_coef + vf_loss * vf_coef
+        loss = pg_loss + entropy * ent_coef + vf_loss * vf_coef
         params = tf.trainable_variables()
         grads = tf.gradients(loss, params)
         if max_grad_norm is not None:
@@ -140,7 +140,7 @@ class Runner(object):
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0:
                 predict_loss = self.predictor.predict(self.obs[:], self.dones)
-                rewards -= pred_weight*np.square(predict_loss)
+                rewards -= pred_weight * np.square(predict_loss)
             elif pred_weight != 0.0:
                 self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
 
@@ -300,10 +300,23 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             savepath = osp.join(checkdir, '%.5i'%update)
             print('Saving to', savepath)
             model.save(savepath)
-            # print ('runner.mean: {}'.format(runner.env.ob_rms.mean))
-            np.save('{}/mean'.format(logger.get_dir()), runner.env.ob_rms.mean)
-            # print ('runner.var: {}'.format(runner.env.ob_rms.var))
-            np.save('{}/var'.format(logger.get_dir()), runner.env.ob_rms.var)
+            np.save('{}/ob_mean'.format(logger.get_dir()), runner.env.ob_rms.mean)
+            np.save('{}/ob_var'.format(logger.get_dir()), runner.env.ob_rms.var)
+            np.save('{}/ob_count'.format(logger.get_dir()), runner.env.ob_rms.count)
+            np.save('{}/ret_mean'.format(logger.get_dir()), runner.env.ret_rms.mean)
+            np.save('{}/ret_var'.format(logger.get_dir()), runner.env.ret_rms.var)
+
+    checkdir = osp.join(logger.get_dir(), 'checkpoints')
+    os.makedirs(checkdir, exist_ok=True)
+    savepath = osp.join(checkdir, 'last')
+    print('Saving to', savepath)
+    model.save(savepath)
+    np.save('{}/ob_mean'.format(logger.get_dir()), runner.env.ob_rms.mean)
+    np.save('{}/ob_var'.format(logger.get_dir()), runner.env.ob_rms.var)
+    np.save('{}/ob_count'.format(logger.get_dir()), runner.env.ob_rms.count)
+    np.save('{}/ret_mean'.format(logger.get_dir()), runner.env.ret_rms.mean)
+    np.save('{}/ret_var'.format(logger.get_dir()), runner.env.ret_rms.var)
+
     env.close()
 
 def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr, 
@@ -345,7 +358,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
     load_net(load_path)
     
-    while (not runner.collect_flag):
+    while not runner.collect_flag:
         runner.run() #pylint: disable=E0632
         
     env.close()

@@ -53,14 +53,17 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
         result.set_shape([1, 10]) #[batch_size, dimension]
         return result
 
+
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
                  batch_size, max_timestep, train_flag,
-                 reset_flag=False, epoch="20", iter_start=0):
+                 reset_flag=False, epoch=20, iter_start=0,
+                 lr=0.001):
         ## extract FLAGS
         self.sess = sess
-        self.start_iter = iter_start * int(epoch)
+        self.start_iter = iter_start * epoch
         self.iteration = 0
+        self.dataset_length = 0
 
         self._build_flag(FLAGS)
 
@@ -69,12 +72,13 @@ class Predictor(object):
         self.out_timesteps = 10
         self.train_flag = train_flag
         self.epochs = epoch
+        self.lr = lr
 
         self.validate_ratio = 0.1
 
         ## prepare sequcne containers
         # self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
-        self.xs = [[] for _ in range(0,self.batch_size)]
+        self.xs = [[] for _ in range(0, self.batch_size)]
         self.x_lens = np.zeros(batch_size, dtype=int)
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
@@ -107,9 +111,7 @@ class Predictor(object):
         self.checkpoint_dir = FLAGS.check_dir_cls
         self.sample_dir = FLAGS.sample_dir_cls
 
-        lr_param = 1.0 ** (self.start_iter // 10)
-        self.lr = FLAGS.learning_rate * lr_param
-
+        
     def _build_ph(self):
         self.x_ph = tf.placeholder(
             tf.float32, 
@@ -215,7 +217,7 @@ class Predictor(object):
                 cell=dec_cell, helper=inference_helper,
                 initial_state=enc_state, output_layer=fc_layer)
 
-            inference_decoder_outputs, inference_decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(
+            inference_decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
                 decoder=inference_decoder, output_time_major=False,
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
@@ -307,19 +309,15 @@ class Predictor(object):
         for traj in trajs:
             if traj.x_len > self.in_timesteps_max and traj.x_len < 500:
                 self.dataset.append(traj)
-
-        # show dataset size
-        if len(self.dataset) % 100 == 0:
-            print("datasets size: {}".format(len(self.dataset)))
+                self.dataset_length += (traj.x_len -\
+                    (self.in_timesteps_max + self.out_timesteps))
 
         # if dataset is large, save it
-        set_size = 5000
-        if len(self.dataset) > set_size:
-            print("save dataset...The size of dataset is {}".format(set_size))
-            pickle.dump(self.dataset, open("./pred/"
-                                           + "/dataset_new" + ".pkl", "wb"))
+        if self.dataset_length > 200000:
+            print("save dataset...")
+            pickle.dump(self.dataset,
+                open("./pred/" + "/dataset_new" + ".pkl", "wb"))
             self.collect_flag = True
-
 
     def _revert_data(self, data, mean, var):
         return data * (var + 1e-8) + mean
@@ -421,19 +419,19 @@ class Predictor(object):
             print("Not in training process,return...")
             return 0
 
-        epochs=int(self.epochs)
-
         ## load dataset
         self._load_train_set()
+        print("dataset_length: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
+        print("validate_length: ", valid_len)
         train_set = self._process_dataset(self.dataset[0:-valid_len])
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
         ## run training
 
-        print(valid_set[0].shape)
         dataset_length = train_set[0].shape[0]
+        print("training_length: ", dataset_length)
         inds = np.arange(dataset_length)
-        for e in tqdm(range(epochs)):
+        for e in tqdm(range(self.epochs)):
             np.random.shuffle(inds)
             total_loss = []
             for i in range(0, dataset_length, self.batch_size):
@@ -441,13 +439,11 @@ class Predictor(object):
                 end = start + self.batch_size
                 if end >= dataset_length:
                     end = dataset_length
-                    start = end-self.batch_size
+                    start = dataset_length - self.batch_size
 
                 mb_inds = inds[start:end]
                 fetches = [self.train_op, 
-                           self.training_loss,
-                           self.y_ph,
-                           self.y_hat_train]
+                           self.training_loss]
 
                 feed_dict = {
                     self.x_ph: train_set[0][mb_inds],
@@ -455,7 +451,7 @@ class Predictor(object):
                     self.x_len_ph: train_set[2][mb_inds]
                 }
 
-                _, loss, y, y_hat_train = self.sess.run(fetches, feed_dict)
+                _, loss = self.sess.run(fetches, feed_dict)
                 total_loss.append(loss)
             
             train_loss = np.mean(total_loss)
@@ -483,11 +479,9 @@ class Predictor(object):
             start = i
             end = start + self.batch_size
             if end >= validate_length:
-                end = validate_length
-                start = end-self.batch_size
+                break
 
             mb_inds = inds[start:end]
-
             feed_dict = {
                 self.x_ph: validate_set[0][mb_inds],
                 self.y_ph: validate_set[1][mb_inds],
@@ -503,55 +497,60 @@ class Predictor(object):
         """
         run test on validation set
         """
-        ## check saved data se
-        filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
-        num_sets = len(filelist)-1
-        self.dataset_idx = 0
+        pass
+        # Need to refacotr --------------------------------------------------
 
-        print("load validate dataset {}".format(filelist[-1]))
-        test_set = \
-            pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
-        # ## prepare threshold to switch dataset
-        # max_iteration = int(self.point)
-        # iter_range = range(0,max_iteration,500)
-        # iter_idx=0
-        # print("iter_range")
-        # print(iter_range)
-        ## run training
-        for i in range(1,100):
-        #----------test process--------#
-            ## create validate data
-            xs, ys, x_lens, xs_start = self._feed_training_data(test_set)
+        # ## check saved data se
+        # filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
+        # num_sets = len(filelist)-1
+        # self.dataset_idx = 0
 
-            ## run validation
-            fetches = [self.validate_loss, self.x_ph, self.y_ph, self.y_hat_pred]
-            feed_dict = {
-                self.x_ph: xs,
-                self.y_ph: ys,
-                self.x_len_ph: x_lens
-            }
-            loss_pred, x, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+        # print("load validate dataset {}".format(filelist[-1]))
+        # test_set = \
+        #     pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
+        # # ## prepare threshold to switch dataset
+        # # max_iteration = int(self.point)
+        # # iter_range = range(0,max_iteration,500)
+        # # iter_idx=0
+        # # print("iter_range")
+        # # print(iter_range)
+        # ## run training
+        # for i in range(1,100):
+        # #----------test process--------#
+        #     ## create validate data
+        #     xs, ys, x_lens, xs_start = self._feed_training_data(test_set)
 
-            ## write summary
-            validate_summary = tf.Summary()
-            validate_summary.value.add(tag="validate rmse", simple_value=loss_pred)
-            self.file_writer.add_summary(validate_summary, self.iteration)
+        #     ## run validation
+        #     fetches = [self.validate_loss, self.x_ph, self.y_ph, self.y_hat_pred]
+        #     feed_dict = {
+        #         self.x_ph: xs,
+        #         self.y_ph: ys,
+        #         self.x_len_ph: x_lens
+        #     }
+        #     loss_pred, x, y, y_hat_pred = self.sess.run(fetches, feed_dict)
 
-            # ------display information-----------#
-            batch_loss = self._get_batch_loss(ys, y_hat_pred, x_lens)
-            print("\nbatch_loss = {}".format(batch_loss))
-            # print('\n')
-            # print("x = {}".format(xs[0]))
-            # print("x_len={}".format(x_lens[0]))
-            # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
-            print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
+        #     ## write summary
+        #     summary = tf.Summary()
+        #     summary.value.add(tag="validate_loss", simple_value=loss_pred)
+        #     self.file_writer.add_summary(summary, self.iteration)
 
-            # ------plot predicted data-----------
-            import visualize
-            origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
-            _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
-            visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
-            time.sleep(2)
+        #     # ------display information-----------#
+        #     batch_loss = self._get_batch_loss(ys, y_hat_pred, x_lens)
+        #     print("\nbatch_loss = {}".format(batch_loss))
+        #     # print('\n')
+        #     # print("x = {}".format(xs[0]))
+        #     # print("x_len={}".format(x_lens[0]))
+        #     # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+        #     print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
+
+        #     # ------plot predicted data-----------
+        #     import visualize
+        #     origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+        #     _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
+        #     visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+        #     time.sleep(2)
+
+        # Need to refacotr --------------------------------------------------
 
     def collect(self, obs, dones, mean=None, var=None):
         """
@@ -569,6 +568,7 @@ class Predictor(object):
         if len(seqs_done) > 0:
             self._create_traj(seqs_done)
 
+        # print("dataset length: ", self.dataset_length)
         return self.collect_flag
 
     def predict(self, obs, dones, mean=None, var=None):
@@ -584,7 +584,7 @@ class Predictor(object):
         _, seqs_all = self._create_seq(obs, dones, mean, var)
 
         # ---predict input data---#
-        xs, ys, x_lens, xs_start = self._feed_online_data(seqs_all)
+        xs, ys, x_lens, _ = self._feed_online_data(seqs_all)
 
         fetches = [self.validate_loss, self.y_ph, self.y_hat_pred]
         feed_dict = {
@@ -593,7 +593,7 @@ class Predictor(object):
             self.x_len_ph: x_lens
         }
 
-        loss_pred, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+        _, y, y_hat_pred = self.sess.run(fetches, feed_dict)
 
         batch_loss = self._get_batch_loss(y, y_hat_pred, x_lens)
 
@@ -629,7 +629,7 @@ class Predictor(object):
         joblib.dump(ps, save_path)
 
     def load(self):
-        filename = ("./pred/" + self.model_name + "/{}").format(int(self.epochs)-1)
+        filename = ("./pred/" + self.model_name + "/{}").format(self.epochs-1)
         self.load_net(filename)
 
     def load_net(self, load_path):
@@ -643,15 +643,15 @@ class Predictor(object):
             restores.append(p.assign(loaded_p))
         self.sess.run(restores)
 
-    def save_dataset(self):
-        # check whether in training process
-        if self.train_flag is not True:
-            print("Not in training process, saving failed")
-        else:
-            pickle.dump(self.dataset, open("./pred/"
-                                            +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
-            print("saving dataset successfully")
-            self.dataset = []
+    # def save_dataset(self):
+    #     # check whether in training process
+    #     if self.train_flag is not True:
+    #         print("Not in training process, saving failed")
+    #     else:
+    #         pickle.dump(self.dataset, open("./pred/"
+    #                                         +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
+    #         print("saving dataset successfully")
+    #         self.dataset = []
 
     def load_dataset(self, file_name):
         ## load dataset
@@ -673,13 +673,13 @@ class Predictor(object):
                 return 0
             else:
                 self.dataset.extend(dataset)
-        random.shuffle(self.dataset)
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default='20')
+    parser.add_argument('--epoch', default=20, type=int)
+    parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
@@ -693,9 +693,9 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         if train_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 256, 10,
+            rnn_model = Predictor(sess, FLAGS, 1024, 10,
                                   train_flag=True, reset_flag=False, epoch=args.epoch,
-                                  iter_start=args.iter)
+                                  iter_start=args.iter, lr=args.lr)
 
             rnn_model.init_sess()
 
