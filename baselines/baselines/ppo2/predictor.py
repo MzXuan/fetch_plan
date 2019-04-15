@@ -253,6 +253,23 @@ class Predictor(object):
         :param y_hats: prediction
         :return: error
         """
+        # #----- old version-----#
+        # error = []
+        # eff_weight = 0.7
+        # for y, y_hat in zip(ys, y_hats):
+        #     if not np.any(y[-1]):
+        #         error.append(0)
+        #     else:
+        #         err1 = (1 - eff_weight) * \
+        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
+        #         err2 = eff_weight * \
+        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
+        #         error.append((np.sqrt(err1 + err2)))
+        #
+        # return np.asarray(error)
+
+        #---- new normalized version ----#
+        # err = err/delta(y)
         error = []
         eff_weight = 0.7
         for y, y_hat in zip(ys, y_hats):
@@ -260,12 +277,24 @@ class Predictor(object):
                 error.append(0)
             else:
                 err1 = (1 - eff_weight) * \
-                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
+                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
+                              np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
+
+                # print("y[:, 0:7]")
+                # print(y[:, 0:7])
+                # print("cumsum y")
+                # print(np.cumsum(y[:, 0:7], axis=0))
                 err2 = eff_weight * \
-                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
+                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
+                              np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
+
+                # print("current error:")
+                # print(err1+err2)
                 error.append((np.sqrt(err1 + err2)))
-    
+
         return np.asarray(error)
+
+
         
     def _create_seq(self, obs, dones, mean, var):
         """
