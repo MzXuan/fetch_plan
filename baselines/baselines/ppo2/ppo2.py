@@ -125,7 +125,7 @@ class Runner(object):
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
-        mb_pred_loss, mb_origin_rew = [], []
+        mb_weighted_ploss, mb_origin_ploss, mb_origin_rew = [], []
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
@@ -141,7 +141,8 @@ class Runner(object):
             #---- predict reward
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0:
-                predict_loss = pred_weight * self.predictor.predict(self.obs[:], self.dones)
+                origin_pred_loss = self.predictor.predict(self.obs[:], self.dones)
+                predict_loss = pred_weight * origin_pred_loss
                 # print("predict_loss: {}".format(predict_loss))
                 rewards -= predict_loss
                 # print("final_reward: {}".format(rewards))
@@ -153,7 +154,8 @@ class Runner(object):
 
             rewards = self.env.normalize_rew(rewards)
             mb_rewards.append(rewards)
-            mb_pred_loss.append(np.mean(np.asarray(predict_loss)))
+            mb_origin_ploss.append(np.mean(np.asarray(origin_pred_loss)))
+            mb_weighted_ploss.append(np.mean(np.asarray(predict_loss)))
 
             for info in infos:
                 maybeepinfo = info.get('episode')
@@ -182,7 +184,7 @@ class Runner(object):
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
         mb_returns = mb_advs + mb_values
         return (*map(sf01, (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs)), 
-            mb_states, mb_pred_loss, mb_origin_rew, epinfos)
+            mb_states, mb_origin_ploss, mb_weighted_ploss, mb_origin_rew, epinfos)
 # obs, returns, masks, actions, values, neglogpacs, states = runner.run()
 def sf01(arr):
     """
@@ -237,13 +239,12 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     print("current pred_weight")
     print(pred_weight)
     if pred_weight!=0:
-        runner.pred_weight = 1.0
         loss = []
         rew = []
         print("finding best pred weight... this will take 5 epochs...")
         for _ in tqdm(range(1,5)):
-            obs, returns, masks, actions, values, neglogpacs, states, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
-            loss.append(pred_loss)
+            obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
+            loss.append(origin_ploss)
             rew.append(origin_rew)
 
         runner.pred_weight = np.mean(rew)/np.mean(loss) * (1/2)
@@ -274,7 +275,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
         lrnow = lr(lrnow, kl, d_targ)
         cliprangenow = cliprange(frac)
-        obs, returns, masks, actions, values, neglogpacs, states, pred_loss, origin_rew, epinfos = runner.run() #pylint: disable=E0632
+        obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run() #pylint: disable=E0632
         epinfobuf.extend(epinfos)
         mblossvals = []
         if states is None: # nonrecurrent version
