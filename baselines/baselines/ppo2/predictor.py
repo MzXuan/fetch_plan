@@ -376,10 +376,10 @@ class Predictor(object):
         elif ind_start <= 0:
             x_origin = x_seq[0:ind, :]
             x_start = x_seq[0, :]
-            x = np.full((self.in_timesteps_max, self.in_dim), 0)
-            x[self.in_timesteps_max-ind:self.in_timesteps_max] = x_origin - x_start
+            x = np.full((self.in_timesteps_max, self.in_dim), 0.0)
+            x[self.in_timesteps_max-ind:self.in_timesteps_max,:] = x_origin - x_start
             y = x_seq[ind:ind_end, :] - x_start
-            x_len = self.in_timesteps_max
+            x_len = ind
 
         return x, y, x_len, x_start
 
@@ -678,7 +678,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=20, type=int)
+    parser.add_argument('--epoch', default=50, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)

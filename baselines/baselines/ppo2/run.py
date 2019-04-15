@@ -163,7 +163,7 @@ def main():
     parser.add_argument('--iter', default=0, type=int)
     args = parser.parse_args()
 
-    each_iter_num = 50
+    each_iter_num = 100
 
     curr_path = sys.path[0]
     if args.display:

@@ -16,8 +16,7 @@ pred_model="./pred/"
 
 
 # start training
-counter=0
-save_counter=0
+counter=1
 while [ ${counter} -le ${1} ]
 do
 echo $counter
@@ -43,7 +42,7 @@ if [ ${counter} -eq 0 ]
 then
     python predictor.py --iter=${counter} --lr=0.001
 else
-    python predictor.py --load --iter=${counter} --lr=0.0001
+    python predictor.py --load --iter=${counter} --lr=0.001
 fi
 
 # copy saved file and rename
