@@ -24,9 +24,9 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=1500000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=1500000 -p='00100' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=1300000 -p='00150' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -42,7 +42,7 @@ if [ ${counter} -eq 0 ]
 then
     python predictor.py --iter=${counter} --lr=0.001
 else
-    python predictor.py --load --iter=${counter} --lr=0.001
+    python predictor.py --load --iter=${counter} --lr=0.0001
 fi
 
 # copy saved file and rename

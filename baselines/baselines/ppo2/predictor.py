@@ -74,7 +74,7 @@ class Predictor(object):
         self.epochs = epoch
         self.lr = lr
 
-        self.validate_ratio = 0.1
+        self.validate_ratio = 0.2
 
         ## prepare sequcne containers
         # self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
@@ -143,7 +143,7 @@ class Predictor(object):
             name='batch_seq_length'
             )
 
-        self.go_token = np.full((self.out_dim), 0, dtype=np.float32)
+        self.go_token = np.full((self.out_dim), 0.0, dtype=np.float32)
 
     def init_sess(self):
         self.sess.run(tf.global_variables_initializer())

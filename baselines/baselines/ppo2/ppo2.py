@@ -232,6 +232,27 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
     lrnow = 3e-4
     kl = 0.01
+
+    #test weight parameter
+    print("current pred_weight")
+    print(pred_weight)
+    if pred_weight!=0:
+        runner.pred_weight = 1.0
+        loss = []
+        rew = []
+        print("finding best pred weight... this will take 5 epochs...")
+        for _ in tqdm(range(1,5)):
+            obs, returns, masks, actions, values, neglogpacs, states, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
+            loss.append(pred_loss)
+            rew.append(origin_rew)
+
+        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1/2)
+        print("current pred weight is: ")
+        print(runner.pred_weight)
+
+
+
+    # learning
     nupdates = total_timesteps//nbatch
     for update in tqdm(range(1, nupdates+1)):
         assert nbatch % nminibatches == 0
