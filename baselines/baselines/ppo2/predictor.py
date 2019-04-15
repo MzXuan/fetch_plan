@@ -341,6 +341,9 @@ class Predictor(object):
                 self.dataset_length += (traj.x_len -\
                     (self.in_timesteps_max + self.out_timesteps))
 
+        if self.dataset_length//10000 == 0:
+            print("collected dataset length:{}".format(self.dataset_length))
+
         # if dataset is large, save it
         if self.dataset_length > 200000:
             print("save dataset...")
@@ -450,15 +453,16 @@ class Predictor(object):
 
         ## load dataset
         self._load_train_set()
-        print("dataset_length: ", len(self.dataset))
+        print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
-        print("validate_length: ", valid_len)
+
         train_set = self._process_dataset(self.dataset[0:-valid_len])
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
         ## run training
 
         dataset_length = train_set[0].shape[0]
         print("training_length: ", dataset_length)
+        print("validate_length: ", valid_set[0].shape[0])
         inds = np.arange(dataset_length)
         for e in tqdm(range(self.epochs)):
             np.random.shuffle(inds)

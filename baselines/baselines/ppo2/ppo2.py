@@ -125,7 +125,7 @@ class Runner(object):
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
-        mb_weighted_ploss, mb_origin_ploss, mb_origin_rew = [], []
+        mb_weighted_ploss, mb_origin_ploss, mb_origin_rew = [], [],[]
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
@@ -148,8 +148,10 @@ class Runner(object):
                 # print("final_reward: {}".format(rewards))
             elif pred_weight != 0.0:
                 self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
+                origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:
+                origin_pred_loss = 0.0
                 predict_loss = 0.0
 
             rewards = self.env.normalize_rew(rewards)
