@@ -17,7 +17,6 @@ pred_model="./pred/"
 
 # start training
 counter=0
-save_counter=0
 while [ ${counter} -le ${1} ]
 do
 echo $counter
@@ -25,9 +24,9 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=1500000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=1500000 -p='00100' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=1300000 -p='00150' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle

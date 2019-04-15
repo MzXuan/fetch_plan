@@ -74,7 +74,7 @@ class Predictor(object):
         self.epochs = epoch
         self.lr = lr
 
-        self.validate_ratio = 0.1
+        self.validate_ratio = 0.2
 
         ## prepare sequcne containers
         # self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
@@ -143,7 +143,7 @@ class Predictor(object):
             name='batch_seq_length'
             )
 
-        self.go_token = np.full((self.out_dim), 0, dtype=np.float32)
+        self.go_token = np.full((self.out_dim), 0.0, dtype=np.float32)
 
     def init_sess(self):
         self.sess.run(tf.global_variables_initializer())
@@ -253,6 +253,23 @@ class Predictor(object):
         :param y_hats: prediction
         :return: error
         """
+        # #----- old version-----#
+        # error = []
+        # eff_weight = 0.7
+        # for y, y_hat in zip(ys, y_hats):
+        #     if not np.any(y[-1]):
+        #         error.append(0)
+        #     else:
+        #         err1 = (1 - eff_weight) * \
+        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
+        #         err2 = eff_weight * \
+        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
+        #         error.append((np.sqrt(err1 + err2)))
+        #
+        # return np.asarray(error)
+
+        #---- new normalized version ----#
+        # err = err/delta(y)
         error = []
         eff_weight = 0.7
         for y, y_hat in zip(ys, y_hats):
@@ -260,12 +277,24 @@ class Predictor(object):
                 error.append(0)
             else:
                 err1 = (1 - eff_weight) * \
-                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
+                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
+                              np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
+
+                # print("y[:, 0:7]")
+                # print(y[:, 0:7])
+                # print("cumsum y")
+                # print(np.cumsum(y[:, 0:7], axis=0))
                 err2 = eff_weight * \
-                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
+                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
+                              np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
+
+                # print("current error:")
+                # print(err1+err2)
                 error.append((np.sqrt(err1 + err2)))
-    
+
         return np.asarray(error)
+
+
         
     def _create_seq(self, obs, dones, mean, var):
         """
@@ -376,10 +405,10 @@ class Predictor(object):
         elif ind_start <= 0:
             x_origin = x_seq[0:ind, :]
             x_start = x_seq[0, :]
-            x = np.full((self.in_timesteps_max, self.in_dim), 0)
-            x[self.in_timesteps_max-ind:self.in_timesteps_max] = x_origin - x_start
+            x = np.full((self.in_timesteps_max, self.in_dim), 0.0)
+            x[self.in_timesteps_max-ind:self.in_timesteps_max,:] = x_origin - x_start
             y = x_seq[ind:ind_end, :] - x_start
-            x_len = self.in_timesteps_max
+            x_len = ind
 
         return x, y, x_len, x_start
 
@@ -678,7 +707,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=20, type=int)
+    parser.add_argument('--epoch', default=50, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
