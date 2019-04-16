@@ -341,7 +341,8 @@ class Predictor(object):
                 self.dataset_length += (traj.x_len -\
                     (self.in_timesteps_max + self.out_timesteps))
 
-        if self.dataset_length//10000 == 0:
+        # for visualization
+        if self.dataset_length%10000 < 20 :
             print("collected dataset length:{}".format(self.dataset_length))
 
         # if dataset is large, save it
