@@ -40,9 +40,12 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --lr=0.001
+    python predictor.py --iter=${counter} --lr=0.001 --epoch=100
+elif [ ${counter} -le 5 ]
+then
+    python predictor.py --load --iter=${counter} --lr=0.001 --epoch=100
 else
-    python predictor.py --load --iter=${counter} --lr=0.0001
+    python predictor.py --load --iter=${counter} --lr=0.0005 --epoch=50
 fi
 
 # copy saved file and rename
