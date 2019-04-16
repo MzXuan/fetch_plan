@@ -16,7 +16,7 @@ pred_model="./pred/"
 
 
 # start training
-counter=1
+counter=0
 while [ ${counter} -le ${1} ]
 do
 echo $counter
