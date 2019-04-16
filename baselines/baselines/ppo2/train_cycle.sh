@@ -24,16 +24,16 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=1800000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=1300000 -p='00150' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=1800000 -p='00200' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
 sleep 1
 
 # sample dataset
-python run.py --load -p='last'
+python run.py --load -p='00200'
 
 sleep 1
 
