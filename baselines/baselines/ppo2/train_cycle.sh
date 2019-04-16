@@ -26,7 +26,7 @@ if [ ${counter} -eq 0 ]
 then
     python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=2800000 -p='00300' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=2800000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
