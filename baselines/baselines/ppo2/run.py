@@ -138,9 +138,9 @@ def display(env_id, num_timesteps, seed, curr_path, point):
         env = gym.wrappers.FlattenDictWrapper(env, dict_keys=list(keys))
         return env
     env = DummyVecTestEnv([make_env])
-    running_mean = np.load('{}/log/mean.npy'.format(curr_path))
-    running_var = np.load('{}/log/var.npy'.format(curr_path))
-    env = VecNormalizeTest(env, running_mean, running_var)
+    ob_mean = np.load('{}/log/ob_mean.npy'.format(curr_path))
+    ob_var = np.load('{}/log/ob_var.npy'.format(curr_path))
+    env = VecNormalizeTest(env, ob_mean, ob_var)
 
     set_global_seeds(seed)
     policy = MlpPolicy
