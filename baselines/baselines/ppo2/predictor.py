@@ -674,7 +674,10 @@ class Predictor(object):
         joblib.dump(ps, save_path)
 
     def load(self):
-        filename = ("./pred/" + self.model_name + "/{}").format(self.epochs//2)
+        if self.train_flag == True:
+            filename = ("./pred/" + self.model_name + "/{}").format(self.epochs // 2)
+        else:
+            filename = ("./pred/" + self.model_name + "/{}").format(self.epochs - 1)
         self.load_net(filename)
 
     def load_net(self, load_path):
