@@ -87,9 +87,20 @@ class Predictor(object):
         self.dataset = []
         if reset_flag:
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
+            # #---- one dataset---#
+            # # remove old files
+            # for f in filelist:
+            #     os.remove(os.path.join("./pred/", f))
+
+            #---- two datasets ----#
             # remove old files
             for f in filelist:
-                os.remove(os.path.join("./pred/", f))
+                if not (f.endswith("new.pkl")):
+                    os.remove(os.path.join("./pred/", f))
+                # change last dataset to old dataset
+            for f in filelist:
+                if f.endswith("new.pkl"):
+                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
 
         self.dataset_idx = 0 # for counting the saved dataset index
 
@@ -253,23 +264,7 @@ class Predictor(object):
         :param y_hats: prediction
         :return: error
         """
-        # #----- old version-----#
-        # error = []
-        # eff_weight = 0.7
-        # for y, y_hat in zip(ys, y_hats):
-        #     if not np.any(y[-1]):
-        #         error.append(0)
-        #     else:
-        #         err1 = (1 - eff_weight) * \
-        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
-        #         err2 = eff_weight * \
-        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
-        #         error.append((np.sqrt(err1 + err2)))
-        #
-        # return np.asarray(error)
-
-        #---- new normalized version ----#
-        # err = err/delta(y)
+        #----- old version-----#
         error = []
         eff_weight = 0.7
         for y, y_hat in zip(ys, y_hats):
@@ -277,22 +272,38 @@ class Predictor(object):
                 error.append(0)
             else:
                 err1 = (1 - eff_weight) * \
-                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
-                              np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
-
-                # print("y[:, 0:7]")
-                # print(y[:, 0:7])
-                # print("cumsum y")
-                # print(np.cumsum(y[:, 0:7], axis=0))
+                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
                 err2 = eff_weight * \
-                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
-                              np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
-
-                # print("current error:")
-                # print(err1+err2)
+                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
                 error.append((np.sqrt(err1 + err2)))
 
         return np.asarray(error)
+
+        # #---- new normalized version ----#
+        # # err = err/delta(y)
+        # error = []
+        # eff_weight = 0.7
+        # for y, y_hat in zip(ys, y_hats):
+        #     if not np.any(y[-1]):
+        #         error.append(0)
+        #     else:
+        #         err1 = (1 - eff_weight) * \
+        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
+        #                       np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
+        #
+        #         # print("y[:, 0:7]")
+        #         # print(y[:, 0:7])
+        #         # print("cumsum y")
+        #         # print(np.cumsum(y[:, 0:7], axis=0))
+        #         err2 = eff_weight * \
+        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
+        #                       np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
+        #
+        #         # print("current error:")
+        #         # print(err1+err2)
+        #         error.append((np.sqrt(err1 + err2)))
+        #
+        # return np.asarray(error)
 
 
         
@@ -346,7 +357,7 @@ class Predictor(object):
             print("collected dataset length:{}".format(self.dataset_length))
 
         # if dataset is large, save it
-        if self.dataset_length > 200000:
+        if self.dataset_length > 800000:
             print("save dataset...")
             pickle.dump(self.dataset,
                 open("./pred/" + "/dataset_new" + ".pkl", "wb"))
@@ -663,7 +674,7 @@ class Predictor(object):
         joblib.dump(ps, save_path)
 
     def load(self):
-        filename = ("./pred/" + self.model_name + "/{}").format(self.epochs-1)
+        filename = ("./pred/" + self.model_name + "/{}").format(self.epochs//2)
         self.load_net(filename)
 
     def load_net(self, load_path):
