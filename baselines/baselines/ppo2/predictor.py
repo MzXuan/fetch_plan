@@ -269,7 +269,7 @@ class Predictor(object):
         eff_weight = 0.7
         for y, y_hat in zip(ys, y_hats):
             if not np.any(y[-1]):
-                error.append(0)
+                error.append(0.1)
             else:
                 err1 = (1 - eff_weight) * \
                        np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
@@ -675,7 +675,7 @@ class Predictor(object):
 
     def load(self):
         if self.train_flag == True:
-            filename = ("./pred/" + self.model_name + "/{}").format(self.epochs // 2)
+            filename = ("./pred/" + self.model_name + "/{}").format(2*self.epochs // 3)
         else:
             filename = ("./pred/" + self.model_name + "/{}").format(self.epochs - 1)
         self.load_net(filename)
