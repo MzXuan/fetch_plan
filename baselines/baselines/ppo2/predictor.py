@@ -162,8 +162,8 @@ class Predictor(object):
     def _build_encoder(self):
         ## encoder
         enc_inputs = self.x_ph
-        gru_rnn1 = tf.nn.rnn_cell.GRUCell(32)
-        gru_rnn2 = tf.nn.rnn_cell.GRUCell(32)
+        gru_rnn1 = tf.nn.rnn_cell.GRUCell(16)
+        gru_rnn2 = tf.nn.rnn_cell.GRUCell(16)
         enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
 
         _, enc_state = tf.nn.dynamic_rnn(
@@ -174,8 +174,8 @@ class Predictor(object):
 
     def _build_decoder(self, enc_state):
         ## decoder
-        dec_rnn1 = tf.nn.rnn_cell.GRUCell(32)
-        dec_rnn2 = tf.nn.rnn_cell.GRUCell(32)
+        dec_rnn1 = tf.nn.rnn_cell.GRUCell(16)
+        dec_rnn2 = tf.nn.rnn_cell.GRUCell(16)
         dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
 
         #Dense layer to translate the decoder's output at each time
@@ -679,6 +679,7 @@ class Predictor(object):
         else:
             filename = ("./pred/" + self.model_name + "/{}").format(self.epochs - 1)
         self.load_net(filename)
+        # self.load_net("./pred/pretrain")
 
     def load_net(self, load_path):
         loaded_params = joblib.load(load_path)
@@ -715,7 +716,7 @@ class Predictor(object):
         num_sets = len(filelist)
 
         self.dataset = []
-        for idx in range(0, num_sets):
+        for idx in range(num_sets):
             dataset = self.load_dataset(filelist[idx])
             if dataset == 0:
                 return 0
@@ -730,10 +731,11 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
+    parser.add_argument('--model_name', default='test1', type=str)
     args = parser.parse_args()
 
     train_flag=True
-    FLAGS = flags.InitParameter()
+    FLAGS = flags.InitParameter(args.model_name)
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
