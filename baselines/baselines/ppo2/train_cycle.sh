@@ -16,7 +16,7 @@ pred_model="./pred/"
 
 
 # start training
-counter=1
+counter=0
 while [ ${counter} -le ${1} ]
 do
 echo $counter
@@ -26,7 +26,7 @@ if [ ${counter} -eq 0 ]
 then
     python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=2800000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=2300000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -35,9 +35,9 @@ sleep 1
 # sample dataset
 if [ ${counter} -eq 0 ]
 then
-    python run.py --load -p='00150'
+    python run.py --load -p='last'
 else
-    python run.py --load -p='00300'
+    python run.py --load -p='last'
 fi
 
 sleep 1
@@ -45,12 +45,12 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --lr=0.001 --epoch=300
+    python predictor.py --iter=${counter} --lr=0.003 --epoch=300
 elif [ ${counter} -le 5 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.001 --epoch=200
+    python predictor.py --load --iter=${counter} --lr=0.002 --epoch=200
 else
-    python predictor.py --load --iter=${counter} --lr=0.0005 --epoch=100
+    python predictor.py --load --iter=${counter} --lr=0.001 --epoch=100
 fi
 
 # copy saved file and rename
