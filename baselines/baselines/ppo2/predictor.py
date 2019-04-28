@@ -269,7 +269,7 @@ class Predictor(object):
         eff_weight = 0.7
         for y, y_hat in zip(ys, y_hats):
             if not np.any(y[-1]):
-                error.append(0.1)
+                error.append(0.0)
             else:
                 err1 = (1 - eff_weight) * \
                        np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
@@ -514,6 +514,10 @@ class Predictor(object):
             self.file_writer.add_summary(summary, self.start_iter + e)
             print('epoch {}:  train: {} | validate: {}'.format(
                 e + 1, train_loss, validate_loss))
+        ## save last model
+        self.save_net(("./pred/{}/{}").format(
+            self.model_name, "last"
+        ))
 
     def validate(self, validate_set):
         ## run validation
@@ -675,9 +679,9 @@ class Predictor(object):
 
     def load(self):
         if self.train_flag == True:
-            filename = ("./pred/" + self.model_name + "/{}").format(2*self.epochs // 3)
+            filename = ("./pred/" + self.model_name + "/{}").format("last")
         else:
-            filename = ("./pred/" + self.model_name + "/{}").format(self.epochs - 1)
+            filename = ("./pred/" + self.model_name + "/{}").format("last")
         self.load_net(filename)
         # self.load_net("./pred/pretrain")
 
