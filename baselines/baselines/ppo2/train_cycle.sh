@@ -26,7 +26,7 @@ if [ ${counter} -eq 0 ]
 then
     python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=2300000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=1000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -50,7 +50,7 @@ then
     python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=150
 elif [ ${counter} -le 5 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.00005 --epoch=100
+    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=100
 else
     python predictor.py --load --iter=${counter} --lr=0.00005 --epoch=100
 fi
