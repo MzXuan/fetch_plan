@@ -87,20 +87,20 @@ class Predictor(object):
         self.dataset = []
         if reset_flag:
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
-            # #---- one dataset---#
-            # # remove old files
-            # for f in filelist:
-            #     os.remove(os.path.join("./pred/", f))
-
-            #---- two datasets ----#
+            #---- one dataset---#
             # remove old files
             for f in filelist:
-                if not (f.endswith("new.pkl")):
-                    os.remove(os.path.join("./pred/", f))
-                # change last dataset to old dataset
-            for f in filelist:
-                if f.endswith("new.pkl"):
-                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
+                os.remove(os.path.join("./pred/", f))
+
+            # #---- two datasets ----#
+            # # remove old files
+            # for f in filelist:
+            #     if not (f.endswith("new.pkl")):
+            #         os.remove(os.path.join("./pred/", f))
+            #     # change last dataset to old dataset
+            # for f in filelist:
+            #     if f.endswith("new.pkl"):
+            #         os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
 
         self.dataset_idx = 0 # for counting the saved dataset index
 
@@ -357,7 +357,7 @@ class Predictor(object):
             print("collected dataset length:{}".format(self.dataset_length))
 
         # if dataset is large, save it
-        if self.dataset_length > 800000:
+        if self.dataset_length > 400000:
             print("save dataset...")
             pickle.dump(self.dataset,
                 open("./pred/" + "/dataset_new" + ".pkl", "wb"))
@@ -630,7 +630,7 @@ class Predictor(object):
         :return: batch_loss; batch_loss.shape = [batch_size]
         """
         # create input sequence
-        _, seqs_all = self._create_seq(obs, dones, mean, var)
+        seqs_done, seqs_all = self._create_seq(obs, dones, mean, var)
 
         # ---predict input data---#
         xs, ys, x_lens, _ = self._feed_online_data(seqs_all)
@@ -645,7 +645,18 @@ class Predictor(object):
         _, y, y_hat_pred = self.sess.run(fetches, feed_dict)
 
         batch_loss = self._get_batch_loss(y, y_hat_pred, x_lens)
+        
+        # add a statistic of traj length for futher investigate
+        len_traj_done = []
+        if len(seqs_done) >0:
+            for seq in seqs_done:
+                len_traj_done.append(seq.x_len)
+                # print("len of done traj:")
+                # print(seq.x_len)
+        else:
+            len_traj_done.append(np.nan)
 
+        
         # ## display information
         # if (self.iteration % self.display_interval) == 0:
         #     print('\n')
@@ -662,7 +673,7 @@ class Predictor(object):
         # visualize.plot_dof_seqs(origin_x, origin_y, origin_y_pred)
         # #---------------------------
 
-        return batch_loss
+        return batch_loss, len_traj_done
 
     def save_net(self, save_path):
         params = tf.get_collection(

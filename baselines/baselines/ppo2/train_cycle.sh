@@ -8,15 +8,19 @@ function finish() {
 }
 
 # preparation
-rm -rf "./models"
-mkdir "./models"
-
 rl_model="./log/"
 pred_model="./pred/"
 
+# # start from beginning
+# rm -rf "./models"
+# mkdir "./models"
+# counter=0
+
+# start with trained initial model
+counter=1
+
 
 # start training
-counter=0
 while [ ${counter} -le ${1} ]
 do
 echo $counter
@@ -26,7 +30,7 @@ if [ ${counter} -eq 0 ]
 then
     python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=1000000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=200000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -47,12 +51,12 @@ if [ ${counter} -eq 0 ]
 then
     python predictor.py --iter=${counter} --lr=0.03 --epoch=20
     sleep 1
-    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=150
+    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=80
 elif [ ${counter} -le 5 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=100
+    python predictor.py --load --iter=${counter} --lr=0.0002 --epoch=20
 else
-    python predictor.py --load --iter=${counter} --lr=0.00005 --epoch=100
+    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=20
 fi
 
 # copy saved file and rename
