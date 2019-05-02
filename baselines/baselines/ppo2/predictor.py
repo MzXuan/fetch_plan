@@ -12,6 +12,7 @@ import numpy as np
 
 import tensorflow as tf
 
+
 # for plot saved dataset
 import flags
 import matplotlib.pyplot as plt
@@ -156,6 +157,24 @@ class Predictor(object):
 
         self.go_token = np.full((self.out_dim), 0.0, dtype=np.float32)
 
+        # self.weights = tf.placeholder(
+        #     tf.float32,
+        #     shape=[None, self.out_timesteps, self.out_dim],
+        #     name='weights'
+        #     )
+
+        weight = np.zeros((self.out_timesteps, self.out_dim))
+        eff_weight = 0.7
+        weight[:,0:7] = 1 - eff_weight
+        weight[:, 7:10] = eff_weight
+        weight = np.expand_dims(weight, axis=0)
+        self.weights = np.repeat(weight,self.batch_size,axis=0)
+        # print("self.weights:")
+        # print(self.weights)
+
+
+
+
     def init_sess(self):
         self.sess.run(tf.global_variables_initializer())
 
@@ -234,6 +253,7 @@ class Predictor(object):
             )
         return training_decoder_outputs, inference_decoder_outputs
 
+
     def _build_net(self):
         with tf.variable_scope("predictor"):
             ## encoder
@@ -244,8 +264,19 @@ class Predictor(object):
             self.y_hat_pred = inference_decoder_outputs[0]
 
             ## setup optimization
-            self.training_loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat_train)
-            self.validate_loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat_pred)
+            self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_train,
+                                                              weights = self.weights)
+
+
+            self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_pred,
+                                                              weights = self.weights)
+
+            self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_pred,
+                                                              weights = self.weights,
+                                                              reduction = tf.losses.Reduction.NONE)
 
         self.train_op = tf.train.AdamOptimizer(self.lr).minimize(
             self.training_loss)
@@ -256,7 +287,7 @@ class Predictor(object):
             self.checkpoint_dir, self.sess.graph
             )
 
-    def _get_batch_loss(self, ys, y_hats, x_lens):
+    def _get_batch_loss(self, ys, y_hats, raw_pred_loss):
         """
         calculate the mean square error between ground truth and prediction
         if ground truth y equals 0 (no ground truth), we set mean square error to 0
@@ -264,20 +295,29 @@ class Predictor(object):
         :param y_hats: prediction
         :return: error
         """
-        #----- old version-----#
-        error = []
-        eff_weight = 0.7
-        for y, y_hat in zip(ys, y_hats):
-            if not np.any(y[-1]):
-                error.append(0.0)
-            else:
-                err1 = (1 - eff_weight) * \
-                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
-                err2 = eff_weight * \
-                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
-                error.append((np.sqrt(err1 + err2)))
+        # #----- old version-----#
+        # error = []
+        # eff_weight = 0.7
+        # for y, y_hat in zip(ys, y_hats):
+        #     if not np.any(y[-1]):
+        #         error.append(0.0)
+        #     else:
+        #         err1 = (1 - eff_weight) * \
+        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
+        #         err2 = eff_weight * \
+        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
+        #         error.append((np.sqrt(err1 + err2)))
+        #
+        # return np.asarray(error)
 
-        return np.asarray(error)
+        #----- updated version ---#
+        batch_loss = np.mean(raw_pred_loss, axis=(1,2))
+
+        for idx, y in enumerate(ys):
+            if not np.any(y[-1]):
+                batch_loss[idx] = 0.0
+        return batch_loss
+
 
         # #---- new normalized version ----#
         # # err = err/delta(y)
@@ -635,17 +675,16 @@ class Predictor(object):
         # ---predict input data---#
         xs, ys, x_lens, _ = self._feed_online_data(seqs_all)
 
-        fetches = [self.validate_loss, self.y_ph, self.y_hat_pred]
+        fetches = [self.predict_loss, self.y_ph, self.y_hat_pred]
         feed_dict = {
             self.x_ph: xs,
             self.y_ph: ys,
             self.x_len_ph: x_lens
         }
 
-        _, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+        raw_pred_loss, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+        batch_loss = self._get_batch_loss(y, y_hat_pred, raw_pred_loss)
 
-        batch_loss = self._get_batch_loss(y, y_hat_pred, x_lens)
-        
         # add a statistic of traj length for futher investigate
         len_traj_done = []
         if len(seqs_done) >0:

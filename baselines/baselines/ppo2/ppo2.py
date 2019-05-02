@@ -160,6 +160,7 @@ class Runner(object):
             mb_rewards.append(rewards)
             mb_origin_ploss.append(np.mean(np.asarray(origin_pred_loss)))
             mb_weighted_ploss.append(np.mean(np.asarray(predict_loss)))
+            
             mb_traj_len.append(np.nanmean(np.asarray(traj_len)))
             
 
@@ -253,11 +254,9 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             loss.append(origin_ploss)
             rew.append(origin_rew)
 
-        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1/2)
+        runner.pred_weight = np.mean(rew)/np.mean(loss) * (5)
         print("current pred weight is: ")
         print(runner.pred_weight)
-
-
 
     # learning
     nupdates = total_timesteps//nbatch
