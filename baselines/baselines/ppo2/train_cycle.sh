@@ -28,7 +28,7 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=5300000 --pred_weight=0.0 --iter=${counter}
 else
     python run.py --train --load --num-timesteps=500000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
@@ -54,9 +54,9 @@ then
     python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=150
 elif [ ${counter} -le 5 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.0002 --epoch=120
+    python predictor.py --load --iter=${counter} --lr=0.0002 --epoch=150
 else
-    python predictor.py --load --iter=${counter} --lr=0.0002 --epoch=100
+    python predictor.py --load --iter=${counter} --lr=0.0002 --epoch=150
 fi
 
 # copy saved file and rename

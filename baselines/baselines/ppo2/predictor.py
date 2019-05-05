@@ -62,7 +62,10 @@ class Predictor(object):
                  lr=0.001):
         ## extract FLAGS
         self.sess = sess
-        self.start_iter = iter_start * epoch
+        if iter_start == 0 and lr<0.0001:
+            self.start_iter = 20
+        else:
+            self.start_iter = iter_start * epoch
         self.iteration = 0
         self.dataset_length = 0
 

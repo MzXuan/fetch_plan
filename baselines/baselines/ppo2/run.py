@@ -182,8 +182,11 @@ def main():
     else:
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
-        
+
+
 
 if __name__ == '__main__':
     main()
+    # script for testing
+    # python run.py --display --env=FetchPlanTest-v0 --log-file=log_0
 
