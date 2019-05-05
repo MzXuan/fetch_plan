@@ -254,7 +254,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             loss.append(origin_ploss)
             rew.append(origin_rew)
 
-        runner.pred_weight = np.mean(rew)/np.mean(loss) * (5)
+        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1/2)
         print("current pred weight is: ")
         print(runner.pred_weight)
 
