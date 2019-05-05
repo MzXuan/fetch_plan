@@ -68,7 +68,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             return -20.0
         else:
             current_distance = goal_distance(achieved_goal, goal)
-            approaching_rew = 20.0 * (self.last_distance - current_distance)
+            approaching_rew = 15.0 * (self.last_distance - current_distance)
             self.last_distance = copy.deepcopy(current_distance)
             return approaching_rew
 
