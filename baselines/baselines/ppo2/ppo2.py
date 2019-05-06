@@ -145,7 +145,7 @@ class Runner(object):
             if self.predictor_flag and pred_weight != 0.0:
                 origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones)
                 predict_loss = pred_weight * origin_pred_loss
-                # rewards -= predict_loss
+                rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
                 # print("final_reward: {}".format(rewards))
@@ -255,7 +255,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             loss.append(origin_ploss)
             rew.append(origin_rew)
 
-        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1/2)
+        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1)
         print("current pred weight is: ")
         print(runner.pred_weight)
 
@@ -419,7 +419,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
     predictor = Predictor(sess, flags.InitParameter(), 1, 10, train_flag=False)
     predictor.init_sess()
-    predictor.load()
+    # predictor.load()
 
     def load(load_path):
         loaded_params = joblib.load(load_path)
@@ -444,7 +444,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
             env.render()
             act, state = agent.mean(obs, state, done)
             obs, rew, done, _ = env.step(act)
-            predictor.predict(obs,done)
+            # predictor.predict(obs,done)
 
 
             # #---- plot result ---

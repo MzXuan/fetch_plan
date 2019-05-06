@@ -11,13 +11,13 @@ function finish() {
 rl_model="./log/"
 pred_model="./pred/"
 
-# # start from beginning
-# rm -rf "./models"
-# mkdir "./models"
-# counter=0
+# start from beginning
+rm -rf "./models"
+mkdir "./models"
+counter=0
 
-# start with trained initial model
-counter=1
+# # start with trained initial model
+# counter=1
 
 
 # start training
@@ -28,9 +28,9 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=5000000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=500000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=1000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle

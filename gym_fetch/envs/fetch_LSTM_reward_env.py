@@ -136,9 +136,9 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             'is_collision': self._contact_dection()
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
-        energy_loss = 0.2 * np.linalg.norm(real_act - self.prev_act)
-        # print("approching_rew: {} | energy_loss: {}".format(reward, energy_loss))
-        reward -= energy_loss
+        # energy_loss = 0.2 * np.linalg.norm(real_act - self.prev_act)
+        # # print("approching_rew: {} | energy_loss: {}".format(reward, energy_loss))
+        # reward -= energy_loss
         self.prev_act = real_act.copy()
         if info["is_success"] or info["is_collision"]:
             done = True
