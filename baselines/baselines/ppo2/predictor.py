@@ -167,7 +167,7 @@ class Predictor(object):
         #     )
 
         weight = np.zeros((self.out_timesteps, self.out_dim))
-        eff_weight = 0.7
+        eff_weight = 0.8
         weight[:,0:7] = 1 - eff_weight
         weight[:, 7:10] = eff_weight
         weight = np.expand_dims(weight, axis=0)
