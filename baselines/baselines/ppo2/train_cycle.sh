@@ -30,7 +30,7 @@ if [ ${counter} -eq 0 ]
 then
     python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=1000000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=8000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -51,12 +51,12 @@ if [ ${counter} -eq 0 ]
 then
     python predictor.py --iter=${counter} --lr=0.03 --epoch=20
     sleep 1
-    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=300
+    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=3000
 elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.0003 --epoch=300
+    python predictor.py --load --iter=${counter} --lr=0.0003 --epoch=1000
 else
-    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=300
+    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=3000
 fi
 
 # copy saved file and rename

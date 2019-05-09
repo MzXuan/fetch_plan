@@ -145,7 +145,7 @@ class Runner(object):
             if self.predictor_flag and pred_weight != 0.0:
                 origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones)
                 predict_loss = pred_weight * origin_pred_loss
-                # rewards -= predict_loss
+                rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
                 # print("final_reward: {}".format(rewards))
@@ -441,7 +441,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
         obs_list_3d = None
 
         env.render()
-        # time.sleep(2)
+        time.sleep(2)
 
         while not done[0]:
             env.render()
@@ -462,7 +462,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
             score += rew[0]
 
         # if done, pause 2 s
-        # time.sleep(2)
+        time.sleep(2)
         return score
 
 
