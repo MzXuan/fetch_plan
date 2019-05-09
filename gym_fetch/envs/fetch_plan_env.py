@@ -59,7 +59,7 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, TEST_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.07, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.2,
             initial_qpos=initial_qpos, reward_type=reward_type)
         utils.EzPickle.__init__(self)
 
@@ -86,7 +86,47 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
 
     def _reset_arm(self):
         collision_flag = True
+        d = 0.1
         while collision_flag:
+            #middle + random
+            # initial_qpos = {
+            #     'robot0:slide0': 0.4049,
+            #     'robot0:slide1': 0.48,
+            #     'robot0:slide2': 0.0,
+            #     'robot0:torso_lift_joint': 0.0,
+            #     'robot0:head_pan_joint': 0.0,  # range="-1.57 1.57"
+            #     'robot0:head_tilt_joint': 0.0,  # range="-0.76 1.45"
+            #     'robot0:shoulder_pan_joint': 0.0,  # range="-1.6056 1.6056"
+            #     'robot0:shoulder_lift_joint': 0.8+d-2*d*np.random.random(), #range="-1.221 1.518"
+            #     'robot0:upperarm_roll_joint': 0, #limited="false"
+            #     'robot0:elbow_flex_joint': -1.9+d-2*d*np.random.random(), #range="-2.251 2.251"
+            #     'robot0:forearm_roll_joint': 0,#limited="false"
+            #     'robot0:wrist_flex_joint':1.5+d-2*d*np.random.random(), #range="-2.16 2.16"
+            #     'robot0:wrist_roll_joint': 0, #limited="false"
+            #     'robot0:r_gripper_finger_joint': 0,
+            #     'robot0:l_gripper_finger_joint': 0
+            # }
+
+            # #middle
+            # initial_qpos = {
+            #     'robot0:slide0': 0.4049,
+            #     'robot0:slide1': 0.48,
+            #     'robot0:slide2': 0.0,
+            #     'robot0:torso_lift_joint': 0.0,
+            #     'robot0:head_pan_joint': 0.0,  # range="-1.57 1.57"
+            #     'robot0:head_tilt_joint': 0.0,  # range="-0.76 1.45"
+            #     'robot0:shoulder_pan_joint': 0.0,  # range="-1.6056 1.6056"
+            #     'robot0:shoulder_lift_joint': 0.8, #range="-1.221 1.518"
+            #     'robot0:upperarm_roll_joint': 0, #limited="false"
+            #     'robot0:elbow_flex_joint': -1.9, #range="-2.251 2.251"
+            #     'robot0:forearm_roll_joint': 0,#limited="false"
+            #     'robot0:wrist_flex_joint':1.5, #range="-2.16 2.16"
+            #     'robot0:wrist_roll_joint': 0, #limited="false"
+            #     'robot0:r_gripper_finger_joint': 0,
+            #     'robot0:l_gripper_finger_joint': 0
+            # }
+
+            # left
             initial_qpos = {
                 'robot0:slide0': 0.4049,
                 'robot0:slide1': 0.48,
@@ -94,13 +134,13 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
                 'robot0:torso_lift_joint': 0.0,
                 'robot0:head_pan_joint': 0.0,  # range="-1.57 1.57"
                 'robot0:head_tilt_joint': 0.0,  # range="-0.76 1.45"
-                'robot0:shoulder_pan_joint': 0.0,  # range="-1.6056 1.6056"
-                'robot0:shoulder_lift_joint': 1.2, #range="-1.221 1.518"
-                'robot0:upperarm_roll_joint': 0, #limited="false"
-                'robot0:elbow_flex_joint': -2.1, #range="-2.251 2.251"
-                'robot0:forearm_roll_joint': 0,#limited="false"
-                'robot0:wrist_flex_joint':1.9, #range="-2.16 2.16"
-                'robot0:wrist_roll_joint': 0, #limited="false"
+                'robot0:shoulder_pan_joint':0.5,  # range="-1.6056 1.6056"
+                'robot0:shoulder_lift_joint': 0,  # range="-1.221 1.518"
+                'robot0:upperarm_roll_joint': -1.0,  # limited="false"
+                'robot0:elbow_flex_joint': 1.5,  # range="-2.251 2.251"
+                'robot0:forearm_roll_joint': 0,  # limited="false"
+                'robot0:wrist_flex_joint':1.0,  # range="-2.16 2.16"
+                'robot0:wrist_roll_joint': 0,  # limited="false"
                 'robot0:r_gripper_finger_joint': 0,
                 'robot0:l_gripper_finger_joint': 0
             }
@@ -112,4 +152,13 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
             self.sim.set_state(self.initial_state)
             self.sim.forward()
             collision_flag = self._contact_dection()
+
+    def _viewer_setup(self):
+        body_id = self.sim.model.body_name2id('robot0:torso_lift_link')
+        lookat = self.sim.data.body_xpos[body_id]
+        for idx, value in enumerate(lookat):
+            self.viewer.cam.lookat[idx] = value
+        self.viewer.cam.distance = 4
+        self.viewer.cam.azimuth = 180
+        self.viewer.cam.elevation = -14.
 

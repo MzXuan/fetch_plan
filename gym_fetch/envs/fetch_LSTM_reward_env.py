@@ -50,6 +50,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.last_distance = 0.0
 
         self.current_qvel = np.zeros(7)
+        self.prev_act = np.zeros(7)
 
 
         super(FetchLSTMRewardEnv, self).__init__(
@@ -170,7 +171,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
         #     print('c_array', c_array)
 
-        if self.sim.data.ncon > 1:
+        if self.sim.data.ncon > 10:
             return True
         else:
             return False
@@ -251,8 +252,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             achieved_goal = grip_pos.copy()
         else:
             achieved_goal = np.squeeze(object_pos.copy())
+        # obs = np.concatenate([
+        #     joint_angle, joint_vel
+        # ])
         obs = np.concatenate([
-            joint_angle, joint_vel
+            joint_angle, joint_vel, self.prev_act
         ])
         # ------------------------
         #   Observation details
