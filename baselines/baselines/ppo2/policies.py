@@ -155,11 +155,8 @@ class MlpPolicy(object):
         neglogp0 = self.pd.neglogp(a0)
         self.initial_state = None
 
-        def step(ob, test_flag=False):
-            if not test_flag:
-                a, v, neglogp = sess.run([a0, vf, neglogp0], {X:ob})
-            else:
-                a, v, neglogp = sess.run([pi, vf, neglogp0], {X:ob})
+        def step(ob, *_args, **_kwargs):
+            a, v, neglogp = sess.run([a0, vf, neglogp0], {X:ob})
             return a, v, self.initial_state, neglogp
 
         def value(ob, *_args, **_kwargs):
