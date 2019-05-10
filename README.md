@@ -1,13 +1,20 @@
 # fetch planner
 
 ---
+## Details need to be determinted
+* the variance of mean and var with the iteration increasing
+* different length dataset in different iteration, although 5000 trajectories were sampled in one iteration.
+* feed_one_data function in predictor.py
+* why the last trajectory can not be used.
+
+---
 ## TODO List
 + Reduce RL traning steps
 + Baseline training
 + Whether fine-tuning for predictor training
 + Whether smooth training process (two datasets)
 + Different predictor network sizes
-+ Visualize RL training process which should include tensorboard and result_plotter.py (@tingxfan)
++ Predict only end-effector
 + GUI (@xuanz)
 
 ---

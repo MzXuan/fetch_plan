@@ -6,7 +6,6 @@ class RunningMeanStd(object):
         self.var = np.ones(shape, 'float64')
         self.count = epsilon
 
-
     def update(self, x):
         batch_mean = np.mean(x, axis=0)
         batch_var = np.var(x, axis=0)

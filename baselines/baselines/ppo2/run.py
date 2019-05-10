@@ -6,7 +6,7 @@ import numpy as np
 from baselines import bench, logger
 
 def train(env_id, num_timesteps, seed, d_targ, load, point,
-          pred_weight=0.01):
+          pred_weight=0.01, ent_coef=0.0):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalize
     from baselines.ppo2 import ppo2
@@ -35,26 +35,31 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
                             inter_op_parallelism_threads=ncpu)
     tf.Session(config=config).__enter__()
     
-
     nenvs = 16
     env = SubprocVecEnv([make_env(i) for i in range(nenvs)])
-    env = VecNormalize(env)
+    if load:
+        curr_path = sys.path[0]
+        ob_mean = np.load('{}/log/ob_mean.npy'.format(curr_path))
+        ob_var = np.load('{}/log/ob_var.npy'.format(curr_path))
+        ob_count = np.load('{}/log/ob_count.npy'.format(curr_path))
+        ret_mean = np.load('{}/log/ret_mean.npy'.format(curr_path))
+        ret_var = np.load('{}/log/ret_var.npy'.format(curr_path))
+        ret_count = 10
+
+        env = VecNormalize(env,
+            ob_mean=ob_mean, ob_var=ob_var, ob_count=ob_count,
+            ret_mean=ret_mean, ret_var=ret_var, ret_count=ret_count)
+    else:
+        env = VecNormalize(env)
 
     policy = MlpPolicy
-
-    def adaptive_lr(lr, kl, d_targ):
-        if kl < (d_targ / 1.5):
-            lr *= 2.
-        elif kl > (d_targ * 1.5):
-            lr *= .5
-        return lr
 
     def constant_lr(lr, kl=0.0, d_targ=0.0):
         return lr
 
     ppo2.learn(policy=policy, env=env, nsteps=512, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
-        ent_coef=0.00,
+        ent_coef=ent_coef,
         lr=constant_lr,
         cliprange=0.2,
         total_timesteps=num_timesteps,
@@ -84,18 +89,18 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
             env = gym.make(env_id)
             keys = env.observation_space.spaces.keys()
             env = gym.wrappers.FlattenDictWrapper(env, dict_keys=list(keys))
-            env.seed(seed + rank)
+            env.seed(seed + rank + 100)
             return env
         return _thunk
 
     curr_path = sys.path[0]
     nenvs = 16
     env = SubprocVecEnv([make_env(i) for i in range(nenvs)])
-    running_mean = np.load('{}/log/mean.npy'.format(curr_path))
-    running_var = np.load('{}/log/var.npy'.format(curr_path))
-    env = VecNormalizeTest(env, running_mean, running_var)
+    ob_mean = np.load('{}/log/ob_mean.npy'.format(curr_path))
+    ob_var = np.load('{}/log/ob_var.npy'.format(curr_path))
+    env = VecNormalizeTest(env, ob_mean, ob_var)
 
-    set_global_seeds(seed)
+    set_global_seeds(seed + 100)
     policy = MlpPolicy
 
     def constant_lr(lr, kl=0.0, d_targ=0.0):
@@ -112,7 +117,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
         init_targ=d_targ,
         predictor_flag=False)
 
-def display(env_id, num_timesteps, seed, curr_path, point):
+def display(env_id, num_timesteps, seed, curr_path, log_file, point):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalizeTest
     from baselines.ppo2 import ppo2
@@ -133,15 +138,15 @@ def display(env_id, num_timesteps, seed, curr_path, point):
         env = gym.wrappers.FlattenDictWrapper(env, dict_keys=list(keys))
         return env
     env = DummyVecTestEnv([make_env])
-    running_mean = np.load('{}/log/mean.npy'.format(curr_path))
-    running_var = np.load('{}/log/var.npy'.format(curr_path))
-    env = VecNormalizeTest(env, running_mean, running_var)
+    ob_mean = np.load('{}/{}/ob_mean.npy'.format(curr_path, log_file))
+    ob_var = np.load('{}/{}/ob_var.npy'.format(curr_path, log_file))
+    env = VecNormalizeTest(env, ob_mean, ob_var)
 
     set_global_seeds(seed)
     policy = MlpPolicy
 
     ppo2.display(policy=policy, env=env, nsteps=2048, nminibatches=32, 
-        load_path='{}/log/checkpoints/{}'.format(curr_path, point))
+        load_path='{}/{}/checkpoints/{}'.format(curr_path, log_file, point))
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -154,15 +159,17 @@ def main():
     parser.add_argument('--d_targ', type=float, default=0.012)
     parser.add_argument('-p', '--point', type=str, default='00100')
     parser.add_argument('--pred_weight', default=0.01, type=float)
+    parser.add_argument('--ent_coef', default=0.0, type=float)
     parser.add_argument('--iter', default=0, type=int)
+    parser.add_argument('--log-file', default='log', type=str)
     args = parser.parse_args()
 
-    each_iter_num = 150
+    each_iter_num = 100
 
     curr_path = sys.path[0]
     if args.display:
         display(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            curr_path=curr_path, point=args.point)
+            curr_path=curr_path, log_file = args.log_file, point=args.point)
     elif args.train:
         logger.configure(dir='{}/log'.format(curr_path), format_strs=['stdout',
                                                                       'log',
@@ -171,12 +178,15 @@ def main():
         logger.tb_start_step(args.iter * each_iter_num, 3)
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=args.load, point=args.point,
-              pred_weight=args.pred_weight)
+              pred_weight=args.pred_weight, ent_coef=args.ent_coef)
     else:
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
-        
+
+
 
 if __name__ == '__main__':
     main()
+    # script for testing
+    # python run.py --display --env=FetchPlanTest-v0 --log-file=log_0
 

@@ -42,7 +42,7 @@ class Model(object):
         pg_loss = tf.reduce_mean(tf.maximum(pg_losses, pg_losses2))
         approxkl = .5 * tf.reduce_mean(tf.square(neglogpac - OLDNEGLOGPAC))
         clipfrac = tf.reduce_mean(tf.to_float(tf.greater(tf.abs(ratio - 1.0), CLIPRANGE)))
-        loss = pg_loss - entropy * ent_coef + vf_loss * vf_coef
+        loss = pg_loss + entropy * ent_coef + vf_loss * vf_coef
         params = tf.trainable_variables()
         grads = tf.gradients(loss, params)
         if max_grad_norm is not None:
@@ -124,6 +124,8 @@ class Runner(object):
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
+        mb_weighted_ploss, mb_origin_ploss, mb_origin_rew = [],[],[]
+        mb_traj_len = []
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
@@ -134,22 +136,38 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
-
+            
+            mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
+            traj_len = np.nan
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0:
-                predict_loss = self.predictor.predict(self.obs[:], self.dones)
-                rewards -= pred_weight*np.square(predict_loss)
+                origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones)
+                predict_loss = pred_weight * origin_pred_loss
+                rewards -= predict_loss
+                #---for display---
+                # print("predict_loss: {}".format(predict_loss))
+                # print("final_reward: {}".format(rewards))
             elif pred_weight != 0.0:
                 self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
+                origin_pred_loss = 0.0
+                predict_loss = 0.0
+            else:
+                origin_pred_loss = 0.0
+                predict_loss = 0.0
 
+            rewards = self.env.normalize_rew(rewards)
             mb_rewards.append(rewards)
+            mb_origin_ploss.append(np.mean(np.asarray(origin_pred_loss)))
+            mb_weighted_ploss.append(np.mean(np.asarray(predict_loss)))
+            
+            mb_traj_len.append(np.nanmean(np.asarray(traj_len)))
+            
 
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
 
-            
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
@@ -173,7 +191,7 @@ class Runner(object):
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
         mb_returns = mb_advs + mb_values
         return (*map(sf01, (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs)), 
-            mb_states, epinfos)
+            mb_states, mb_origin_ploss, mb_weighted_ploss, mb_origin_rew, epinfos, mb_traj_len)
 # obs, returns, masks, actions, values, neglogpacs, states = runner.run()
 def sf01(arr):
     """
@@ -223,6 +241,24 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
     lrnow = 3e-4
     kl = 0.01
+
+    #test weight parameter
+    print("current pred_weight")
+    print(pred_weight)
+    if pred_weight!=0:
+        loss = []
+        rew = []
+        print("finding best pred weight... this will take 5 epochs...")
+        for _ in tqdm(range(1,5)):
+            obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos, _ = runner.run()  # pylint: disable=E0632
+            loss.append(origin_ploss)
+            rew.append(origin_rew)
+
+        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1/2)
+        print("current pred weight is: ")
+        print(runner.pred_weight)
+
+    # learning
     nupdates = total_timesteps//nbatch
     for update in tqdm(range(1, nupdates+1)):
         assert nbatch % nminibatches == 0
@@ -244,7 +280,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
         lrnow = lr(lrnow, kl, d_targ)
         cliprangenow = cliprange(frac)
-        obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run() #pylint: disable=E0632
+        obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos, traj_len = runner.run() #pylint: disable=E0632
         epinfobuf.extend(epinfos)
         mblossvals = []
         if states is None: # nonrecurrent version
@@ -287,8 +323,12 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             logger.logkv('eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
             logger.logkv('eplenmean', safemean([epinfo['l'] for epinfo in epinfobuf]))
             logger.logkv('time_elapsed', tnow - tfirststart)
-            logger.logkv('lr', lrnow)
-            logger.logkv('d_targ', d_targ)
+            logger.logkv('origin_pred_loss', np.mean(origin_ploss))
+            logger.logkv('weighted_pred_loss', np.mean(pred_loss))
+            logger.logkv('origin_rew', np.mean(origin_rew))
+            logger.logkv('len_traj_done', np.nanmean(traj_len))
+            # logger.logkv('lr', lrnow)
+            # logger.logkv('d_targ', d_targ)
             for (lossval, lossname) in zip(lossvals, model.loss_names):
                 logger.logkv(lossname, lossval)
             logger.dumpkvs()
@@ -299,10 +339,23 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             savepath = osp.join(checkdir, '%.5i'%update)
             print('Saving to', savepath)
             model.save(savepath)
-            # print ('runner.mean: {}'.format(runner.env.ob_rms.mean))
-            np.save('{}/mean'.format(logger.get_dir()), runner.env.ob_rms.mean)
-            # print ('runner.var: {}'.format(runner.env.ob_rms.var))
-            np.save('{}/var'.format(logger.get_dir()), runner.env.ob_rms.var)
+            np.save('{}/ob_mean'.format(logger.get_dir()), runner.env.ob_rms.mean)
+            np.save('{}/ob_var'.format(logger.get_dir()), runner.env.ob_rms.var)
+            np.save('{}/ob_count'.format(logger.get_dir()), runner.env.ob_rms.count)
+            np.save('{}/ret_mean'.format(logger.get_dir()), runner.env.ret_rms.mean)
+            np.save('{}/ret_var'.format(logger.get_dir()), runner.env.ret_rms.var)
+
+    checkdir = osp.join(logger.get_dir(), 'checkpoints')
+    os.makedirs(checkdir, exist_ok=True)
+    savepath = osp.join(checkdir, 'last')
+    print('Saving to', savepath)
+    model.save(savepath)
+    np.save('{}/ob_mean'.format(logger.get_dir()), runner.env.ob_rms.mean)
+    np.save('{}/ob_var'.format(logger.get_dir()), runner.env.ob_rms.var)
+    np.save('{}/ob_count'.format(logger.get_dir()), runner.env.ob_rms.count)
+    np.save('{}/ret_mean'.format(logger.get_dir()), runner.env.ret_rms.mean)
+    np.save('{}/ret_var'.format(logger.get_dir()), runner.env.ret_rms.var)
+
     env.close()
 
 def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr, 
@@ -329,7 +382,7 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         nsteps=nsteps, gamma=gamma, lam=lam, load=False, point=point,
         predictor_flag=predictor_flag)
 
-    def load(load_path):
+    def load_net(load_path):
         sess = tf.get_default_session()
         params = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
@@ -339,11 +392,12 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         for p, loaded_p in zip(params, loaded_params):
             restores.append(p.assign(loaded_p))
         sess.run(restores)
+
     curr_path = sys.path[0]
     load_path = '{}/log/checkpoints/{}'.format(curr_path, point)
-    load(load_path)
+    load_net(load_path)
     
-    while (not runner.collect_flag):
+    while not runner.collect_flag:
         runner.run() #pylint: disable=E0632
         
     env.close()
@@ -364,9 +418,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
     predictor = Predictor(sess, flags.InitParameter(), 1, 10, train_flag=False)
     predictor.init_sess()
-    predictor.load()
-
-
+    # predictor.load()
 
     def load(load_path):
         loaded_params = joblib.load(load_path)
@@ -376,9 +428,6 @@ def display(policy, env, nsteps, nminibatches, load_path):
         sess.run(restores)
 
     load(load_path)
-
-
-
 
     def run_episode(env, agent):
         import visualize
@@ -390,11 +439,14 @@ def display(policy, env, nsteps, nminibatches, load_path):
         obs_list = None
         obs_list_3d = None
 
+        env.render()
+        time.sleep(2)
+
         while not done[0]:
             env.render()
             act, state = agent.mean(obs, state, done)
             obs, rew, done, _ = env.step(act)
-            predictor.predict(obs,done)
+            # predictor.predict(obs,done)
 
 
             # #---- plot result ---
@@ -408,7 +460,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # #--- end plot ---#
             score += rew[0]
 
+        # if done, pause 2 s
+        time.sleep(2)
         return score
+
 
     for e in range(10000):
         score = run_episode(env, act_model)
