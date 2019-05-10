@@ -313,41 +313,39 @@ class Predictor(object):
         #
         # return np.asarray(error)
 
-        # #----- updated version ---#
-        # batch_loss = np.mean(raw_pred_loss, axis=(1,2))
-
-        # for idx, y in enumerate(ys):
+        # #---- normalized version ----#
+        # # err = err/delta(y)
+        # error = []
+        # eff_weight = 0.99
+        # for y, y_hat in zip(ys, y_hats):
         #     if not np.any(y[-1]):
-        #         batch_loss[idx] = 0.0
-        # return batch_loss
+        #         error.append(0)
+        #     else:
+        #         err1 = (1 - eff_weight) * \
+        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
+        #                       np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
+        
+        #         # print("y[:, 0:7]")
+        #         # print(y[:, 0:7])
+        #         # print("cumsum y")
+        #         # print(np.cumsum(y[:, 0:7], axis=0))
+        #         err2 = eff_weight * \
+        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
+        #                       np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
+        
+        #         # print("current error:")
+        #         # print(err1+err2)
+        #         error.append((np.sqrt(err1 + err2)))
+        
+        # return np.asarray(error)
 
+        #----- updated version ---#
+        batch_loss = np.mean(raw_pred_loss/(ys+1e-8), axis=(1,2))
 
-        #---- new normalized version ----#
-        # err = err/delta(y)
-        error = []
-        eff_weight = 0.99
-        for y, y_hat in zip(ys, y_hats):
+        for idx, y in enumerate(ys):
             if not np.any(y[-1]):
-                error.append(0)
-            else:
-                err1 = (1 - eff_weight) * \
-                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
-                              np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
-        
-                # print("y[:, 0:7]")
-                # print(y[:, 0:7])
-                # print("cumsum y")
-                # print(np.cumsum(y[:, 0:7], axis=0))
-                err2 = eff_weight * \
-                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
-                              np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
-        
-                # print("current error:")
-                # print(err1+err2)
-                error.append((np.sqrt(err1 + err2)))
-        
-        return np.asarray(error)
-
+                batch_loss[idx] = 0.0
+        return batch_loss
 
         
     def _create_seq(self, obs, dones, mean, var):
