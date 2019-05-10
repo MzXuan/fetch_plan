@@ -253,13 +253,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         else:
             achieved_goal = np.squeeze(object_pos.copy())
         
-        obs = np.concatenate([
-            joint_angle, joint_vel
-        ])
+#         obs = np.concatenate([
+#             joint_angle, joint_vel
+#         ])
 
-        # obs = np.concatenate([
-        #     joint_angle, joint_vel, self.prev_act
-        # ])
+        obs = np.concatenate([
+            joint_angle, joint_vel, self.prev_act
+        ])
         # ------------------------
         #   Observation details
         #   obs[0:3]: end-effector position
