@@ -12,9 +12,9 @@ X_EPISODES = 'episodes'
 X_WALLTIME = 'walltime_hrs'
 POSSIBLE_X_AXES = [X_TIMESTEPS, X_EPISODES, X_WALLTIME]
 EPISODES_WINDOW = 100
-# COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink',
-#         'brown', 'orange', 'teal', 'coral', 'lightblue', 'lime', 'lavender', 'turquoise',
-#         'darkgreen', 'tan', 'salmon', 'gold', 'lightpurple', 'darkred', 'darkblue']
+COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink',
+        'brown', 'orange', 'teal', 'coral', 'lightblue', 'lime', 'lavender', 'turquoise',
+        'darkgreen', 'tan', 'salmon', 'gold', 'lightpurple', 'darkred', 'darkblue']
 
 def rolling_window(a, window):
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
@@ -45,16 +45,15 @@ def plot_curves(xy_list, xaxis, title):
     maxx = max(xy[0][-1] for xy in xy_list)
     minx = 0
     for (i, (x, y)) in enumerate(xy_list):
-        # color = COLORS[i]
+        color = COLORS[i]
         # plt.scatter(x, y, s=2)
         x, y_mean = window_func(x, y, EPISODES_WINDOW, np.mean) #So returns average of last EPISODE_WINDOW episodes
-        plt.plot(x, y_mean, label=str(i))
+        plt.plot(x, y_mean, color=color, label=str(i))
     plt.xlim(minx, maxx)
     plt.title(title)
     plt.xlabel(xaxis)
     plt.ylabel("Episode Rewards")
     plt.legend(loc=0)
-    plt.grid(axis='both')
     plt.tight_layout()
 
 def plot_results(dirs, num_timesteps, xaxis, task_name):

@@ -60,6 +60,7 @@ class Predictor(object):
                  batch_size, max_timestep, train_flag,
                  reset_flag=False, epoch=20, iter_start=0,
                  lr=0.001):
+
         ## extract FLAGS
         self.sess = sess
         if iter_start == 0 and lr<0.001:
@@ -506,6 +507,7 @@ class Predictor(object):
             print("Not in training process,return...")
             return 0
 
+
         ## load dataset
         self._load_train_set()
         print("trajectory numbers: ", len(self.dataset))
@@ -779,6 +781,7 @@ class Predictor(object):
                 return 0
             else:
                 self.dataset.extend(dataset)
+
 
 
 if __name__ == '__main__':
