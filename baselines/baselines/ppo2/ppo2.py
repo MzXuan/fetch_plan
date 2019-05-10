@@ -136,20 +136,21 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
+
             
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
             traj_len = np.nan
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0:
-                origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones)
+                origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones, infos)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
                 # print("final_reward: {}".format(rewards))
             elif pred_weight != 0.0:
-                self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
+                self.collect_flag = self.predictor.collect(self.obs[:], self.dones, infos)
                 origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:

@@ -21,7 +21,7 @@ from matplotlib.font_manager import FontProperties
 from tqdm import tqdm
 
 class DatasetStru(object):
-    def __init__(self, x, x_len, x_mean, x_var):
+    def __init__(self, x, x_len, x_mean, x_var, label):
         """
         :param x: shape = (self.in_timesteps_max, self.in_dim)
         :param x_len: shape = 1
@@ -32,6 +32,7 @@ class DatasetStru(object):
         self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
+        self.seq_label = label
 
     def padding(self, seq, new_length):
         old_length = len(seq)
@@ -153,6 +154,12 @@ class Predictor(object):
             name='y_ph'
             )
 
+        self.seq_label = tf.placeholder(
+            tf.int32,
+            shape=[None, self.out_dim],
+            name='seq_label'
+        )
+
         self.decoder_seq_length = tf.placeholder(
             tf.int32,
             shape=[None],
@@ -160,12 +167,6 @@ class Predictor(object):
             )
 
         self.go_token = np.full((self.out_dim), 0.0, dtype=np.float32)
-
-        # self.weights = tf.placeholder(
-        #     tf.float32,
-        #     shape=[None, self.out_timesteps, self.out_dim],
-        #     name='weights'
-        #     )
 
         weight = np.zeros((self.out_timesteps, self.out_dim))
         eff_weight = 0.99
@@ -175,8 +176,6 @@ class Predictor(object):
         self.weights = np.repeat(weight,self.batch_size,axis=0)
         # print("self.weights:")
         # print(self.weights)
-
-
 
 
     def init_sess(self):
@@ -366,7 +365,7 @@ class Predictor(object):
         return batch_loss
 
         
-    def _create_seq(self, obs, dones, mean, var):
+    def _create_seq(self, obs, dones, infos, mean, var):
         """
         create sequences from input observations;
         reset sequence if a agent is done its task
@@ -388,15 +387,20 @@ class Predictor(object):
             if done:
                 # create a container saving reseted sequences for future usage
                 seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                             self.x_mean, self.x_var))
+                                             self.x_mean, self.x_var, self.seq_label))
                 self.xs[idx] = []
                 self.x_lens[idx] = 0
+                self.seq_label = np.zeros(self.out_dim)
+                self.seq_label[infos[idx]['goal_label']] = 1
 
             self.xs[idx].append(np.concatenate((ob[6:13],
                                                 ob[0:3])))
             self.x_lens[idx] += 1
+            self.seq_label = np.zeros(self.out_dim)
+            self.seq_label[infos[idx]['goal_label']] = 1
+
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                        self.x_mean, self.x_var))
+                                        self.x_mean, self.x_var, self.seq_label))
 
         return seqs_done, seqs_all
 
@@ -416,7 +420,7 @@ class Predictor(object):
             print("collected dataset length:{}".format(self.dataset_length))
 
         # if dataset is large, save it
-        if self.dataset_length > 400000:
+        if self.dataset_length > 100000:
             print("save dataset...")
             pickle.dump(self.dataset,
                 open("./pred/" + "/dataset_new" + ".pkl", "wb"))
@@ -431,21 +435,23 @@ class Predictor(object):
         return x, y
 
     def _process_dataset(self, trajs):
-        xs, ys, x_lens, xs_start = [], [], [], []
+        xs, ys, labels, x_lens, xs_start = [], [], [], [], []
         for traj in trajs:
             for i in range(self.in_timesteps_max,
                            traj.x_len - self.out_timesteps):
-                x, y, x_len, x_start = self._feed_one_data(traj, i)
+                x, y, x_len, label, x_start = self._feed_one_data(traj, i)
                 xs.append(x)
                 ys.append(y)
                 x_lens.append(x_len)
+                labels.append(label)
                 xs_start.append(x_start)
 
         xs=np.asarray(xs)
         ys=np.asarray(ys)
         x_lens=np.asarray(x_lens)
+        labels = np.asarray(labels)
         xs_start=np.asarray(xs_start)
-        return [xs, ys, x_lens, xs_start]
+        return [xs, ys, x_lens, labels, xs_start]
 
     def _feed_one_data(self, data, ind):
         """
@@ -457,9 +463,11 @@ class Predictor(object):
         """
         x = np.zeros((self.in_timesteps_max, self.in_dim))
         y = np.zeros((self.out_timesteps, self.out_dim))
+        label = 0
         x_len = 0
 
         length = data.x_len
+        label = data.seq_label
         ind_start = ind - self.in_timesteps_max
         ind_end = ind + self.out_timesteps
 
@@ -484,37 +492,38 @@ class Predictor(object):
             y = x_seq[ind:ind_end, :] - x_start
             x_len = ind
 
-        return x, y, x_len, x_start
+        return x, y, x_len, label, x_start
 
     def _feed_online_data(self, sequences):
-        xs, ys, x_lens, xs_start = [], [], [], []
+        xs, ys, x_lens, labels, xs_start = [], [], [], [], []
         for data in sequences:
             length = data.x_len
             # print("current data length")
             # print(data.x_len)
             if length <= self.in_timesteps_max:
-                x, y, x_len, x_start = self._feed_one_data(data, length)
+                x, y, x_len, label, x_start = self._feed_one_data(data, length)
                 y = np.zeros((self.out_timesteps, self.out_dim))
 
             elif length < self.in_timesteps_max + self.out_timesteps:
-                x, y, x_len, x_start = self._feed_one_data(data, self.in_timesteps_max)
+                x, y, x_len, label, x_start = self._feed_one_data(data, self.in_timesteps_max)
                 y[-1, :] = np.zeros(self.out_dim)
 
             elif length < self.in_timesteps_max + self.out_timesteps + 2:
                 ind = length - self.out_timesteps
-                x, y, x_len, x_start = self._feed_one_data(data, ind)
+                x, y, x_len, label, x_start = self._feed_one_data(data, ind)
                 y[-1, :] = np.zeros(self.out_dim)
 
             else:
                 ind = length - self.out_timesteps
-                x, y, x_len, x_start = self._feed_one_data(data, ind)
+                x, y, x_len, label, x_start = self._feed_one_data(data, ind)
 
             xs.append(x)
             ys.append(y)
             x_lens.append(x_len)
+            labels.append(label)
             xs_start.append(x_start)
 
-        return xs, ys, x_lens, xs_start
+        return xs, ys, x_lens, labels, xs_start
 
     def run_training(self):
         ## check whether in training
@@ -552,7 +561,8 @@ class Predictor(object):
                 feed_dict = {
                     self.x_ph: train_set[0][mb_inds],
                     self.y_ph: train_set[1][mb_inds],
-                    self.x_len_ph: train_set[2][mb_inds]
+                    self.x_len_ph: train_set[2][mb_inds],
+                    self.seq_label: train_set[3][mb_inds]
                 }
 
                 _, loss = self.sess.run(fetches, feed_dict)
@@ -593,7 +603,8 @@ class Predictor(object):
             feed_dict = {
                 self.x_ph: validate_set[0][mb_inds],
                 self.y_ph: validate_set[1][mb_inds],
-                self.x_len_ph: validate_set[2][mb_inds]
+                self.x_len_ph: validate_set[2][mb_inds],
+                self.seq_label: validate_set[3][mb_inds]
             }
             loss = self.sess.run(self.validate_loss, feed_dict)
             total_loss.append(loss)
@@ -660,7 +671,7 @@ class Predictor(object):
 
         # Need to refacotr --------------------------------------------------
 
-    def collect(self, obs, dones, mean=None, var=None):
+    def collect(self, obs, dones, infos, mean=None, var=None):
         """
         function: collect sequence dataset
         :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -670,7 +681,7 @@ class Predictor(object):
         """
 
         #create input sequence
-        seqs_done, _ = self._create_seq(obs, dones, mean, var)
+        seqs_done, _ = self._create_seq(obs, dones, infos, mean, var)
 
         #create training dataset for future training
         if len(seqs_done) > 0:
@@ -679,7 +690,7 @@ class Predictor(object):
         # print("dataset length: ", self.dataset_length)
         return self.collect_flag
 
-    def predict(self, obs, dones, mean=None, var=None):
+    def predict(self, obs, dones, infos, mean=None, var=None):
         """
         Online predict sequence through trained model
         :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -689,10 +700,10 @@ class Predictor(object):
         :return: batch_loss; batch_loss.shape = [batch_size]
         """
         # create input sequence
-        seqs_done, seqs_all = self._create_seq(obs, dones, mean, var)
+        seqs_done, seqs_all = self._create_seq(obs, dones, infos, mean, var)
 
         # ---predict input data---#
-        xs, ys, x_lens, _ = self._feed_online_data(seqs_all)
+        xs, ys, x_lens, labels, _ = self._feed_online_data(seqs_all)
 
         fetches = [self.predict_loss, self.y_ph, self.y_hat_pred]
         feed_dict = {

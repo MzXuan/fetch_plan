@@ -51,7 +51,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         self.current_qvel = np.zeros(7)
         self.prev_act = np.zeros(7)
-
+        self.goal_label = 0
 
         super(FetchLSTMRewardEnv, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=7,
@@ -134,7 +134,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # self._contact_dection()
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
-            'is_collision': self._contact_dection()
+            'is_collision': self._contact_dection(),
+            'goal_label': self.goal_label
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         # energy_loss = 0.2 * np.linalg.norm(real_act - self.prev_act)
