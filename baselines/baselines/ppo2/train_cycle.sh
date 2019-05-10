@@ -8,15 +8,19 @@ function finish() {
 }
 
 # preparation
-rm -rf "./models"
-mkdir "./models"
-
 rl_model="./log/"
 pred_model="./pred/"
 
+# start from beginning
+rm -rf "./models"
+mkdir "./models"
+counter=0
+
+# # start with trained initial model
+# counter=1
+
 
 # start training
-counter=0
 while [ ${counter} -le ${1} ]
 do
 echo $counter
@@ -24,9 +28,9 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=1300000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=2300000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=8000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -45,12 +49,14 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --lr=0.003 --epoch=300
-elif [ ${counter} -le 5 ]
+    python predictor.py --iter=${counter} --lr=0.03 --epoch=20
+    sleep 1
+    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=3000
+elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.002 --epoch=200
+    python predictor.py --load --iter=${counter} --lr=0.0003 --epoch=1000
 else
-    python predictor.py --load --iter=${counter} --lr=0.001 --epoch=100
+    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=3000
 fi
 
 # copy saved file and rename

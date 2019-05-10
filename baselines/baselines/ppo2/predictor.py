@@ -12,6 +12,7 @@ import numpy as np
 
 import tensorflow as tf
 
+
 # for plot saved dataset
 import flags
 import matplotlib.pyplot as plt
@@ -61,7 +62,10 @@ class Predictor(object):
                  lr=0.001):
         ## extract FLAGS
         self.sess = sess
-        self.start_iter = iter_start * epoch
+        if iter_start == 0 and lr<0.001:
+            self.start_iter = 20
+        else:
+            self.start_iter = iter_start * epoch
         self.iteration = 0
         self.dataset_length = 0
 
@@ -87,20 +91,20 @@ class Predictor(object):
         self.dataset = []
         if reset_flag:
             filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
-            # #---- one dataset---#
-            # # remove old files
-            # for f in filelist:
-            #     os.remove(os.path.join("./pred/", f))
-
-            #---- two datasets ----#
+            #---- one dataset---#
             # remove old files
             for f in filelist:
-                if not (f.endswith("new.pkl")):
-                    os.remove(os.path.join("./pred/", f))
-                # change last dataset to old dataset
-            for f in filelist:
-                if f.endswith("new.pkl"):
-                    os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
+                os.remove(os.path.join("./pred/", f))
+
+            # #---- two datasets ----#
+            # # remove old files
+            # for f in filelist:
+            #     if not (f.endswith("new.pkl")):
+            #         os.remove(os.path.join("./pred/", f))
+            #     # change last dataset to old dataset
+            # for f in filelist:
+            #     if f.endswith("new.pkl"):
+            #         os.rename(os.path.join("./pred/", f), os.path.join("./pred/", "dataset_old.pkl"))
 
         self.dataset_idx = 0 # for counting the saved dataset index
 
@@ -155,6 +159,24 @@ class Predictor(object):
             )
 
         self.go_token = np.full((self.out_dim), 0.0, dtype=np.float32)
+
+        # self.weights = tf.placeholder(
+        #     tf.float32,
+        #     shape=[None, self.out_timesteps, self.out_dim],
+        #     name='weights'
+        #     )
+
+        weight = np.zeros((self.out_timesteps, self.out_dim))
+        eff_weight = 0.99
+        weight[:,0:7] = 1 - eff_weight
+        weight[:, 7:10] = eff_weight
+        weight = np.expand_dims(weight, axis=0)
+        self.weights = np.repeat(weight,self.batch_size,axis=0)
+        # print("self.weights:")
+        # print(self.weights)
+
+
+
 
     def init_sess(self):
         self.sess.run(tf.global_variables_initializer())
@@ -234,6 +256,7 @@ class Predictor(object):
             )
         return training_decoder_outputs, inference_decoder_outputs
 
+
     def _build_net(self):
         with tf.variable_scope("predictor"):
             ## encoder
@@ -244,8 +267,19 @@ class Predictor(object):
             self.y_hat_pred = inference_decoder_outputs[0]
 
             ## setup optimization
-            self.training_loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat_train)
-            self.validate_loss = tf.losses.mean_squared_error(self.y_ph, self.y_hat_pred)
+            self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_train,
+                                                              weights = self.weights)
+
+
+            self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_pred,
+                                                              weights = self.weights)
+
+            self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_pred,
+                                                              weights = self.weights,
+                                                              reduction = tf.losses.Reduction.NONE)
 
         self.train_op = tf.train.AdamOptimizer(self.lr).minimize(
             self.training_loss)
@@ -256,7 +290,7 @@ class Predictor(object):
             self.checkpoint_dir, self.sess.graph
             )
 
-    def _get_batch_loss(self, ys, y_hats, x_lens):
+    def _get_batch_loss(self, ys, y_hats, raw_pred_loss):
         """
         calculate the mean square error between ground truth and prediction
         if ground truth y equals 0 (no ground truth), we set mean square error to 0
@@ -264,46 +298,55 @@ class Predictor(object):
         :param y_hats: prediction
         :return: error
         """
-        #----- old version-----#
-        error = []
-        eff_weight = 0.7
-        for y, y_hat in zip(ys, y_hats):
-            if not np.any(y[-1]):
-                error.append(0.1)
-            else:
-                err1 = (1 - eff_weight) * \
-                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
-                err2 = eff_weight * \
-                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
-                error.append((np.sqrt(err1 + err2)))
-
-        return np.asarray(error)
-
-        # #---- new normalized version ----#
-        # # err = err/delta(y)
+        # #----- old version-----#
         # error = []
         # eff_weight = 0.7
         # for y, y_hat in zip(ys, y_hats):
         #     if not np.any(y[-1]):
-        #         error.append(0)
+        #         error.append(0.0)
         #     else:
         #         err1 = (1 - eff_weight) * \
-        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
-        #                       np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
-        #
-        #         # print("y[:, 0:7]")
-        #         # print(y[:, 0:7])
-        #         # print("cumsum y")
-        #         # print(np.cumsum(y[:, 0:7], axis=0))
+        #                np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7]))
         #         err2 = eff_weight * \
-        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
-        #                       np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
-        #
-        #         # print("current error:")
-        #         # print(err1+err2)
+        #                np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10]))
         #         error.append((np.sqrt(err1 + err2)))
         #
         # return np.asarray(error)
+
+        # #----- updated version ---#
+        # batch_loss = np.mean(raw_pred_loss, axis=(1,2))
+
+        # for idx, y in enumerate(ys):
+        #     if not np.any(y[-1]):
+        #         batch_loss[idx] = 0.0
+        # return batch_loss
+
+
+        #---- new normalized version ----#
+        # err = err/delta(y)
+        error = []
+        eff_weight = 0.99
+        for y, y_hat in zip(ys, y_hats):
+            if not np.any(y[-1]):
+                error.append(0)
+            else:
+                err1 = (1 - eff_weight) * \
+                       np.sum(np.square(y[:, 0:7] - y_hat[:, 0:7])/
+                              np.abs( np.cumsum(y[:, 0:7], axis=0)+1e-8))
+        
+                # print("y[:, 0:7]")
+                # print(y[:, 0:7])
+                # print("cumsum y")
+                # print(np.cumsum(y[:, 0:7], axis=0))
+                err2 = eff_weight * \
+                       np.sum(np.square(y[:, 7:10] - y_hat[:, 7:10])/
+                              np.abs(np.cumsum(y[:, 7:10], axis=0)+1e-8))
+        
+                # print("current error:")
+                # print(err1+err2)
+                error.append((np.sqrt(err1 + err2)))
+        
+        return np.asarray(error)
 
 
         
@@ -357,7 +400,7 @@ class Predictor(object):
             print("collected dataset length:{}".format(self.dataset_length))
 
         # if dataset is large, save it
-        if self.dataset_length > 800000:
+        if self.dataset_length > 400000:
             print("save dataset...")
             pickle.dump(self.dataset,
                 open("./pred/" + "/dataset_new" + ".pkl", "wb"))
@@ -514,6 +557,10 @@ class Predictor(object):
             self.file_writer.add_summary(summary, self.start_iter + e)
             print('epoch {}:  train: {} | validate: {}'.format(
                 e + 1, train_loss, validate_loss))
+        ## save last model
+        self.save_net(("./pred/{}/{}").format(
+            self.model_name, "last"
+        ))
 
     def validate(self, validate_set):
         ## run validation
@@ -626,22 +673,32 @@ class Predictor(object):
         :return: batch_loss; batch_loss.shape = [batch_size]
         """
         # create input sequence
-        _, seqs_all = self._create_seq(obs, dones, mean, var)
+        seqs_done, seqs_all = self._create_seq(obs, dones, mean, var)
 
         # ---predict input data---#
         xs, ys, x_lens, _ = self._feed_online_data(seqs_all)
 
-        fetches = [self.validate_loss, self.y_ph, self.y_hat_pred]
+        fetches = [self.predict_loss, self.y_ph, self.y_hat_pred]
         feed_dict = {
             self.x_ph: xs,
             self.y_ph: ys,
             self.x_len_ph: x_lens
         }
 
-        _, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+        raw_pred_loss, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+        batch_loss = self._get_batch_loss(y, y_hat_pred, raw_pred_loss)
 
-        batch_loss = self._get_batch_loss(y, y_hat_pred, x_lens)
+        # add a statistic of traj length for futher investigate
+        len_traj_done = []
+        if len(seqs_done) >0:
+            for seq in seqs_done:
+                len_traj_done.append(seq.x_len)
+                # print("len of done traj:")
+                # print(seq.x_len)
+        else:
+            len_traj_done.append(np.nan)
 
+        
         # ## display information
         # if (self.iteration % self.display_interval) == 0:
         #     print('\n')
@@ -658,7 +715,7 @@ class Predictor(object):
         # visualize.plot_dof_seqs(origin_x, origin_y, origin_y_pred)
         # #---------------------------
 
-        return batch_loss
+        return batch_loss, len_traj_done
 
     def save_net(self, save_path):
         params = tf.get_collection(
@@ -675,9 +732,9 @@ class Predictor(object):
 
     def load(self):
         if self.train_flag == True:
-            filename = ("./pred/" + self.model_name + "/{}").format(2*self.epochs // 3)
+            filename = ("./pred/" + self.model_name + "/{}").format("last")
         else:
-            filename = ("./pred/" + self.model_name + "/{}").format(self.epochs - 1)
+            filename = ("./pred/" + self.model_name + "/{}").format("last")
         self.load_net(filename)
         # self.load_net("./pred/pretrain")
 

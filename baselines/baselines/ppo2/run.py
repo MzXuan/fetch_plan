@@ -117,7 +117,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
         init_targ=d_targ,
         predictor_flag=False)
 
-def display(env_id, num_timesteps, seed, curr_path, point):
+def display(env_id, num_timesteps, seed, curr_path, log_file, point):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalizeTest
     from baselines.ppo2 import ppo2
@@ -138,15 +138,15 @@ def display(env_id, num_timesteps, seed, curr_path, point):
         env = gym.wrappers.FlattenDictWrapper(env, dict_keys=list(keys))
         return env
     env = DummyVecTestEnv([make_env])
-    ob_mean = np.load('{}/log/ob_mean.npy'.format(curr_path))
-    ob_var = np.load('{}/log/ob_var.npy'.format(curr_path))
+    ob_mean = np.load('{}/{}/ob_mean.npy'.format(curr_path, log_file))
+    ob_var = np.load('{}/{}/ob_var.npy'.format(curr_path, log_file))
     env = VecNormalizeTest(env, ob_mean, ob_var)
 
     set_global_seeds(seed)
     policy = MlpPolicy
 
     ppo2.display(policy=policy, env=env, nsteps=2048, nminibatches=32, 
-        load_path='{}/log/checkpoints/{}'.format(curr_path, point))
+        load_path='{}/{}/checkpoints/{}'.format(curr_path, log_file, point))
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -161,6 +161,7 @@ def main():
     parser.add_argument('--pred_weight', default=0.01, type=float)
     parser.add_argument('--ent_coef', default=0.0, type=float)
     parser.add_argument('--iter', default=0, type=int)
+    parser.add_argument('--log-file', default='log', type=str)
     args = parser.parse_args()
 
     each_iter_num = 100
@@ -168,7 +169,7 @@ def main():
     curr_path = sys.path[0]
     if args.display:
         display(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            curr_path=curr_path, point=args.point)
+            curr_path=curr_path, log_file = args.log_file, point=args.point)
     elif args.train:
         logger.configure(dir='{}/log'.format(curr_path), format_strs=['stdout',
                                                                       'log',
@@ -181,8 +182,11 @@ def main():
     else:
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
-        
+
+
 
 if __name__ == '__main__':
     main()
+    # script for testing
+    # python run.py --display --env=FetchPlanTest-v0 --log-file=log_0
 

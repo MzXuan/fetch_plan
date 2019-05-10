@@ -50,6 +50,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.last_distance = 0.0
 
         self.current_qvel = np.zeros(7)
+        self.prev_act = np.zeros(7)
 
 
         super(FetchLSTMRewardEnv, self).__init__(
@@ -68,7 +69,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             return -20.0
         else:
             current_distance = goal_distance(achieved_goal, goal)
-            approaching_rew = 20.0 * (self.last_distance - current_distance)
+            approaching_rew = 15.0 * (self.last_distance - current_distance)
             self.last_distance = copy.deepcopy(current_distance)
             return approaching_rew
 
@@ -136,9 +137,9 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             'is_collision': self._contact_dection()
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
-        energy_loss = 0.2 * np.linalg.norm(real_act - self.prev_act)
-        # print("approching_rew: {} | energy_loss: {}".format(reward, energy_loss))
-        reward -= energy_loss
+        # energy_loss = 0.2 * np.linalg.norm(real_act - self.prev_act)
+        # # print("approching_rew: {} | energy_loss: {}".format(reward, energy_loss))
+        # reward -= energy_loss
         self.prev_act = real_act.copy()
         if info["is_success"] or info["is_collision"]:
             done = True
@@ -170,7 +171,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
         #     print('c_array', c_array)
 
-        if self.sim.data.ncon > 1:
+        if self.sim.data.ncon > 10:
             return True
         else:
             return False
@@ -251,9 +252,14 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             achieved_goal = grip_pos.copy()
         else:
             achieved_goal = np.squeeze(object_pos.copy())
+        
         obs = np.concatenate([
             joint_angle, joint_vel
         ])
+
+        # obs = np.concatenate([
+        #     joint_angle, joint_vel, self.prev_act
+        # ])
         # ------------------------
         #   Observation details
         #   obs[0:3]: end-effector position
