@@ -155,8 +155,8 @@ class Predictor(object):
             )
 
         self.seq_label = tf.placeholder(
-            tf.int32,
-            shape=[None, self.out_dim],
+            tf.float32,
+            shape=[None, self.out_timesteps, self.out_dim],
             name='seq_label'
         )
 
@@ -209,7 +209,7 @@ class Predictor(object):
         dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
 
         #Dense layer to translate the decoder's output at each time
-        fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
+        fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32, activation=tf.nn.softmax)
 
         attn_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism)
 
@@ -221,7 +221,7 @@ class Predictor(object):
         with tf.variable_scope("pred_dec"):
             ## training decorder
             go_tokens = tf.constant(self.go_token, shape=[self.batch_size, 1, self.out_dim])
-            dec_input = tf.concat([go_tokens, self.y_ph], axis=1)
+            dec_input = tf.concat([go_tokens, self.seq_label], axis=1)
 
             seq_length = tf.constant(self.out_timesteps, shape=[self.batch_size])
 
@@ -234,7 +234,7 @@ class Predictor(object):
                 cell=attn_cell, helper=training_helper,
                 initial_state=attn_zero, output_layer=fc_layer)
 
-            training_decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
+            training_decoder_outputs, training_decoder_states, _ = tf.contrib.seq2seq.dynamic_decode(
                 decoder=training_decoder, output_time_major=False,
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
@@ -264,12 +264,28 @@ class Predictor(object):
                 cell=attn_cell, helper=inference_helper,
                 initial_state=attn_zero, output_layer=fc_layer)
 
-            inference_decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
+            inference_decoder_outputs, inference_decoder_states, _ = tf.contrib.seq2seq.dynamic_decode(
                 decoder=inference_decoder, output_time_major=False,
                 impute_finished=True, maximum_iterations=self.out_timesteps
             )
-        return training_decoder_outputs, inference_decoder_outputs
+        return training_decoder_outputs, inference_decoder_outputs, training_decoder_states, inference_decoder_states
 
+    # def _build_classifier(self,training_decoder_states, inference_decoder_states):
+    #     # Training Decoder
+    #     with tf.variable_scope("classifer"):
+    #         ## add classifier
+    #         train_fc_layer = tf.layers.Dense(units=self.out_dim,
+    #                                        activation = tf.nn.softmax, dtype=tf.float32)
+    #         train_output = train_fc_layer(training_decoder_states)
+    #
+    #     with tf.variable_scope("classifer", reuse=True):
+    #         ## add classifier
+    #         inference_fc_layer = tf.layers.Dense(units=self.out_dim,
+    #                                            activation = tf.nn.softmax, dtype=tf.float32)
+    #         inference_output = inference_fc_layer(inference_decoder_states)
+    #
+    #
+    #     return train_output, inference_output
 
     def _build_net(self):
         with tf.variable_scope("predictor"):
@@ -279,24 +295,51 @@ class Predictor(object):
             attention_mechanism = self._build_attention(enc_outputs)
 
             ## decoder
-            training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state, attention_mechanism)
-            self.y_hat_train = training_decoder_outputs[0]
-            self.y_hat_pred = inference_decoder_outputs[0]
+            training_decoder_outputs, inference_decoder_outputs, \
+            training_decoder_states, inference_decoder_states = self._build_decoder(enc_state, attention_mechanism)
+            self.label_hat_train = training_decoder_outputs[0]
+            self.label_hat_pred = inference_decoder_outputs[0]
+
+
+
+            # # setup optimization
+            # self.training_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
+            #                                                   logits=self.label_hat_train)
+            #
+            # self.validate_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
+            #                                                   logits=self.label_hat_pred)
+            #
+            # self.predict_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
+            #                                                  logits=self.label_hat_pred,
+            #                                                  reduction=tf.losses.Reduction.NONE)
 
             ## setup optimization
-            self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_train,
-                                                              weights = self.weights)
+            self.training_loss = tf.losses.mean_squared_error(labels = self.seq_label,
+                                                              predictions = self.label_hat_train)
 
 
-            self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_pred,
-                                                              weights = self.weights)
+            self.validate_loss = tf.losses.mean_squared_error(labels = self.seq_label,
+                                                              predictions = self.label_hat_pred)
 
-            self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_pred,
-                                                              weights = self.weights,
+            self.predict_loss = tf.losses.mean_squared_error(labels = self.seq_label,
+                                                              predictions = self.label_hat_pred,
                                                               reduction = tf.losses.Reduction.NONE)
+
+            # ## setup optimization
+            # self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+            #                                                   predictions = self.y_hat_train,
+            #                                                   weights = self.weights)
+            #
+            #
+            # self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+            #                                                   predictions = self.y_hat_pred,
+            #                                                   weights = self.weights)
+            #
+            # self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+            #                                                   predictions = self.y_hat_pred,
+            #                                                   weights = self.weights,
+            #                                                   reduction = tf.losses.Reduction.NONE)
+
 
         self.train_op = tf.train.AdamOptimizer(self.lr).minimize(
             self.training_loss)
@@ -391,13 +434,13 @@ class Predictor(object):
                 self.xs[idx] = []
                 self.x_lens[idx] = 0
                 self.seq_label = np.zeros(self.out_dim)
-                self.seq_label[infos[idx]['goal_label']] = 1
+                self.seq_label[infos[idx]['goal_label']] = 1.0
 
             self.xs[idx].append(np.concatenate((ob[6:13],
                                                 ob[0:3])))
             self.x_lens[idx] += 1
             self.seq_label = np.zeros(self.out_dim)
-            self.seq_label[infos[idx]['goal_label']] = 1
+            self.seq_label[infos[idx]['goal_label']] = 1.0
 
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                         self.x_mean, self.x_var, self.seq_label))
@@ -463,11 +506,10 @@ class Predictor(object):
         """
         x = np.zeros((self.in_timesteps_max, self.in_dim))
         y = np.zeros((self.out_timesteps, self.out_dim))
-        label = 0
         x_len = 0
 
         length = data.x_len
-        label = data.seq_label
+        label = np.tile(data.seq_label, (self.out_timesteps,1))
         ind_start = ind - self.in_timesteps_max
         ind_end = ind + self.out_timesteps
 
@@ -560,7 +602,7 @@ class Predictor(object):
 
                 feed_dict = {
                     self.x_ph: train_set[0][mb_inds],
-                    self.y_ph: train_set[1][mb_inds],
+                    # self.y_ph: train_set[1][mb_inds],
                     self.x_len_ph: train_set[2][mb_inds],
                     self.seq_label: train_set[3][mb_inds]
                 }
@@ -600,14 +642,21 @@ class Predictor(object):
                 break
 
             mb_inds = inds[start:end]
+            fetches = [self.validate_loss, self.label_hat_pred, self.seq_label]
             feed_dict = {
                 self.x_ph: validate_set[0][mb_inds],
-                self.y_ph: validate_set[1][mb_inds],
+                # self.y_ph: validate_set[1][mb_inds],
                 self.x_len_ph: validate_set[2][mb_inds],
                 self.seq_label: validate_set[3][mb_inds]
             }
-            loss = self.sess.run(self.validate_loss, feed_dict)
+            loss, label_pred, seq_label = self.sess.run(fetches, feed_dict)
             total_loss.append(loss)
+
+            ## display
+            print("-----------validate data----------")
+            print("ground truth label:{}".format(seq_label[0]))
+            print("prediction label:{}".format(label_pred[0]))
+
 
         validate_loss = np.mean(total_loss)
         return validate_loss
