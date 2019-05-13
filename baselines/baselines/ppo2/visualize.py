@@ -128,3 +128,12 @@ def plot_dof_seqs(x, y, y_hat=None):
         if y_hat is not None:
             plt.plot(time_step_y, y_hat[:, j], color="red")
     plt.pause(0.5)
+
+def plot_3d_eef(x, label):
+    colors = ['grey', 'brown','orange','olive','green','cyan',
+              'blue','purple','pink','red','black','yellow']
+    label_idx=np.where(label==1.0)
+    fig3d = plt.figure(3)
+    ax = fig3d.gca(projection='3d')
+    ax.plot(x[:, -2], x[:, -1], x[:, 0],
+            '-+', linewidth=2, color=colors[label_idx[0][0]], label="x")

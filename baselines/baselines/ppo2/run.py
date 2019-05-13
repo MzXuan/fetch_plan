@@ -157,7 +157,7 @@ def main():
     parser.add_argument('--display', action='store_true')
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('-p', '--point', type=str, default='00100')
+    parser.add_argument('-p', '--point', type=str, default='last')
     parser.add_argument('--pred_weight', default=0.01, type=float)
     parser.add_argument('--ent_coef', default=0.0, type=float)
     parser.add_argument('--iter', default=0, type=int)

@@ -172,7 +172,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
         #     print('c_array', c_array)
 
-        if self.sim.data.ncon > 10:
+        if self.sim.data.ncon > 2:
             return True
         else:
             return False

@@ -20,6 +20,9 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.font_manager import FontProperties
 from tqdm import tqdm
 
+# utils
+import visualize
+
 class DatasetStru(object):
     def __init__(self, x, x_len, x_mean, x_var, label):
         """
@@ -52,7 +55,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
         result = super().sample(*args, **kwargs)
         # print("result size")
         # print(result)
-        result.set_shape([1, 10]) #[batch_size, dimension]
+        result.set_shape([1, 12]) #[batch_size, dimension]
         return result
 
 
@@ -428,13 +431,25 @@ class Predictor(object):
         seqs_done, seqs_all = [], []
         for idx, (ob, done) in enumerate(zip(obs, dones)):
             if done:
-                # create a container saving reseted sequences for future usage
-                seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                             self.x_mean, self.x_var, self.seq_label))
+                if not infos[idx]['is_collision']:
+                    # create a container saving reseted sequences for future usage
+                    seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                                 self.x_mean, self.x_var, self.seq_label))
+                else:
+                    print("in collision")
                 self.xs[idx] = []
                 self.x_lens[idx] = 0
                 self.seq_label = np.zeros(self.out_dim)
                 self.seq_label[infos[idx]['goal_label']] = 1.0
+
+            # if done:
+            #     # create a container saving reseted sequences for future usage
+            #     seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+            #                                  self.x_mean, self.x_var, self.seq_label))
+            #     self.xs[idx] = []
+            #     self.x_lens[idx] = 0
+            #     self.seq_label = np.zeros(self.out_dim)
+            #     self.seq_label[infos[idx]['goal_label']] = 1.0
 
             self.xs[idx].append(np.concatenate((ob[6:13],
                                                 ob[0:3])))
@@ -754,15 +769,15 @@ class Predictor(object):
         # ---predict input data---#
         xs, ys, x_lens, labels, _ = self._feed_online_data(seqs_all)
 
-        fetches = [self.predict_loss, self.y_ph, self.y_hat_pred]
+        fetches = [self.predict_loss, self.label_hat_pred, self.seq_label]
         feed_dict = {
             self.x_ph: xs,
-            self.y_ph: ys,
+            self.seq_label:labels,
             self.x_len_ph: x_lens
         }
 
-        raw_pred_loss, y, y_hat_pred = self.sess.run(fetches, feed_dict)
-        batch_loss = self._get_batch_loss(y, y_hat_pred, raw_pred_loss)
+        raw_pred_loss, label_pred, seq_label = self.sess.run(fetches, feed_dict)
+        batch_loss = self._get_batch_loss(seq_label, label_pred, raw_pred_loss)
 
         # add a statistic of traj length for futher investigate
         len_traj_done = []
@@ -825,15 +840,6 @@ class Predictor(object):
             restores.append(p.assign(loaded_p))
         self.sess.run(restores)
 
-    # def save_dataset(self):
-    #     # check whether in training process
-    #     if self.train_flag is not True:
-    #         print("Not in training process, saving failed")
-    #     else:
-    #         pickle.dump(self.dataset, open("./pred/"
-    #                                         +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
-    #         print("saving dataset successfully")
-    #         self.dataset = []
 
     def load_dataset(self, file_name):
         ## load dataset
@@ -842,6 +848,7 @@ class Predictor(object):
             return dataset
         except:
             print("Can not load dataset. Please first run the training stage to save dataset.")
+
 
     def _load_train_set(self):
         ## check saved data set
@@ -855,6 +862,19 @@ class Predictor(object):
                 return 0
             else:
                 self.dataset.extend(dataset)
+
+
+    def plot_dataset(self):
+        self._load_train_set()
+        #todo: plot dataset
+        for idx, data in enumerate(self.dataset):
+            if idx%5 == 0:
+                visualize.plot_3d_eef(data.x, data.seq_label)
+        plt.show()
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -876,11 +896,17 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         if train_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 1024, 10,
+            rnn_model = Predictor(sess, FLAGS, 1024, 30,
                                   train_flag=True, reset_flag=False, epoch=args.epoch,
                                   iter_start=args.iter, lr=args.lr)
 
             rnn_model.init_sess()
+
+
+            #-----------------for debug--------------
+            rnn_model.plot_dataset()
+
+            #-----end debug------------------------
 
             if args.load:
                 try:
@@ -893,7 +919,7 @@ if __name__ == '__main__':
 
         else:
             #plot all the validate data step by step
-            rnn_model = Predictor(sess, FLAGS, 1, 10,
+            rnn_model = Predictor(sess, FLAGS, 1, 30,
                                   train_flag=False, reset_flag=False, epoch=args.epoch)
 
             rnn_model.init_sess()
