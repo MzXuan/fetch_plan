@@ -135,5 +135,8 @@ def plot_3d_eef(x, label):
     label_idx=np.where(label==1.0)
     fig3d = plt.figure(3)
     ax = fig3d.gca(projection='3d')
-    ax.plot(x[:, -2], x[:, -1], x[:, 0],
+    ax.plot(x[:, -3], x[:, -2], x[:, -1],
             '-+', linewidth=2, color=colors[label_idx[0][0]], label="x")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")

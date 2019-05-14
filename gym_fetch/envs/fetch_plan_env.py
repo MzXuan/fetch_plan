@@ -75,6 +75,10 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
 
         # random select one as the goal
         id = np.random.choice(a=index,size=1)
+
+
+        # id = np.random.choice([1, 12])
+        # id = 1
         self.goal_label = int(id)-1
         # print("sampled id is: {}".format(id))
         goal = self.sim.data.site_xpos[id].reshape(3,)
