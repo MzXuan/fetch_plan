@@ -389,10 +389,24 @@ class Predictor(object):
         seqs_done, seqs_all = [], []
 
         for idx, (ob, done) in enumerate(zip(obs, dones)):
+            # add end label
+            # if done:
+            #     if not infos[idx]['is_collision']:
+            #         # create a container saving reseted sequences for future usage
+            #         self.xs[idx][-1][-1] = 1.0
+            #         seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+            #                                      self.x_mean, self.x_var))
+            #     else:
+            #         print("in collision")
+            #     self.xs[idx] = []
+            #     self.x_lens[idx] = 0
+            #
+            # self.xs[idx].append(np.concatenate((ob[6:13],
+            #                                     ob[0:3],[0.0])))
+
             if done:
                 if not infos[idx]['is_collision']:
                     # create a container saving reseted sequences for future usage
-                    self.xs[idx][-1][-1] = 1.0
                     seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                                  self.x_mean, self.x_var))
                 else:
@@ -401,7 +415,7 @@ class Predictor(object):
                 self.x_lens[idx] = 0
 
             self.xs[idx].append(np.concatenate((ob[6:13],
-                                                ob[0:3],[0.0])))
+                                                ob[0:3])))
             self.x_lens[idx] += 1
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                         self.x_mean, self.x_var))
@@ -420,7 +434,7 @@ class Predictor(object):
                     (self.in_timesteps_max + self.out_timesteps))
 
         # for visualization
-        if self.dataset_length%5000 < 20 :
+        if self.dataset_length%5000 < 100 :
             print("collected dataset length:{}".format(self.dataset_length))
 
         # if dataset is large, save it
