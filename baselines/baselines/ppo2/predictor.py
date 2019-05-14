@@ -213,7 +213,7 @@ class Predictor(object):
         dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
 
         #Dense layer to translate the decoder's output at each time
-        fc_layer = tf.layers.Dense(self.out_dim + 1, dtype=tf.float32)
+        fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
 
         attn_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism)
 
@@ -284,26 +284,45 @@ class Predictor(object):
 
             ## decoder
             training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state, attention_mechanism)
-            self.y_hat_train = training_decoder_outputs[0][:3]
-            self.y_hat_pred = inference_decoder_outputs[0][:3]
 
-            self.end_flag_train = tf.nn.sigmoid(training_decoder_outputs[0][3])
-            self.end_flag_validate = tf.nn.sigmoid(inference_decoder_outputs[0][3])
+            self.y_hat_train = training_decoder_outputs[0][:,:,:self.out_dim-1]
+            self.y_hat_pred = inference_decoder_outputs[0][:,:,:self.out_dim-1]
+
+            self.end_flag_train = tf.nn.sigmoid(training_decoder_outputs[0][:,:,self.out_dim-1])
+            self.end_flag_pred = tf.nn.sigmoid(inference_decoder_outputs[0][:,:,self.out_dim-1])
+
+            print('self.end_flag_train')
+            print(self.end_flag_train.shape)
+
+            self.y_hat_train = tf.concat([self.y_hat_train, tf.expand_dims(self.end_flag_train, axis=2)], axis=2)
+            self.y_hat_pred = tf.concat([self.y_hat_pred, tf.expand_dims(self.end_flag_pred, axis=2)], axis=2)
 
             ## setup optimization
             self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_train,
-                                                              weights = self.weights)
+                                                              predictions = self.y_hat_train)
 
 
             self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_pred,
-                                                              weights = self.weights)
+                                                              predictions = self.y_hat_pred)
 
             self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
                                                               predictions = self.y_hat_pred,
-                                                              weights = self.weights,
                                                               reduction = tf.losses.Reduction.NONE)
+
+            # ## setup optimization
+            # self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+            #                                                   predictions = self.y_hat_train,
+            #                                                   weights = self.weights)
+            #
+            #
+            # self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+            #                                                   predictions = self.y_hat_pred,
+            #                                                   weights = self.weights)
+            #
+            # self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+            #                                                   predictions = self.y_hat_pred,
+            #                                                   weights = self.weights,
+            #                                                   reduction = tf.losses.Reduction.NONE)
 
         self.train_op = tf.train.AdamOptimizer(self.lr).minimize(
             self.training_loss)
@@ -393,23 +412,10 @@ class Predictor(object):
 
         for idx, (ob, done) in enumerate(zip(obs, dones)):
             # add end label
-            # if done:
-            #     if not infos[idx]['is_collision']:
-            #         # create a container saving reseted sequences for future usage
-            #         self.xs[idx][-1][-1] = 1.0
-            #         seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-            #                                      self.x_mean, self.x_var))
-            #     else:
-            #         print("in collision")
-            #     self.xs[idx] = []
-            #     self.x_lens[idx] = 0
-            #
-            # self.xs[idx].append(np.concatenate((ob[6:13],
-            #                                     ob[0:3],[0.0])))
-
             if done:
                 if not infos[idx]['is_collision']:
                     # create a container saving reseted sequences for future usage
+                    self.xs[idx][-1][-1] = 1.0
                     seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                                  self.x_mean, self.x_var))
                 else:
@@ -418,7 +424,22 @@ class Predictor(object):
                 self.x_lens[idx] = 0
 
             self.xs[idx].append(np.concatenate((ob[6:13],
-                                                ob[0:3])))
+                                                ob[0:3],[0.0])))
+
+            #-------origin sequence
+            # if done:
+            #     if not infos[idx]['is_collision']:
+            #         # create a container saving reseted sequences for future usage
+            #         seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+            #                                      self.x_mean, self.x_var))
+            #     else:
+            #         print("in collision")
+            #     self.xs[idx] = []
+            #     self.x_lens[idx] = 0
+            # self.xs[idx].append(np.concatenate((ob[6:13],
+            #                                     ob[0:3])))
+            #-------------------------------
+
             self.x_lens[idx] += 1
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                         self.x_mean, self.x_var))
@@ -875,7 +896,7 @@ if __name__ == '__main__':
             rnn_model.init_sess()
 
             # #-----------------for debug--------------
-            rnn_model.plot_dataset()
+            # rnn_model.plot_dataset()
             #
             # #-----end debug------------------------
 
