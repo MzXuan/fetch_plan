@@ -12,6 +12,8 @@ import numpy as np
 
 import tensorflow as tf
 
+import visualize
+
 
 # for plot saved dataset
 import flags
@@ -32,6 +34,7 @@ class DatasetStru(object):
         self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
+
 
     def padding(self, seq, new_length):
         old_length = len(seq)
@@ -73,7 +76,7 @@ class Predictor(object):
 
         self.batch_size = batch_size
         self.in_timesteps_max = max_timestep
-        self.out_timesteps = 10
+        self.out_timesteps = 30
         self.train_flag = train_flag
         self.epochs = epoch
         self.lr = lr
@@ -366,7 +369,7 @@ class Predictor(object):
         return batch_loss
 
         
-    def _create_seq(self, obs, dones, mean, var):
+    def _create_seq(self, obs, dones, infos, mean, var):
         """
         create sequences from input observations;
         reset sequence if a agent is done its task
@@ -384,16 +387,21 @@ class Predictor(object):
                                          var[0:3]))
 
         seqs_done, seqs_all = [], []
+
         for idx, (ob, done) in enumerate(zip(obs, dones)):
             if done:
-                # create a container saving reseted sequences for future usage
-                seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                             self.x_mean, self.x_var))
+                if not infos[idx]['is_collision']:
+                    # create a container saving reseted sequences for future usage
+                    self.xs[idx][-1][-1] = 1.0
+                    seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                                 self.x_mean, self.x_var))
+                else:
+                    print("in collision")
                 self.xs[idx] = []
                 self.x_lens[idx] = 0
 
             self.xs[idx].append(np.concatenate((ob[6:13],
-                                                ob[0:3])))
+                                                ob[0:3],[0.0])))
             self.x_lens[idx] += 1
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                         self.x_mean, self.x_var))
@@ -412,11 +420,11 @@ class Predictor(object):
                     (self.in_timesteps_max + self.out_timesteps))
 
         # for visualization
-        if self.dataset_length%10000 < 20 :
+        if self.dataset_length%5000 < 20 :
             print("collected dataset length:{}".format(self.dataset_length))
 
         # if dataset is large, save it
-        if self.dataset_length > 400000:
+        if self.dataset_length > 100000:
             print("save dataset...")
             pickle.dump(self.dataset,
                 open("./pred/" + "/dataset_new" + ".pkl", "wb"))
@@ -463,25 +471,37 @@ class Predictor(object):
         ind_start = ind - self.in_timesteps_max
         ind_end = ind + self.out_timesteps
 
+
         if ind_end > length:
             #pading dataset
+            x_reach = np.zeros(ind_end) # variable for checking goal
+            x_reach[(length-1):] = 1.0
+
             x_seq = data.padding(data.x, ind_end)
         else:
+            x_reach = np.zeros(length)
+            x_reach[length-1] = 1.0
+
             x_seq = data.x
 
         if ind_start > 0:
+            #x
             x_origin = x_seq[ind_start:ind, :]
             x_start = x_seq[ind_start-1, :]
             x = x_origin - x_start
+            #y
             y = x_seq[ind:ind_end, :] - x_start
             x_len = self.in_timesteps_max
 
         elif ind_start <= 0:
+            #x
             x_origin = x_seq[0:ind, :]
             x_start = x_seq[0, :]
             x = np.full((self.in_timesteps_max, self.in_dim), 0.0)
             x[self.in_timesteps_max-ind:self.in_timesteps_max,:] = x_origin - x_start
+            #y
             y = x_seq[ind:ind_end, :] - x_start
+
             x_len = ind
 
         return x, y, x_len, x_start
@@ -590,13 +610,19 @@ class Predictor(object):
                 break
 
             mb_inds = inds[start:end]
+            fetches = [self.validate_loss, self.y_ph, self.y_hat_pred]
             feed_dict = {
                 self.x_ph: validate_set[0][mb_inds],
                 self.y_ph: validate_set[1][mb_inds],
                 self.x_len_ph: validate_set[2][mb_inds]
             }
-            loss = self.sess.run(self.validate_loss, feed_dict)
+            loss, y_ph, y_hat_pred = self.sess.run(fetches, feed_dict)
             total_loss.append(loss)
+
+            ## display
+            print("-----------validate data----------")
+            print("ground truth label:{}".format(y_ph[0]))
+            print("prediction label:{}".format(y_hat_pred[0]))
 
         validate_loss = np.mean(total_loss)
         return validate_loss
@@ -660,7 +686,7 @@ class Predictor(object):
 
         # Need to refacotr --------------------------------------------------
 
-    def collect(self, obs, dones, mean=None, var=None):
+    def collect(self, obs, dones, infos, mean=None, var=None):
         """
         function: collect sequence dataset
         :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -669,8 +695,9 @@ class Predictor(object):
         :param var: var.shape = [batch_size, ob_shape]
         """
 
+
         #create input sequence
-        seqs_done, _ = self._create_seq(obs, dones, mean, var)
+        seqs_done, _ = self._create_seq(obs, dones, infos, mean, var)
 
         #create training dataset for future training
         if len(seqs_done) > 0:
@@ -679,7 +706,7 @@ class Predictor(object):
         # print("dataset length: ", self.dataset_length)
         return self.collect_flag
 
-    def predict(self, obs, dones, mean=None, var=None):
+    def predict(self, obs, dones, infos, mean=None, var=None):
         """
         Online predict sequence through trained model
         :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -689,7 +716,7 @@ class Predictor(object):
         :return: batch_loss; batch_loss.shape = [batch_size]
         """
         # create input sequence
-        seqs_done, seqs_all = self._create_seq(obs, dones, mean, var)
+        seqs_done, seqs_all = self._create_seq(obs, dones, infos, mean, var)
 
         # ---predict input data---#
         xs, ys, x_lens, _ = self._feed_online_data(seqs_all)
@@ -796,6 +823,14 @@ class Predictor(object):
             else:
                 self.dataset.extend(dataset)
 
+    def plot_dataset(self):
+        self._load_train_set()
+        #plot dataset
+        for idx, data in enumerate(self.dataset):
+            if idx%10 == 0:
+                visualize.plot_3d_eef(data.x)
+        plt.show()
+
 
 if __name__ == '__main__':
     import argparse
@@ -816,11 +851,16 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         if train_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 1024, 10,
+            rnn_model = Predictor(sess, FLAGS, 1024, 30,
                                   train_flag=True, reset_flag=False, epoch=args.epoch,
                                   iter_start=args.iter, lr=args.lr)
 
             rnn_model.init_sess()
+
+            # #-----------------for debug--------------
+            rnn_model.plot_dataset()
+            #
+            # #-----end debug------------------------
 
             if args.load:
                 try:
