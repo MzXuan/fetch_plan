@@ -213,7 +213,7 @@ class Predictor(object):
         dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
 
         #Dense layer to translate the decoder's output at each time
-        fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
+        fc_layer = tf.layers.Dense(self.out_dim + 1, dtype=tf.float32)
 
         attn_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism)
 
@@ -284,8 +284,11 @@ class Predictor(object):
 
             ## decoder
             training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state, attention_mechanism)
-            self.y_hat_train = training_decoder_outputs[0]
-            self.y_hat_pred = inference_decoder_outputs[0]
+            self.y_hat_train = training_decoder_outputs[0][:3]
+            self.y_hat_pred = inference_decoder_outputs[0][:3]
+
+            self.end_flag_train = tf.nn.sigmoid(training_decoder_outputs[0][3])
+            self.end_flag_validate = tf.nn.sigmoid(inference_decoder_outputs[0][3])
 
             ## setup optimization
             self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
