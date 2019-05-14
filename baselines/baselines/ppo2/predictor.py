@@ -305,28 +305,28 @@ class Predictor(object):
 
 
 
-            # # setup optimization
-            # self.training_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
-            #                                                   logits=self.label_hat_train)
+            # setup optimization
+            self.training_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
+                                                              logits=self.label_hat_train)
+
+            self.validate_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
+                                                              logits=self.label_hat_pred)
+
+            self.predict_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
+                                                             logits=self.label_hat_pred,
+                                                             reduction=tf.losses.Reduction.NONE)
+
+            # ## setup optimization
+            # self.training_loss = tf.losses.mean_squared_error(labels = self.seq_label,
+            #                                                   predictions = self.label_hat_train)
             #
-            # self.validate_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
-            #                                                   logits=self.label_hat_pred)
             #
-            # self.predict_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.seq_label,
-            #                                                  logits=self.label_hat_pred,
-            #                                                  reduction=tf.losses.Reduction.NONE)
-
-            ## setup optimization
-            self.training_loss = tf.losses.mean_squared_error(labels = self.seq_label,
-                                                              predictions = self.label_hat_train)
-
-
-            self.validate_loss = tf.losses.mean_squared_error(labels = self.seq_label,
-                                                              predictions = self.label_hat_pred)
-
-            self.predict_loss = tf.losses.mean_squared_error(labels = self.seq_label,
-                                                              predictions = self.label_hat_pred,
-                                                              reduction = tf.losses.Reduction.NONE)
+            # self.validate_loss = tf.losses.mean_squared_error(labels = self.seq_label,
+            #                                                   predictions = self.label_hat_pred)
+            #
+            # self.predict_loss = tf.losses.mean_squared_error(labels = self.seq_label,
+            #                                                   predictions = self.label_hat_pred,
+            #                                                   reduction = tf.losses.Reduction.NONE)
 
             # ## setup optimization
             # self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
@@ -427,9 +427,11 @@ class Predictor(object):
                                           mean[0:3])) 
             self.x_var = np.concatenate((var[6:13],
                                          var[0:3]))
-
+        # print(infos[0])
         seqs_done, seqs_all = [], []
         for idx, (ob, done) in enumerate(zip(obs, dones)):
+            self.seq_label = np.zeros(self.out_dim)
+            self.seq_label[infos[idx]['goal_label']] = 1.0
             if done:
                 if not infos[idx]['is_collision']:
                     # create a container saving reseted sequences for future usage
@@ -439,23 +441,11 @@ class Predictor(object):
                     print("in collision")
                 self.xs[idx] = []
                 self.x_lens[idx] = 0
-                self.seq_label = np.zeros(self.out_dim)
-                self.seq_label[infos[idx]['goal_label']] = 1.0
-
-            # if done:
-            #     # create a container saving reseted sequences for future usage
-            #     seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-            #                                  self.x_mean, self.x_var, self.seq_label))
-            #     self.xs[idx] = []
-            #     self.x_lens[idx] = 0
-            #     self.seq_label = np.zeros(self.out_dim)
-            #     self.seq_label[infos[idx]['goal_label']] = 1.0
 
             self.xs[idx].append(np.concatenate((ob[6:13],
                                                 ob[0:3])))
             self.x_lens[idx] += 1
-            self.seq_label = np.zeros(self.out_dim)
-            self.seq_label[infos[idx]['goal_label']] = 1.0
+
 
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
                                         self.x_mean, self.x_var, self.seq_label))
@@ -468,7 +458,7 @@ class Predictor(object):
         :return:
         """
         for traj in trajs:
-            if traj.x_len > self.in_timesteps_max and traj.x_len < 500:
+            if traj.x_len > self.in_timesteps_max and traj.x_len < 400:
                 self.dataset.append(traj)
                 self.dataset_length += (traj.x_len -\
                     (self.in_timesteps_max + self.out_timesteps))
@@ -903,10 +893,10 @@ if __name__ == '__main__':
             rnn_model.init_sess()
 
 
-            #-----------------for debug--------------
-            rnn_model.plot_dataset()
-
-            #-----end debug------------------------
+            # #-----------------for debug--------------
+            # rnn_model.plot_dataset()
+            #
+            # #-----end debug------------------------
 
             if args.load:
                 try:

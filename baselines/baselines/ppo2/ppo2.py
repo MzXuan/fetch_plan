@@ -148,7 +148,7 @@ class Runner(object):
                 rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
-                # print("final_reward: {}".format(rewards))
+                # print("final_reward: {}".format(rewards))`
             elif pred_weight != 0.0:
                 self.collect_flag = self.predictor.collect(self.obs[:], self.dones, infos)
                 origin_pred_loss = 0.0
@@ -442,11 +442,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
         env.render()
         time.sleep(2)
-
         while not done[0]:
             env.render()
             act, state = agent.mean(obs, state, done)
-            obs, rew, done, _ = env.step(act)
+            obs, rew, done, info = env.step(act)
             # predictor.predict(obs,done)
 
 
