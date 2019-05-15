@@ -23,7 +23,7 @@ from matplotlib.font_manager import FontProperties
 from tqdm import tqdm
 
 class DatasetStru(object):
-    def __init__(self, x, x_len, x_mean, x_var):
+    def __init__(self, x, x_len, x_mean, x_var, x_ratio):
         """
         :param x: shape = (self.in_timesteps_max, self.in_dim)
         :param x_len: shape = 1
@@ -34,6 +34,7 @@ class DatasetStru(object):
         self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
+        self.x_ratio = x_ratio
 
 
     def padding(self, seq, new_length):
@@ -90,6 +91,7 @@ class Predictor(object):
         self.x_lens = np.zeros(batch_size, dtype=int)
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
+        self.x_ratio = [[] for _ in range(0, self.batch_size)]
 
         ## prepare containers for saving input dataset
         self.dataset = []
@@ -178,8 +180,6 @@ class Predictor(object):
         self.weights = np.repeat(weight,self.batch_size,axis=0)
         # print("self.weights:")
         # print(self.weights)
-
-
 
 
     def init_sess(self):
@@ -411,38 +411,42 @@ class Predictor(object):
         seqs_done, seqs_all = [], []
 
         for idx, (ob, done) in enumerate(zip(obs, dones)):
-            # add end label
-            if done:
-                if not infos[idx]['is_collision']:
-                    # create a container saving reseted sequences for future usage
-                    self.xs[idx][-1][-1] = 1.0
-                    seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                                 self.x_mean, self.x_var))
-                else:
-                    print("in collision")
-                self.xs[idx] = []
-                self.x_lens[idx] = 0
-
-            self.xs[idx].append(np.concatenate((ob[6:13],
-                                                ob[0:3],[0.0])))
-
-            #-------origin sequence
+            # #---------add end label------------------
             # if done:
             #     if not infos[idx]['is_collision']:
             #         # create a container saving reseted sequences for future usage
+            #         self.xs[idx][-1][-1] = 1.0
             #         seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
             #                                      self.x_mean, self.x_var))
             #     else:
             #         print("in collision")
             #     self.xs[idx] = []
             #     self.x_lens[idx] = 0
+            #
             # self.xs[idx].append(np.concatenate((ob[6:13],
-            #                                     ob[0:3])))
+            #                                     ob[0:3],[0.0])))
+
+            #-------origin sequence
+            if done:
+                if not infos[idx]['is_collision']:
+                    self.x_ratio[idx] = self.x_ratio[idx]/self.x_lens[idx]
+                    # create a container saving reseted sequences for future usage
+                    seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                                 self.x_mean, self.x_var, self.x_ratio[idx]))
+                else:
+                    print("in collision")
+                self.xs[idx] = []
+                self.x_lens[idx] = 0
+                self.x_ratio[idx] = []
+
+            self.xs[idx].append(np.concatenate((ob[6:13],
+                                                ob[0:3])))
             #-------------------------------
 
             self.x_lens[idx] += 1
+            self.x_ratio[idx].append(self.x_lens[idx])
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                        self.x_mean, self.x_var))
+                                        self.x_mean, self.x_var, self.x_ratio[idx]))
 
         return seqs_done, seqs_all
 
@@ -512,14 +516,10 @@ class Predictor(object):
 
         if ind_end > length:
             #pading dataset
-            x_reach = np.zeros(ind_end) # variable for checking goal
-            x_reach[(length-1):] = 1.0
-
+            seq_ratio = data.padding(data.x_ratio, ind_end)
             x_seq = data.padding(data.x, ind_end)
         else:
-            x_reach = np.zeros(length)
-            x_reach[length-1] = 1.0
-
+            seq_ratio = data.x_ratio
             x_seq = data.x
 
         if ind_start > 0:
@@ -527,8 +527,7 @@ class Predictor(object):
             x_origin = x_seq[ind_start:ind, :]
             x_start = x_seq[ind_start-1, :]
             x = x_origin - x_start
-            #y
-            y = x_seq[ind:ind_end, :] - x_start
+            # length
             x_len = self.in_timesteps_max
 
         elif ind_start <= 0:
@@ -537,10 +536,12 @@ class Predictor(object):
             x_start = x_seq[0, :]
             x = np.full((self.in_timesteps_max, self.in_dim), 0.0)
             x[self.in_timesteps_max-ind:self.in_timesteps_max,:] = x_origin - x_start
-            #y
-            y = x_seq[ind:ind_end, :] - x_start
-
+            # length
             x_len = ind
+        #y
+        y = x_seq[ind:ind_end, :] - x_start
+        y_ratio = np.expand_dims(seq_ratio[ind:ind_end], axis=1)
+        y = np.concatenate([y, y_ratio], axis=1)
 
         return x, y, x_len, x_start
 
