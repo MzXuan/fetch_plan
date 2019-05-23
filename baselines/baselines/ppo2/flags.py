@@ -8,8 +8,8 @@ class InitParameter():
         self.model_name = model_name
 
         self.in_dim = 10
-        self.out_dim = 11
-        self.in_timesteps_max = 50
+        self.out_dim = 10
+        self.in_timesteps_max = 10
         self.learning_rate = 1e-3
 
         self.validation_interval = 50

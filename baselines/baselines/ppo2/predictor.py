@@ -200,7 +200,7 @@ class Predictor(object):
 
     def _build_attention(self,enc_outputs):
         #Attention
-        attention_mechanism = tf.contrib.seq2seq.LuongAttention(
+        attention_mechanism = tf.contrib.seq2seq.LuongMonotonicAttention(
         num_units= self.num_units, memory=enc_outputs,
         memory_sequence_length=self.x_len_ph)
 
@@ -411,22 +411,7 @@ class Predictor(object):
         seqs_done, seqs_all = [], []
 
         for idx, (ob, done) in enumerate(zip(obs, dones)):
-            # #---------add end label------------------
-            # if done:
-            #     if not infos[idx]['is_collision']:
-            #         # create a container saving reseted sequences for future usage
-            #         self.xs[idx][-1][-1] = 1.0
-            #         seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-            #                                      self.x_mean, self.x_var))
-            #     else:
-            #         print("in collision")
-            #     self.xs[idx] = []
-            #     self.x_lens[idx] = 0
-            #
-            # self.xs[idx].append(np.concatenate((ob[6:13],
-            #                                     ob[0:3],[0.0])))
-
-            #-------origin sequence
+            #-------add end label------------
             if done:
                 if not infos[idx]['is_collision']:
                     self.x_ratio[idx] = self.x_ratio[idx]/self.x_lens[idx]
@@ -441,7 +426,7 @@ class Predictor(object):
 
             self.xs[idx].append(np.concatenate((ob[6:13],
                                                 ob[0:3])))
-            #-------------------------------
+            #-------------------------------------------------
 
             self.x_lens[idx] += 1
             self.x_ratio[idx].append(self.x_lens[idx])
@@ -540,8 +525,10 @@ class Predictor(object):
             x_len = ind
         #y
         y = x_seq[ind:ind_end, :] - x_start
-        y_ratio = np.expand_dims(seq_ratio[ind:ind_end], axis=1)
-        y = np.concatenate([y, y_ratio], axis=1)
+
+        # add ratio label
+        # y_ratio = np.expand_dims(seq_ratio[ind:ind_end], axis=1)
+        # y = np.concatenate([y, y_ratio], axis=1)
 
         return x, y, x_len, x_start
 
@@ -669,61 +656,47 @@ class Predictor(object):
     def run_test(self):
         """
         run test on validation set
+        one data by one data, and display the result
         """
-        pass
-        # Need to refacotr --------------------------------------------------
+        ## load saved data, use the same data as in validate set
+        self._load_train_set()
+        print("trajectory numbers: ", len(self.dataset))
+        valid_len = int(self.validate_ratio * len(self.dataset))
+        test_set = self._process_dataset(self.dataset[-valid_len:-1])
 
-        # ## check saved data se
-        # filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
-        # num_sets = len(filelist)-1
-        # self.dataset_idx = 0
+        # load saved network and run testing
+        for inds in range(1,len(test_set[0])): #todo: random select a index in validate set
+        #----------test process--------#
+            xs = np.expand_dims(test_set[0][inds], axis=0)
+            ys = np.expand_dims(test_set[1][inds], axis=0)
+            x_lens = np.expand_dims(test_set[2][inds], axis=0)
+            xs_start = np.expand_dims(test_set[3][inds], axis=0)
 
-        # print("load validate dataset {}".format(filelist[-1]))
-        # test_set = \
-        #     pickle.load(open(os.path.join("./pred/", filelist[-1]), "rb"))
-        # # ## prepare threshold to switch dataset
-        # # max_iteration = int(self.point)
-        # # iter_range = range(0,max_iteration,500)
-        # # iter_idx=0
-        # # print("iter_range")
-        # # print(iter_range)
-        # ## run training
-        # for i in range(1,100):
-        # #----------test process--------#
-        #     ## create validate data
-        #     xs, ys, x_lens, xs_start = self._feed_training_data(test_set)
+            ## run validation
+            fetches = [self.validate_loss, self.y_hat_pred]
+            feed_dict = {
+                self.x_ph: xs,
+                self.y_ph: ys,
+                self.x_len_ph: x_lens
+            }
+            loss, y_hat_pred = self.sess.run(fetches, feed_dict)
 
-        #     ## run validation
-        #     fetches = [self.validate_loss, self.x_ph, self.y_ph, self.y_hat_pred]
-        #     feed_dict = {
-        #         self.x_ph: xs,
-        #         self.y_ph: ys,
-        #         self.x_len_ph: x_lens
-        #     }
-        #     loss_pred, x, y, y_hat_pred = self.sess.run(fetches, feed_dict)
+            # ------display information-----------#
+            print("\ntest_loss = {}".format(loss))
+            # print('\n')
+            # print("x = {}".format(xs[0]))
+            # print("x_len={}".format(x_lens[0]))
+            # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
 
-        #     ## write summary
-        #     summary = tf.Summary()
-        #     summary.value.add(tag="validate_loss", simple_value=loss_pred)
-        #     self.file_writer.add_summary(summary, self.iteration)
+            print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
 
-        #     # ------display information-----------#
-        #     batch_loss = self._get_batch_loss(ys, y_hat_pred, x_lens)
-        #     print("\nbatch_loss = {}".format(batch_loss))
-        #     # print('\n')
-        #     # print("x = {}".format(xs[0]))
-        #     # print("x_len={}".format(x_lens[0]))
-        #     # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
-        #     print('iteration = {}, validate loss = {} '.format(self.iteration, loss_pred))
+            # ------plot predicted data-----------
+            import visualize
+            origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+            _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
+            visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+            time.sleep(2)
 
-        #     # ------plot predicted data-----------
-        #     import visualize
-        #     origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
-        #     _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
-        #     visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
-        #     time.sleep(2)
-
-        # Need to refacotr --------------------------------------------------
 
     def collect(self, obs, dones, infos, mean=None, var=None):
         """
@@ -733,7 +706,6 @@ class Predictor(object):
         :param mean: mean.shape = [batch_size, ob_shape]
         :param var: var.shape = [batch_size, ob_shape]
         """
-
 
         #create input sequence
         seqs_done, _ = self._create_seq(obs, dones, infos, mean, var)
@@ -831,15 +803,6 @@ class Predictor(object):
             restores.append(p.assign(loaded_p))
         self.sess.run(restores)
 
-    # def save_dataset(self):
-    #     # check whether in training process
-    #     if self.train_flag is not True:
-    #         print("Not in training process, saving failed")
-    #     else:
-    #         pickle.dump(self.dataset, open("./pred/"
-    #                                         +"/dataset"+str(self.dataset_idx)+".pkl", "wb"))
-    #         print("saving dataset successfully")
-    #         self.dataset = []
 
     def load_dataset(self, file_name):
         ## load dataset
@@ -875,22 +838,23 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--epoch', default=50, type=int)
-    parser.add_argument('--lr', default=0.001, type=float)
+    parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     parser.add_argument('--model_name', default='test1', type=str)
+    parser.add_argument('--test', action='store_true')
     args = parser.parse_args()
 
-    train_flag=True
+    test_flag=args.test
     FLAGS = flags.InitParameter(args.model_name)
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
     with tf.Session() as sess:
-        if train_flag:
+        if not test_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 1024, 30,
+            rnn_model = Predictor(sess, FLAGS, 1024, 10,
                                   train_flag=True, reset_flag=False, epoch=args.epoch,
                                   iter_start=args.iter, lr=args.lr)
 
@@ -911,8 +875,9 @@ if __name__ == '__main__':
             rnn_model.run_training()
 
         else:
+            print("start testing...")
             #plot all the validate data step by step
-            rnn_model = Predictor(sess, FLAGS, 1, 10,
+            rnn_model = Predictor(sess, FLAGS, 1, 30,
                                   train_flag=False, reset_flag=False, epoch=args.epoch)
 
             rnn_model.init_sess()
