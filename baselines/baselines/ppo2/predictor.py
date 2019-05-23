@@ -61,7 +61,7 @@ class FixedHelper(tf.contrib.seq2seq.InferenceHelper):
 
 class Predictor(object):
     def __init__(self, sess, FLAGS, 
-                 batch_size, max_timestep, train_flag,
+                 batch_size, out_max_timestep, train_flag,
                  reset_flag=False, epoch=20, iter_start=0,
                  lr=0.001):
         ## extract FLAGS
@@ -76,14 +76,14 @@ class Predictor(object):
         self._build_flag(FLAGS)
 
         self.batch_size = batch_size
-        self.in_timesteps_max = max_timestep
-        self.out_timesteps = 30
+        # self.in_timesteps_max = max_timestep
+        self.out_timesteps = out_max_timestep
         self.train_flag = train_flag
         self.epochs = epoch
         self.lr = lr
         self.validate_ratio = 0.2
 
-        self.num_units=16
+        self.num_units=64
 
         ## prepare sequcne containers
         # self.xs = np.zeros((batch_size, self.in_timesteps_max, self.in_dim))
@@ -122,6 +122,7 @@ class Predictor(object):
     def _build_flag(self, FLAGS):        
         self.in_dim = FLAGS.in_dim
         self.out_dim = FLAGS.out_dim
+        self.in_timesteps_max = FLAGS.in_timesteps_max
 
         self.model_name = FLAGS.model_name
 
@@ -190,7 +191,8 @@ class Predictor(object):
         enc_inputs = self.x_ph
         gru_rnn1 = tf.nn.rnn_cell.GRUCell(self.num_units)
         gru_rnn2 = tf.nn.rnn_cell.GRUCell(self.num_units)
-        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2])
+        gru_rnn3 = tf.nn.rnn_cell.GRUCell(self.num_units)
+        enc_cell = tf.nn.rnn_cell.MultiRNNCell([gru_rnn1, gru_rnn2, gru_rnn3])
 
         enc_outputs, enc_state = tf.nn.dynamic_rnn(
             enc_cell, enc_inputs,
@@ -200,7 +202,7 @@ class Predictor(object):
 
     def _build_attention(self,enc_outputs):
         #Attention
-        attention_mechanism = tf.contrib.seq2seq.LuongMonotonicAttention(
+        attention_mechanism = tf.contrib.seq2seq.LuongAttention(
         num_units= self.num_units, memory=enc_outputs,
         memory_sequence_length=self.x_len_ph)
 
@@ -210,7 +212,8 @@ class Predictor(object):
         ## decoder
         dec_rnn1 = tf.nn.rnn_cell.GRUCell(self.num_units)
         dec_rnn2 = tf.nn.rnn_cell.GRUCell(self.num_units)
-        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2])
+        dec_rnn3 = tf.nn.rnn_cell.GRUCell(self.num_units)
+        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2, dec_rnn3])
 
         #Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
@@ -299,18 +302,7 @@ class Predictor(object):
             #
             # self.y_hat_train = tf.concat([self.y_hat_train, tf.expand_dims(self.end_flag_train, axis=2)], axis=2)
             # self.y_hat_pred = tf.concat([self.y_hat_pred, tf.expand_dims(self.end_flag_pred, axis=2)], axis=2)
-            #
-            # ## setup optimization
-            # self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-            #                                                   predictions = self.y_hat_train)
-            #
-            #
-            # self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-            #                                                   predictions = self.y_hat_pred)
-            #
-            # self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-            #                                                   predictions = self.y_hat_pred,
-            #                                                   reduction = tf.losses.Reduction.NONE)
+
 
             ## setup optimization
             self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
@@ -471,7 +463,7 @@ class Predictor(object):
     def _process_dataset(self, trajs):
         xs, ys, x_lens, xs_start = [], [], [], []
         for traj in trajs:
-            for i in range(self.in_timesteps_max,
+            for i in range(10,
                            traj.x_len - self.out_timesteps):
                 x, y, x_len, x_start = self._feed_one_data(traj, i)
                 xs.append(x)
@@ -523,7 +515,8 @@ class Predictor(object):
             x_origin = x_seq[0:ind, :]
             x_start = x_seq[0, :]
             x = np.full((self.in_timesteps_max, self.in_dim), 0.0)
-            x[self.in_timesteps_max-ind:self.in_timesteps_max,:] = x_origin - x_start
+            # x[self.in_timesteps_max-ind:self.in_timesteps_max,:] = x_origin - x_start
+            x[0:ind,:] = x_origin - x_start
             # length
             x_len = ind
         #y
@@ -851,13 +844,15 @@ if __name__ == '__main__':
     test_flag=args.test
     FLAGS = flags.InitParameter(args.model_name)
 
+    out_steps=20
+
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
     with tf.Session() as sess:
         if not test_flag:
             # create and initialize session
-            rnn_model = Predictor(sess, FLAGS, 1024, 10,
+            rnn_model = Predictor(sess, FLAGS, 1024, out_steps,
                                   train_flag=True, reset_flag=False, epoch=args.epoch,
                                   iter_start=args.iter, lr=args.lr)
 
@@ -880,7 +875,7 @@ if __name__ == '__main__':
         else:
             print("start testing...")
             #plot all the validate data step by step
-            rnn_model = Predictor(sess, FLAGS, 1, 30,
+            rnn_model = Predictor(sess, FLAGS, 1, out_steps,
                                   train_flag=False, reset_flag=False, epoch=args.epoch)
 
             rnn_model.init_sess()

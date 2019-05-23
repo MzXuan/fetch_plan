@@ -105,6 +105,9 @@ def plot_3d_seqs(x, y, y_hat=None):
         ax.plot(y_hat[:, -3], y_hat[:, -2], y_hat[:, -1],
                 '-+', linewidth=2, color="red", label="pred")
 
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
     ax.legend()
     plt.pause(0.1)
 
