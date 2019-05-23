@@ -215,6 +215,7 @@ class Predictor(object):
         #Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
 
+        #attention mechanism
         attn_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism)
 
         attn_zero = attn_cell.zero_state(self.batch_size, tf.float32)
@@ -284,45 +285,47 @@ class Predictor(object):
 
             ## decoder
             training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state, attention_mechanism)
+            self.y_hat_train =  training_decoder_outputs[0]
+            self.y_hat_pred =  inference_decoder_outputs[0]
 
-            self.y_hat_train = training_decoder_outputs[0][:,:,:self.out_dim-1]
-            self.y_hat_pred = inference_decoder_outputs[0][:,:,:self.out_dim-1]
+            # self.y_hat_train = training_decoder_outputs[0][:,:,:self.out_dim-1]
+            # self.y_hat_pred = inference_decoder_outputs[0][:,:,:self.out_dim-1]
+            #
+            # self.end_flag_train = tf.nn.sigmoid(training_decoder_outputs[0][:,:,self.out_dim-1])
+            # self.end_flag_pred = tf.nn.sigmoid(inference_decoder_outputs[0][:,:,self.out_dim-1])
 
-            self.end_flag_train = tf.nn.sigmoid(training_decoder_outputs[0][:,:,self.out_dim-1])
-            self.end_flag_pred = tf.nn.sigmoid(inference_decoder_outputs[0][:,:,self.out_dim-1])
-
-            print('self.end_flag_train')
-            print(self.end_flag_train.shape)
-
-            self.y_hat_train = tf.concat([self.y_hat_train, tf.expand_dims(self.end_flag_train, axis=2)], axis=2)
-            self.y_hat_pred = tf.concat([self.y_hat_pred, tf.expand_dims(self.end_flag_pred, axis=2)], axis=2)
-
-            ## setup optimization
-            self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_train)
-
-
-            self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_pred)
-
-            self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-                                                              predictions = self.y_hat_pred,
-                                                              reduction = tf.losses.Reduction.NONE)
-
+            # print('self.end_flag_train')
+            # print(self.end_flag_train.shape)
+            #
+            # self.y_hat_train = tf.concat([self.y_hat_train, tf.expand_dims(self.end_flag_train, axis=2)], axis=2)
+            # self.y_hat_pred = tf.concat([self.y_hat_pred, tf.expand_dims(self.end_flag_pred, axis=2)], axis=2)
+            #
             # ## setup optimization
             # self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-            #                                                   predictions = self.y_hat_train,
-            #                                                   weights = self.weights)
+            #                                                   predictions = self.y_hat_train)
             #
             #
             # self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
-            #                                                   predictions = self.y_hat_pred,
-            #                                                   weights = self.weights)
+            #                                                   predictions = self.y_hat_pred)
             #
             # self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
             #                                                   predictions = self.y_hat_pred,
-            #                                                   weights = self.weights,
             #                                                   reduction = tf.losses.Reduction.NONE)
+
+            ## setup optimization
+            self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_train,
+                                                              weights = self.weights)
+
+
+            self.validate_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_pred,
+                                                              weights = self.weights)
+
+            self.predict_loss = tf.losses.mean_squared_error(labels = self.y_ph,
+                                                              predictions = self.y_hat_pred,
+                                                              weights = self.weights,
+                                                              reduction = tf.losses.Reduction.NONE)
 
         self.train_op = tf.train.AdamOptimizer(self.lr).minimize(
             self.training_loss)
