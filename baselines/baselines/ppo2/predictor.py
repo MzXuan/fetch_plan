@@ -658,40 +658,80 @@ class Predictor(object):
         self._load_train_set()
         print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
-        test_set = self._process_dataset(self.dataset[-valid_len:-1])
+        test_set = self.dataset[-valid_len:-1]
 
-        # load saved network and run testing
-        for inds in range(1,len(test_set[0])): #todo: random select a index in validate set
-        #----------test process--------#
-            xs = np.expand_dims(test_set[0][inds], axis=0)
-            ys = np.expand_dims(test_set[1][inds], axis=0)
-            x_lens = np.expand_dims(test_set[2][inds], axis=0)
-            xs_start = np.expand_dims(test_set[3][inds], axis=0)
+        # run testing
+        for traj in test_set: #todo: random select a trajectory in test set
+            data = self._process_dataset(np.expand_dims(traj, axis=0))
+            for inds in range(1, len(data[0])):
+                #----------test process--------#
+                xs = np.expand_dims(data[0][inds], axis=0)
+                ys = np.expand_dims(data[1][inds], axis=0)
+                x_lens = np.expand_dims(data[2][inds], axis=0)
+                xs_start = np.expand_dims(data[3][inds], axis=0)
 
-            ## run validation
-            fetches = [self.validate_loss, self.y_hat_pred]
-            feed_dict = {
-                self.x_ph: xs,
-                self.y_ph: ys,
-                self.x_len_ph: x_lens
-            }
-            loss, y_hat_pred = self.sess.run(fetches, feed_dict)
+                ## run validation
+                fetches = [self.validate_loss, self.y_hat_pred]
+                feed_dict = {
+                    self.x_ph: xs,
+                    self.y_ph: ys,
+                    self.x_len_ph: x_lens
+                }
+                loss, y_hat_pred = self.sess.run(fetches, feed_dict)
 
-            # ------display information-----------#
-            print("\ntest_loss = {}".format(loss))
-            # print('\n')
-            # print("x = {}".format(xs[0]))
-            # print("x_len={}".format(x_lens[0]))
-            # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+                # ------display information-----------#
+                print("\ntest_loss = {}".format(loss))
+                # print('\n')
+                # print("x = {}".format(xs[0]))
+                # print("x_len={}".format(x_lens[0]))
+                # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+                print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
 
-            print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
+                # ------plot predicted data-----------
+                import visualize
+                origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+                _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
+                visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred, x_whole = traj.x)
+                time.sleep(0.5)
 
-            # ------plot predicted data-----------
-            import visualize
-            origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
-            _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
-            visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
-            time.sleep(2)
+        #------------old version-------------------------------#
+        # ## load saved data, use the same data as in validate set
+        # self._load_train_set()
+        # print("trajectory numbers: ", len(self.dataset))
+        # valid_len = int(self.validate_ratio * len(self.dataset))
+        # test_set = self._process_dataset(self.dataset[-valid_len:-1])
+        #
+        # # load saved network and run testing
+        # for inds in range(1,len(test_set[0])): #todo: random select a index in validate set
+        # #----------test process--------#
+        #     xs = np.expand_dims(test_set[0][inds], axis=0)
+        #     ys = np.expand_dims(test_set[1][inds], axis=0)
+        #     x_lens = np.expand_dims(test_set[2][inds], axis=0)
+        #     xs_start = np.expand_dims(test_set[3][inds], axis=0)
+        #
+        #     ## run validation
+        #     fetches = [self.validate_loss, self.y_hat_pred]
+        #     feed_dict = {
+        #         self.x_ph: xs,
+        #         self.y_ph: ys,
+        #         self.x_len_ph: x_lens
+        #     }
+        #     loss, y_hat_pred = self.sess.run(fetches, feed_dict)
+        #
+        #     # ------display information-----------#
+        #     print("\ntest_loss = {}".format(loss))
+        #     # print('\n')
+        #     # print("x = {}".format(xs[0]))
+        #     # print("x_len={}".format(x_lens[0]))
+        #     # print("pred = {}, true goal = {}".format(y_hat_pred[0], y[0]))
+        #     print('iteration = {}, validate loss = {} '.format(self.iteration, loss))
+        #
+        #     # ------plot predicted data-----------
+        #     import visualize
+        #     origin_x, origin_y = self._accumulate_data(xs[0], ys[0], xs_start[0])
+        #     _, origin_y_pred = self._accumulate_data(xs[0], y_hat_pred[0], xs_start[0])
+        #     visualize.plot_3d_seqs(origin_x, origin_y, origin_y_pred)
+        #     time.sleep(2)
 
 
     def collect(self, obs, dones, infos, mean=None, var=None):
@@ -844,7 +884,7 @@ if __name__ == '__main__':
     test_flag=args.test
     FLAGS = flags.InitParameter(args.model_name)
 
-    out_steps=20
+    out_steps=40
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
@@ -877,6 +917,9 @@ if __name__ == '__main__':
             #plot all the validate data step by step
             rnn_model = Predictor(sess, FLAGS, 1, out_steps,
                                   train_flag=False, reset_flag=False, epoch=args.epoch)
+
+            #plot and check dataset
+            # rnn_model.plot_dataset()
 
             rnn_model.init_sess()
             rnn_model.load()

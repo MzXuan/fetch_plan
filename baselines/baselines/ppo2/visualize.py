@@ -84,7 +84,7 @@ def plot_3d_pred(x, goal, pred=None):
     plt.pause(0.1)
 
 
-def plot_3d_seqs(x, y, y_hat=None):
+def plot_3d_seqs(x, y, y_hat=None, x_whole=None):
     fig3d = plt.figure(3)
     plt.clf()
 
@@ -104,6 +104,10 @@ def plot_3d_seqs(x, y, y_hat=None):
     if y_hat is not None:
         ax.plot(y_hat[:, -3], y_hat[:, -2], y_hat[:, -1],
                 '-+', linewidth=2, color="red", label="pred")
+
+    if x_whole is not None:
+        ax.plot(x_whole[:, -3], x_whole[:, -2], x_whole[:, -1],
+                '-+', linewidth=2, color="grey", label="whole x", alpha=0.5)
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")
