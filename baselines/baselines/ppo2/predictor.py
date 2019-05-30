@@ -198,7 +198,7 @@ class Predictor(object):
             enc_cell, enc_inputs,
             sequence_length=self.x_len_ph, dtype=tf.float32
         )
-        return enc_outputs, enc_state
+        return enc_outputs, enc_state, enc_cell
 
     def _build_attention(self,enc_outputs):
         #Attention
@@ -208,22 +208,28 @@ class Predictor(object):
 
         return attention_mechanism
 
-    def _build_decoder(self, enc_state, attention_mechanism):
-        ## decoder
-        dec_rnn1 = tf.nn.rnn_cell.GRUCell(self.num_units)
-        dec_rnn2 = tf.nn.rnn_cell.GRUCell(self.num_units)
-        dec_rnn3 = tf.nn.rnn_cell.GRUCell(self.num_units)
-        dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2, dec_rnn3])
+    def _build_decoder(self, enc_state, attention_mechanism = None, decorder_cell = None):
 
-        #Dense layer to translate the decoder's output at each time
+        if decorder_cell is not None:
+            dec_cell=decorder_cell
+        else:
+            ## decoder
+            dec_rnn1 = tf.nn.rnn_cell.GRUCell(self.num_units)
+            dec_rnn2 = tf.nn.rnn_cell.GRUCell(self.num_units)
+            dec_rnn3 = tf.nn.rnn_cell.GRUCell(self.num_units)
+            dec_cell = tf.nn.rnn_cell.MultiRNNCell([dec_rnn1, dec_rnn2, dec_rnn3])
+
+
+        if attention_mechanism is not None:
+            #attention mechanism
+            dec_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism)
+
+            attn_zero = dec_cell.zero_state(self.batch_size, tf.float32)
+
+            enc_state = attn_zero.clone(cell_state=enc_state)
+
+        # Dense layer to translate the decoder's output at each time
         fc_layer = tf.layers.Dense(self.out_dim, dtype=tf.float32)
-
-        #attention mechanism
-        attn_cell = tf.contrib.seq2seq.AttentionWrapper(dec_cell, attention_mechanism)
-
-        attn_zero = attn_cell.zero_state(self.batch_size, tf.float32)
-
-        attn_zero = attn_zero.clone(cell_state=enc_state)
 
         #Training Decoder
         with tf.variable_scope("pred_dec"):
@@ -239,8 +245,8 @@ class Predictor(object):
             training_helper = tf.contrib.seq2seq.TrainingHelper(dec_input, seq_length)
 
             training_decoder = tf.contrib.seq2seq.BasicDecoder(
-                cell=attn_cell, helper=training_helper,
-                initial_state=attn_zero, output_layer=fc_layer)
+                cell=dec_cell, helper=training_helper,
+                initial_state=enc_state, output_layer=fc_layer)
 
             training_decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
                 decoder=training_decoder, output_time_major=False,
@@ -269,8 +275,8 @@ class Predictor(object):
                     end_fn=lambda sample_ids: False)
 
             inference_decoder = tf.contrib.seq2seq.BasicDecoder(
-                cell=attn_cell, helper=inference_helper,
-                initial_state=attn_zero, output_layer=fc_layer)
+                cell=dec_cell, helper=inference_helper,
+                initial_state=enc_state, output_layer=fc_layer)
 
             inference_decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
                 decoder=inference_decoder, output_time_major=False,
@@ -279,30 +285,18 @@ class Predictor(object):
         return training_decoder_outputs, inference_decoder_outputs
 
 
+
     def _build_net(self):
         with tf.variable_scope("predictor"):
             ## encoder
-            enc_outputs, enc_state = self._build_encoder()
+            enc_outputs, enc_state, enc_cell = self._build_encoder()
             ## attention
             attention_mechanism = self._build_attention(enc_outputs)
 
             ## decoder
-            training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state, attention_mechanism)
+            training_decoder_outputs, inference_decoder_outputs = self._build_decoder(enc_state, attention_mechanism, enc_cell)
             self.y_hat_train =  training_decoder_outputs[0]
             self.y_hat_pred =  inference_decoder_outputs[0]
-
-            # self.y_hat_train = training_decoder_outputs[0][:,:,:self.out_dim-1]
-            # self.y_hat_pred = inference_decoder_outputs[0][:,:,:self.out_dim-1]
-            #
-            # self.end_flag_train = tf.nn.sigmoid(training_decoder_outputs[0][:,:,self.out_dim-1])
-            # self.end_flag_pred = tf.nn.sigmoid(inference_decoder_outputs[0][:,:,self.out_dim-1])
-
-            # print('self.end_flag_train')
-            # print(self.end_flag_train.shape)
-            #
-            # self.y_hat_train = tf.concat([self.y_hat_train, tf.expand_dims(self.end_flag_train, axis=2)], axis=2)
-            # self.y_hat_pred = tf.concat([self.y_hat_pred, tf.expand_dims(self.end_flag_pred, axis=2)], axis=2)
-
 
             ## setup optimization
             self.training_loss = tf.losses.mean_squared_error(labels = self.y_ph,
@@ -884,7 +878,7 @@ if __name__ == '__main__':
     test_flag=args.test
     FLAGS = flags.InitParameter(args.model_name)
 
-    out_steps=40
+    out_steps=100
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
