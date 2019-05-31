@@ -1,40 +1,42 @@
-'''
-This is an example using keras api to do the predictor work
-'''
-
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, LSTM
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, LSTM, Dense
+import numpy as np
 
-mnist = tf.keras.datasets.mnist  # mnist is a dataset of 28x28 images of handwritten digits and their labels
-(x_train, y_train),(x_test, y_test) = mnist.load_data()  # unpacks images to x_train/x_test and labels to y_train/y_test
+batch_size = 64  # Batch size for training.
+epochs = 100  # Number of epochs to train for.
+in_dim = 3
+out_dim = 3
 
-x_train = x_train/255.0
-x_test = x_test/255.0
+num_units = 64
+num_layers = 3
 
-print(x_train.shape)
-print(x_train[0].shape)
-model = Sequential()
-model.add(LSTM(128, input_shape=(x_train.shape[1:]), activation='relu', return_sequences=True))
-model.add(Dropout(0.2))
+def MyRNNModel():
+    # model: train model without last state as input;
+    # #inference model with last last state and also input
+    input_x= Input(shape=(None,in_dim))
 
-model.add(LSTM(128, activation='relu'))
-model.add(Dropout(0.1))
+    state_input_h = Input(shape=(num_units,))
+    state_input_c = Input(shape=(num_units,))
+    states_inputs = [state_input_h, state_input_c]
 
-model.add(Dense(32, activation='relu'))
-model.add(Dropout(0.2))
+    rnn_lstm = LSTM(num_units, return_sequences=True, return_state=True)(x_input)
+    for i in range(0, num_layers):
+        rnn_lstm = LSTM(num_units, return_sequences=True, return_state=True)(rnn_lstm)
 
-model.add(Dense(10, activation='softmax'))
+    train_lstm, state_h, state_c = rnn_lstm(input_x)
+    inference_lstm, state_h, state_c = rnn_lstm(input_x,  initial_state=states_inputs)
 
-opt = tf.keras.optimizers.Adam(lr=0.001, decay=1e-6)
+    states_outputs =[state_h, state_c]
 
-model.compile(
-    loss='sparse_categorical_crossentropy',
-    optimizer=opt,
-    metrics=['accuracy'],
-)
+    output_train = Dense(out_dim, activation='linear')(train_lstm)
+    output_inference = Dense(out_dim, activation='linear')(inference_lstm)
 
-model.fit(x_train,
-          y_train,
-          epochs=3,
-          validation_data=(x_test, y_test))
+    return Model(inputs = input_x, outputs = [states_outputs] + output_train), \
+           Model(inputs = [states_inputs]+input_x, outputs = [states_outputs] + output_inference)
+
+
+def CreateSeqs():
+
+
+# padding sequence and prepare to cut it
