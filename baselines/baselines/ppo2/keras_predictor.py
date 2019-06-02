@@ -37,6 +37,18 @@ def MyRNNModel():
 
 
 def CreateSeqs():
+    '''
+    Prepare random sequences for test usage
+    :return: sequences dataset
+    '''
+    data1 = np.random.random(size=(1, 100, 200))  # batch_size = 1, timespan = 100
+    print([data1][0].shape) # (1, 20)
+    return data1
 
 
+def main():
+    return 0
+
+if __name__ == '__main__':
+    main()
 # padding sequence and prepare to cut it
