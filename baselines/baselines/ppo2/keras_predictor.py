@@ -20,33 +20,62 @@ def MyRNNModel():
     state_input_c = Input(shape=(num_units,))
     states_inputs = [state_input_h, state_input_c]
 
-    rnn_lstm = LSTM(num_units, return_sequences=True, return_state=True)(x_input)
+    rnn_lstm = LSTM(num_units, return_sequences=True, return_state=True)(input_x)
     for i in range(0, num_layers):
-        rnn_lstm = LSTM(num_units, return_sequences=True, return_state=True)(rnn_lstm)
+        rnn_lstm, state_h, state_c = LSTM(num_units, return_sequences=True, return_state=True)(rnn_lstm)
 
-    train_lstm, state_h, state_c = rnn_lstm(input_x)
-    inference_lstm, state_h, state_c = rnn_lstm(input_x,  initial_state=states_inputs)
+    train_lstm = rnn_lstm
 
-    states_outputs =[state_h, state_c]
+    #todo: check how to get intermidiate value of this model
 
     output_train = Dense(out_dim, activation='linear')(train_lstm)
-    output_inference = Dense(out_dim, activation='linear')(inference_lstm)
 
-    return Model(inputs = input_x, outputs = [states_outputs] + output_train), \
-           Model(inputs = [states_inputs]+input_x, outputs = [states_outputs] + output_inference)
+    return Model(inputs=input_x, outputs=output_train)
 
+    # train_lstm, state_h, state_c = rnn_lstm(input_x)
+    # inference_lstm, state_h, state_c = rnn_lstm(input_x,  initial_state=states_inputs)
+    #
+    # states_outputs =[state_h, state_c]
+    #
+    # output_train = Dense(out_dim, activation='linear')(train_lstm)
+    # output_inference = Dense(out_dim, activation='linear')(inference_lstm)
+    #
+    # return Model(inputs = input_x, outputs = [states_outputs] + output_train), \
+    #        Model(inputs = [states_inputs]+input_x, outputs = [states_outputs] + output_inference)
+
+
+def BuildModel():
+    #build my model
+    model_train = MyRNNModel()
+    # print(model_train.layers[0])
+
+
+def TrainModel():
+    '''
+    Train the rnn model
+    :return:
+    '''
+    model_train = MyRNNModel()
+    model_train.compile(optimizer='rmsprop',
+                        loss='categorical_crossentropy')
+
+    x, y = CreateSeqs()
+    model_train.fit(x,y)
 
 def CreateSeqs():
     '''
     Prepare random sequences for test usage
     :return: sequences dataset
     '''
-    data1 = np.random.random(size=(1, 100, 200))  # batch_size = 1, timespan = 100
+    data1 = np.random.random(size=(1, 100, 3))  # batch_size = 1, timespan = 100
+    x=data1
+    y=data1
     print([data1][0].shape) # (1, 20)
-    return data1
+    return x,y
 
 
 def main():
+    TrainModel()
     return 0
 
 if __name__ == '__main__':
