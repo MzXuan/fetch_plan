@@ -40,7 +40,6 @@ class MyRNN():
         input_x = Input(shape=(None, self.in_dim))
         input_state_h = Input(batch_shape=(self.batch_size, self.num_units))
         input_state_c = Input(batch_shape=(self.batch_size, self.num_units))
-        # initial_state = [input_state_h, input_state_c]
         masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
 
         rnn_layers = []
@@ -72,9 +71,14 @@ class MyRNN():
         '''
         self.model.compile(optimizer='rmsprop',
                       loss='categorical_crossentropy')
-        self.model.fit(x, y)
+        state_h, state_c = self._create_initial_state(x.shape[0])
+        self.model.fit([x, state_h, state_c], y)
         print("training done")
 
+    def _create_initial_state(self, length):
+        state_h = np.zeros((length,self.num_units), dtype=np.float32)
+        state_c = np.zeros((length, self.num_units), dtype=np.float32)
+        return state_h, state_c
 
     def run_inference(self, x, y = None):
         '''
@@ -131,22 +135,6 @@ class MyRNN():
         print("shape of input")
         print(inputs.shape)
 
-        # for idx in range(self.num_layers):
-        #     stacked_lstm = self.model.get_layer(str(idx) + "lstm")
-        #
-        #     current_state = np.stack((initial_states[0][idx], initial_states[1][idx]),axis=0)
-        #     print("current state shape: ")
-        #     print(current_state.shape)
-        #     if idx == 0:
-        #         out, state_h, state_c = \
-        #             stacked_lstm.call(inputs=inputs, initial_state=current_state)
-        #     else:
-        #         out, state_h, state_c = \
-        #             stacked_lstm.call(inputs=out, initial_states=current_state)
-        #     new_states_h.append(state_h)
-        #     new_states_c.append(state_c)
-        #     outputs = self.model.get_layer("output_layer").call(inputs=out)
-
         for batch_idx in range(inputs.shape[0]):
 
             for idx in range(self.num_layers):
@@ -196,7 +184,7 @@ def main():
     num_layers = 1
     my_rnn = MyRNN(in_dim, out_dim, num_units, num_layers, batch_size)
     x, y = CreateSeqs(batch_size)
-    # my_rnn.run_training(x,y)
+    my_rnn.run_training(x,y)
     # my_rnn.run_inference(x, y)
     return 0
 
