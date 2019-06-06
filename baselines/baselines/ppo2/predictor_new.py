@@ -34,14 +34,7 @@ class DatasetStru(object):
         self.x_ratio = x_ratio
 
 
-    def padding(self, seq, new_length):
-        old_length = len(seq)
-        value = seq[-1, :]
-        value = np.expand_dims(value, axis=0)
-        for _ in range(old_length, new_length):
-            seq = np.append(seq, value, axis=0)
 
-        return seq
 
 
 class Predictor(object):
@@ -57,7 +50,7 @@ class Predictor(object):
         self.dataset_length = 0
 
         self.batch_size = batch_size
-        # self.in_timesteps_max = max_timestep
+        self.in_timesteps_max = 300
         self.out_timesteps = out_max_timestep
         self.train_flag = train_flag
         self.epochs = epoch
@@ -66,8 +59,8 @@ class Predictor(object):
 
         self.num_units=64
 
-        self.in_dim=3
-        self.out_dim=3
+        self.in_dim=10
+        self.out_dim=10
 
         self.train_model = KP.TrainRNN(self.batch_size,
                                        self.in_dim, self.out_dim, self.num_units, num_layers=1)
@@ -80,7 +73,59 @@ class Predictor(object):
 
         ## load dataset
         self._load_train_set()
+        print("trajectory numbers: ", len(self.dataset))
+        valid_len = int(self.validate_ratio * len(self.dataset))
 
+        train_set = self._process_dataset(self.dataset[0:-valid_len])
+        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
+
+        self.train_model.training(X=train_set[0], Y=train_set[1], epochs=5)
+
+
+    def _process_dataset(self, trajs):
+        xs, ys, x_lens, xs_start = [], [], [], []
+        for traj in trajs:
+            x, y, x_len, x_start = self._feed_one_data(traj)
+            xs.append(x)
+            ys.append(y)
+            x_lens.append(x_len)
+            xs_start.append(x_start)
+
+        xs=np.asarray(xs, dtype=np.float32)
+        xs.reshape((len(trajs),self.in_timesteps_max, self.in_dim))
+        ys=np.asarray(ys)
+        ys.reshape((len(trajs), self.in_timesteps_max, self.out_dim))
+        x_lens=np.asarray(x_lens, dtype=np.float32)
+        xs_start=np.asarray(xs_start)
+        return [xs, ys, x_lens, xs_start]
+
+    def _feed_one_data(self, data):
+        # pading dataset
+        length = data.x_len
+        if length > self.in_timesteps_max:
+            x_seq = data.x[0:self.in_timesteps_max,:]
+        else:
+            x_seq = data.x
+        x_start = x_seq[0,:]
+
+        x = x_seq[1:-1,:] - x_start
+        y = x_seq[2:,:] - x_start
+
+        x = self._padding(x, self.in_timesteps_max, 0.0)
+        y = self._padding(y, self.in_timesteps_max, 0.0)
+
+        return x, y,length, x_start
+
+    def _padding(self, seq, new_length, my_value=None):
+        old_length = len(seq)
+        value = seq[-1, :]
+        if not my_value is None:
+            value.fill(my_value)
+        value = np.expand_dims(value, axis=0)
+
+        for _ in range(old_length, new_length):
+                seq = np.append(seq, value, axis=0)
+        return seq
 
     def load_dataset(self, file_name):
         ## load dataset

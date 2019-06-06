@@ -60,13 +60,13 @@ class TrainRNN():
         self.rnn_layers = rnn_layers
         self.model = Model(inputs=input_x, outputs=output_layer)
 
-        self.model.compile(optimizer='rmsprop',
-                           loss='categorical_crossentropy')
+        self.model.compile(optimizer='RMSprop',
+                           loss='mean_squared_error')
 
         print('Completed compilation in %.3f seconds' % (time.time() - t))
 
 
-    def run_training(self, X, Y, epochs):
+    def training(self, X, Y, epochs):
         '''
         Train the rnn model
         :param x: input
@@ -78,7 +78,6 @@ class TrainRNN():
         t=time.time()
         for e in range(epochs):
             print('\n\n-- Epoch {} --\n\n'.format(e))
-
 
             self.model.fit(X, Y, batch_size=self.batch_size, epochs=1, validation_split=0.0, verbose=2)
             # Flush output
@@ -238,7 +237,7 @@ def main():
     num_layers = 1
     my_rnn = TrainRNN(batch_size, in_dim, out_dim, num_units, num_layers, ".")
     x, y = CreateSeqs(batch_size)
-    my_rnn.run_training(x,y,10)
+    my_rnn.training(x,y,10)
     # my_rnn.run_inference(x, y)
     return 0
 
