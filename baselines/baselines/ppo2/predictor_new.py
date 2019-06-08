@@ -65,6 +65,10 @@ class Predictor(object):
         self.train_model = KP.TrainRNN(self.batch_size,
                                        self.in_dim, self.out_dim, self.num_units, num_layers=1, load=load)
 
+        self.inference_model = KP.PredictRNN(self.batch_size,
+                                       self.in_dim, self.out_dim, self.num_units, num_layers=1)
+
+
     def run_training(self):
         ## check whether in training
         if not self.train_flag:
@@ -81,6 +85,16 @@ class Predictor(object):
 
         self.train_model.training(X=train_set[0], Y=train_set[1], epochs=5)
 
+
+    def run_prediction(self):
+        ## load dataset
+        self._load_train_set()
+        print("trajectory numbers: ", len(self.dataset))
+        valid_len = int(self.validate_ratio * len(self.dataset))
+
+        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
+
+        self.inference_model.predict(X=valid_set[0], Y=valid_set[0])
 
     def _process_dataset(self, trajs):
         xs, ys, x_lens, xs_start = [], [], [], []
@@ -198,8 +212,10 @@ if __name__ == '__main__':
     else:
         print("start testing...")
         # plot all the validate data step by step
-        rnn_model = Predictor(1, out_steps, train_flag=False, reset_flag=False, epoch=args.epoch)
+        rnn_model = Predictor(1024, out_steps, train_flag=True, reset_flag=False, epoch=args.epoch,
+                              iter_start=args.iter, lr=args.lr, load=args.load)
 
+        rnn_model.run_prediction()
         # plot and check dataset
         # rnn_model.plot_dataset()
 

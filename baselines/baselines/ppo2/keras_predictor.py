@@ -47,8 +47,6 @@ class TrainRNN():
         self._build_model()
 
 
-
-
     def _build_model(self):
         '''
         build the rnn model
@@ -76,7 +74,7 @@ class TrainRNN():
         self.model.compile(optimizer='RMSprop',
                            loss='mean_squared_error')
 
-        print('Completed compilation in %.3f seconds' % (time.time() - t))
+        print('Completed training model compilation in %.3f seconds' % (time.time() - t))
 
 
     def training(self, X, Y, epochs):
@@ -85,7 +83,6 @@ class TrainRNN():
         :param x: input
         :param y: output
         '''
-        # modelDir = os.path.join('./pred',datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
         modelDir = os.path.join('./pred', self.model_name)
         weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
         tfDir = os.path.join('./pred',self.model_name)
@@ -127,121 +124,191 @@ class TrainRNN():
 
 
 
-# class PredictRNN():
-#     def __init__(self, in_dim, out_dim, num_units, num_layers, batch_size):
-#         '''
-#         initialize my rnn model
-#         :param in_dim: feature dimension of input data
-#         :param out_dim: feature dimension of output data
-#         :param num_units: cell units number of rnn layers
-#         :param num_layers: number of stacked layers of rnn layers
-#         '''
-#         #todo: load saved from training process
-#         #todo:
-#
-#         self.in_dim = in_dim
-#         self.out_dim = out_dim
-#         self.num_units = num_units
-#         self.num_layers = num_layers
-#         self.batch_size = batch_size
-#         self._build_model()
-#
-#     def _build_model(self):
-#         '''
-#         build the rnn model
-#         :return:
-#         '''
-#         #todo: add multiple model
-#
-#         input_x = Input(shape=(None, self.in_dim))
-#         masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
-#
-#         rnn_layers = []
-#
-#         for i in range(0, self.num_layers):
-#             if i == 0:
-#                 rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
-#                                        stateful=True, name='0lstm')(inputs = masked_x))
-#             else:
-#                 rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
-#                                        stateful=True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
-#
-#         train_lstm = rnn_layers[-1][0]
-#         output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
-#         self.rnn_layers = rnn_layers
-#
-#         self.model = Model(inputs=input_x, outputs=output_layer)
-#
-#
-#     def predict(self, x):
-#
-#
-#
-#
-#     def run_inference(self, x, y=None):
-#         '''
-#         The inference step
-#         Firstly iterate the RNN on all ground truth x;
-#         then predict y by the output from last step;
-#         :param x:
-#         :param y:
-#         :return:
-#         '''
-#         self.model.compile(optimizer='rmsprop',
-#                            loss='categorical_crossentropy')
-#         output = self.model.predict(x)
-#
-#         # get intermediate value
-#         h_list = [rnn_states[1] for rnn_states in self.rnn_layers]
-#         c_list = [rnn_states[2] for rnn_states in self.rnn_layers]
-#
-#         get_lstm_state_h = K.function([self.model.layers[0].input], h_list)
-#         get_lstm_state_c = K.function([self.model.layers[0].input], c_list)
-#
-#         state_h = get_lstm_state_h([x])  # h1,h2,h3..., hn * batch_size * num_units
-#         state_c = get_lstm_state_c([x])  # c1,c2,c3..., cn * batch_size * num_units
-#
-#         print("lstm output: ")
-#         print(state_h)  # output: list [? * output]
-#         print("shape of the state: ")
-#         print(state_h[0].shape)  # get intermediate value
-#
-#         for _ in range(50):
-#             x, state_h, state_c = self._inference_function(inputs=x, initial_states=[state_h, state_c])
-#
-#     def _inference_function(self, inputs, initial_states):
-#         # masked_x = K.function([self.model.layers[0].input], [self.model.layers[0]])([inputs])
-#         new_states_h = []
-#         new_states_c = []
-#
-#         inputs = inputs.astype(np.float32)
-#         print("shape of input")
-#         print(inputs.shape)
-#
-#         for batch_idx in range(inputs.shape[0]):
-#
-#             for idx in range(self.num_layers):
-#                 stacked_lstm = self.model.get_layer(str(idx) + "lstm")
-#
-#                 state = np.stack((initial_states[0][idx][batch_idx], initial_states[1][idx][batch_idx]), axis=0)
-#                 current_state = K.variable(value=state)
-#                 print("current state shape: ")
-#                 print(current_state.shape)
-#                 # current_state = current_state.tolist()
-#
-#                 if idx == 0:
-#                     out, state_h, state_c = \
-#                         stacked_lstm.call(inputs=np.expand_dims(inputs[batch_idx], axis=0),
-#                                           initial_state=current_state)
-#                 else:
-#                     out, state_h, state_c = \
-#                         stacked_lstm.call(inputs=out, initial_states=current_state)
-#                 print("iteration: ", idx)
-#                 new_states_h.append(state_h)
-#                 new_states_c.append(state_c)
-#                 outputs = self.model.get_layer("output_layer").call(inputs=out)
-#
-#         return outputs, new_states_h, new_states_c
+class PredictRNN():
+    def __init__(self, batch_size, in_dim, out_dim, num_units, num_layers=1,
+                 directories="./pred", model_name="test"):
+        '''
+        initialize my rnn model
+        :param in_dim: feature dimension of input data
+        :param out_dim: feature dimension of output data
+        :param num_units: cell units number of rnn layers
+        :param num_layers: number of stacked layers of rnn layers
+        '''
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.num_units = num_units
+        self.num_layers = num_layers
+        self.batch_size = batch_size
+        self.directories = directories
+        self.model_name = model_name
+
+        self.max_output_steps=50
+
+        self._build_model()
+
+
+    def _build_model(self):
+        '''
+        build the rnn model
+        :return:
+        '''
+        t = time.time()
+        input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
+        masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
+
+        rnn_layers = []
+
+        for i in range(0, self.num_layers):
+            if i == 0:
+                rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,name='0lstm')(
+                    inputs = masked_x))
+            else:
+                rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,name=str(i) + 'lstm')(
+                    inputs = rnn_layers[i - 1][0]))
+
+        train_lstm = rnn_layers[-1][0]
+        output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
+        self.rnn_layers = rnn_layers
+        self.model = Model(inputs=input_x, outputs=output_layer)
+
+        self.model.compile(optimizer='RMSprop',
+                           loss='mean_squared_error')
+
+        print('Completed training model compilation in %.3f seconds' % (time.time() - t))
+
+
+
+
+        # t = time.time()
+        # input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
+        # masked_x = Masking(mask_value=0.0, batch_input_shape=(self.batch_size, None, self.in_dim))(input_x)
+        #
+        # rnn_layers = []
+        #
+        # for i in range(0, self.num_layers):
+        #     if i == 0:
+        #         rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+        #                                stateful = True, name='0lstm')(inputs = masked_x))
+        #     else:
+        #         rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
+        #                                stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
+        #
+        # train_lstm = rnn_layers[-1][0]
+        # output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
+        # self.rnn_layers = rnn_layers
+        # self.model = Model(inputs=input_x, outputs=output_layer)
+        #
+        # self.model.compile(optimizer='RMSprop',
+        #                    loss='mean_squared_error')
+        # print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
+
+
+    def predict(self, X, Y = None):
+        '''
+        The inference step
+        Firstly iterate the RNN on all ground truth x;
+        then predict y by the output from last step;
+        :param x:
+        :param y:
+        :return:
+        '''
+        # load model
+        modelDir = os.path.join('./pred', self.model_name)
+        weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
+        tfDir = os.path.join('./pred',self.model_name)
+        print("tensorboard directory")
+        print(tfDir)
+        print("modelDir")
+        print(modelDir)
+
+        try:
+            filename=get_weights_file(modelDir, weights_name)
+            self.model.load_weights(filename)
+            print("load model {} successfully".format(filename))
+        except:
+            print("failed to load model, please check the checkpoint directory... use default initialization setting")
+
+        predict_result = self._inference_function(inputs = X)
+
+
+    def _inference_function(self, inputs):
+        predict_result = []
+        output = self.model.predict(inputs)
+        print("the shape of ourput is: ")
+        print(output.shape)
+        # for _ in range(self.max_output_steps):
+        #     output = self.model.predict(inputs)
+        #     print("the shape of ourput is: ")
+        #     print(output.shape)
+        return output
+
+
+
+
+    # def predict(self, x, y =None):
+    #     '''
+    #     The inference step
+    #     Firstly iterate the RNN on all ground truth x;
+    #     then predict y by the output from last step;
+    #     :param x:
+    #     :param y:
+    #     :return:
+    #     '''
+    #     output = self.model.predict(x)
+    #
+    #     # get intermediate value
+    #     h_list = [rnn_states[1] for rnn_states in self.rnn_layers]
+    #     c_list = [rnn_states[2] for rnn_states in self.rnn_layers]
+    #
+    #     get_lstm_state_h = K.function([self.model.layers[0].input], h_list)
+    #     get_lstm_state_c = K.function([self.model.layers[0].input], c_list)
+    #
+    #     state_h = get_lstm_state_h([x])  # h1,h2,h3..., hn * batch_size * num_units
+    #     state_c = get_lstm_state_c([x])  # c1,c2,c3..., cn * batch_size * num_units
+    #
+    #     print("lstm output: ")
+    #     print(state_h)  # output: list [? * output]
+    #     print("shape of the state: ")
+    #     print(state_h[0].shape)  # get intermediate value
+    #
+    #     for _ in range(50):
+    #         x, state_h, state_c = self._inference_function(inputs=x, initial_states=[state_h, state_c])
+    #
+    # def _inference_function(self, inputs, initial_states):
+    #     # masked_x = K.function([self.model.layers[0].input], [self.model.layers[0]])([inputs])
+    #     new_states_h = []
+    #     new_states_c = []
+    #
+    #     inputs = inputs.astype(np.float32)
+    #     print("shape of input")
+    #     print(inputs.shape)
+    #
+    #     for batch_idx in range(inputs.shape[0]):
+    #
+    #         for idx in range(self.num_layers):
+    #             stacked_lstm = self.model.get_layer(str(idx) + "lstm")
+    #
+    #             state = np.stack((initial_states[0][idx][batch_idx], initial_states[1][idx][batch_idx]), axis=0)
+    #             current_state = K.variable(value=state)
+    #             print("current state shape: ")
+    #             print(current_state.shape)
+    #             # current_state = current_state.tolist()
+    #
+    #             if idx == 0:
+    #                 out, state_h, state_c = \
+    #                     stacked_lstm.call(inputs=np.expand_dims(inputs[batch_idx], axis=0),
+    #                                       initial_state=current_state)
+    #             else:
+    #                 out, state_h, state_c = \
+    #                     stacked_lstm.call(inputs=out, initial_states=current_state)
+    #             print("iteration: ", idx)
+    #             new_states_h.append(state_h)
+    #             new_states_c.append(state_c)
+    #             outputs = self.model.get_layer("output_layer").call(inputs=out)
+    #
+    #     return outputs, new_states_h, new_states_c
+
+
 
 
 
