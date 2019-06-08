@@ -6,6 +6,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, LSTM, Dense, Masking
 from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 
 from datetime import datetime
 
@@ -19,7 +20,7 @@ class TrainRNN():
     #todo: save model
     #todo: plot training and validate error
 
-    def __init__(self,  batch_size, in_dim, out_dim, num_units, num_layers=1, directories="./pred"):
+    def __init__(self,  batch_size, in_dim, out_dim, num_units, num_layers=1, directories="./pred", model_name="test"):
         '''
         initialize my rnn model
         :param in_dim: feature dimension of input data
@@ -33,6 +34,7 @@ class TrainRNN():
         self.num_layers = num_layers
         self.batch_size = batch_size
         self.directories = directories
+        self.model_name = model_name
         self._build_model()
 
 
@@ -72,29 +74,34 @@ class TrainRNN():
         :param x: input
         :param y: output
         '''
-        modelDir = datetime.now().strftime('%Y-%m-%d_%H-%M-%S_')
+        # modelDir = os.path.join('./pred',datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+        modelDir = os.path.join('./pred', "weights-{epoch:02d}-{val_loss:.2f}.hdf5")
+        tfDir = os.path.join('./pred',self.model_name)
+        print("tensorboard directory")
+        print(tfDir)
+        print("modelDir")
+        print(modelDir)
+
+        tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
+                                 write_graph = True, write_images = True)
+        saveCb = ModelCheckpoint(modelDir, monitor='val_loss', verbose=0, save_best_only=False,
+                                        save_weights_only=False, mode='auto', period=5)
 
         # Perform batch training with epochs
         t=time.time()
-        for e in range(epochs):
-            print('\n\n-- Epoch {} --\n\n'.format(e))
 
-            self.model.fit(X, Y, batch_size=self.batch_size, epochs=1, validation_split=0.0, verbose=2)
-            # Flush output
-            sys.stdout.flush()
+        self.model.fit(X, Y, batch_size=self.batch_size, epochs=epochs, validation_split=0.1,
+                       verbose=1, callbacks=[tbCb, saveCb])
+        # Flush output
+        # sys.stdout.flush()
 
-            # Save the model after each epoch
-            if e%2 == 0:
-                print("save epoch {}".format(e))
-                keras_util.saveLSTMModel(self.model, modelDir, e)
+        # # Save the model after each epoch
+        # if e%2 == 0:
+        #     print("save epoch {}".format(e))
+        #     keras_util.saveLSTMModel(self.model, modelDir, e)
 
         averageTime = (time.time() - t) / epochs
         print('Total time:', time.time() - t, ', Average time per epoch:', averageTime)
-
-    def run_validating(self, x, y_t):
-        y_p = self.model.predict(x)
-        #todo: calculate the mean square error of the validation
-
 
 
 
