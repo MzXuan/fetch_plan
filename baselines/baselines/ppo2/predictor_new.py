@@ -40,7 +40,7 @@ class DatasetStru(object):
 class Predictor(object):
     def __init__(self, batch_size, out_max_timestep, train_flag,
                  reset_flag=False, epoch=20, iter_start=0,
-                 lr=0.001):
+                 lr=0.001, load=False):
         ## extract FLAGS
         if iter_start == 0 and lr<0.001:
             self.start_iter = 20
@@ -63,7 +63,7 @@ class Predictor(object):
         self.out_dim=10
 
         self.train_model = KP.TrainRNN(self.batch_size,
-                                       self.in_dim, self.out_dim, self.num_units, num_layers=1)
+                                       self.in_dim, self.out_dim, self.num_units, num_layers=1, load=load)
 
     def run_training(self):
         ## check whether in training
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     if not test_flag:
         # create and initialize session
         rnn_model = Predictor(1024, out_steps, train_flag=True, reset_flag=False, epoch=args.epoch,
-                              iter_start=args.iter, lr=args.lr)
+                              iter_start=args.iter, lr=args.lr, load=args.load)
 
         # rnn_model.init_sess()
 

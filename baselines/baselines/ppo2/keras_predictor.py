@@ -1,4 +1,4 @@
-import os, sys, time
+import os, sys, time, glob
 import numpy as np
 import keras_util
 
@@ -13,6 +13,12 @@ from datetime import datetime
 
 epochs = 100  # Number of epochs to train for.
 
+def get_weights_file(checkpoint_path, file_name):
+    #todo: get latest checkpoint file in this folder
+    file_list = glob.glob(os.path.join(checkpoint_path,"weights*"))
+    latest_file = max(file_list, key=os.path.getctime)
+
+    return latest_file
 
 
 class TrainRNN():
@@ -20,7 +26,8 @@ class TrainRNN():
     #todo: save model
     #todo: plot training and validate error
 
-    def __init__(self,  batch_size, in_dim, out_dim, num_units, num_layers=1, directories="./pred", model_name="test"):
+    def __init__(self,  batch_size, in_dim, out_dim, num_units, num_layers=1,
+                 directories="./pred", model_name="test", load=False):
         '''
         initialize my rnn model
         :param in_dim: feature dimension of input data
@@ -35,7 +42,11 @@ class TrainRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
+        self.load = load
+
         self._build_model()
+
+
 
 
     def _build_model(self):
@@ -75,16 +86,26 @@ class TrainRNN():
         :param y: output
         '''
         # modelDir = os.path.join('./pred',datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
-        modelDir = os.path.join('./pred', "weights-{epoch:02d}-{val_loss:.2f}.hdf5")
+        modelDir = os.path.join('./pred', self.model_name)
+        weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
         tfDir = os.path.join('./pred',self.model_name)
         print("tensorboard directory")
         print(tfDir)
         print("modelDir")
         print(modelDir)
 
+        if self.load:
+            try:
+                filename=get_weights_file(modelDir, weights_name)
+                self.model.load_weights(filename)
+                print("load model {} successfully".format(filename))
+            except:
+                print("failed to load model, please check the checkpoint directory... use default initialization setting")
+
+
         tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
                                  write_graph = True, write_images = True)
-        saveCb = ModelCheckpoint(modelDir, monitor='val_loss', verbose=0, save_best_only=False,
+        saveCb = ModelCheckpoint( os.path.join(modelDir, weights_name), monitor='val_loss', verbose=0, save_best_only=False,
                                         save_weights_only=False, mode='auto', period=5)
 
         # Perform batch training with epochs
@@ -102,6 +123,7 @@ class TrainRNN():
 
         averageTime = (time.time() - t) / epochs
         print('Total time:', time.time() - t, ', Average time per epoch:', averageTime)
+
 
 
 
