@@ -152,46 +152,19 @@ class PredictRNN():
         build the rnn model
         :return:
         '''
-        t = time.time()
-        input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
-        masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
-
-        rnn_layers = []
-
-        for i in range(0, self.num_layers):
-            if i == 0:
-                rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,name='0lstm')(
-                    inputs = masked_x))
-            else:
-                rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,name=str(i) + 'lstm')(
-                    inputs = rnn_layers[i - 1][0]))
-
-        train_lstm = rnn_layers[-1][0]
-        output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
-        self.rnn_layers = rnn_layers
-        self.model = Model(inputs=input_x, outputs=output_layer)
-
-        self.model.compile(optimizer='RMSprop',
-                           loss='mean_squared_error')
-
-        print('Completed training model compilation in %.3f seconds' % (time.time() - t))
-
-
-
-
         # t = time.time()
         # input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
-        # masked_x = Masking(mask_value=0.0, batch_input_shape=(self.batch_size, None, self.in_dim))(input_x)
+        # masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
         #
         # rnn_layers = []
         #
         # for i in range(0, self.num_layers):
         #     if i == 0:
-        #         rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
-        #                                stateful = True, name='0lstm')(inputs = masked_x))
+        #         rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,name='0lstm')(
+        #             inputs = masked_x))
         #     else:
-        #         rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
-        #                                stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
+        #         rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,name=str(i) + 'lstm')(
+        #             inputs = rnn_layers[i - 1][0]))
         #
         # train_lstm = rnn_layers[-1][0]
         # output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
@@ -200,7 +173,31 @@ class PredictRNN():
         #
         # self.model.compile(optimizer='RMSprop',
         #                    loss='mean_squared_error')
-        # print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
+        #
+        # print('Completed training model compilation in %.3f seconds' % (time.time() - t))
+
+        t = time.time()
+        input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
+        masked_x = Masking(mask_value=0.0, batch_input_shape=(self.batch_size, None, self.in_dim))(input_x)
+
+        rnn_layers = []
+
+        for i in range(0, self.num_layers):
+            if i == 0:
+                rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                                       stateful = True, name='0lstm')(inputs = masked_x))
+            else:
+                rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
+                                       stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
+
+        train_lstm = rnn_layers[-1][0]
+        output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
+        self.rnn_layers = rnn_layers
+        self.model = Model(inputs=input_x, outputs=output_layer)
+
+        self.model.compile(optimizer='RMSprop',
+                           loss='mean_squared_error')
+        print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
 
 
     def predict(self, X, Y = None):
@@ -228,13 +225,16 @@ class PredictRNN():
         except:
             print("failed to load model, please check the checkpoint directory... use default initialization setting")
 
-        predict_result = self._inference_function(inputs = X)
+        test_x = X[0]
+        test_x = np.expand_dims(test_x, axis=0)
+        predict_result = self._inference_function(inputs = test_x)
 
 
     def _inference_function(self, inputs):
         predict_result = []
-        output = self.model.predict(inputs)
-        print("the shape of ourput is: ")
+        output = []
+        output = self.model.predict(inputs, batch_size=self.batch_size)
+        print("the shape of output is: ")
         print(output.shape)
         # for _ in range(self.max_output_steps):
         #     output = self.model.predict(inputs)
