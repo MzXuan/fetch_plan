@@ -81,7 +81,6 @@ class Predictor(object):
         valid_len = int(self.validate_ratio * len(self.dataset))
 
         train_set = self._process_dataset(self.dataset[0:-valid_len])
-        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         self.train_model.training(X=train_set[0], Y=train_set[1], epochs=5)
 
@@ -96,6 +95,27 @@ class Predictor(object):
 
         self.inference_model.predict(X=valid_set[0], Y=valid_set[0])
 
+
+    def run_validation(self):
+        ## load dataset
+        self._load_train_set()
+        print("trajectory numbers: ", len(self.dataset))
+        valid_len = int(self.validate_ratio * len(self.dataset))
+
+        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
+
+        # for x in valid_set[0]:
+        x = valid_set[0][0]
+        x_len = valid_set[2][0]
+
+        for i in range(3,x_len):
+            x_sub = x[0:i,:]
+            x_sub = np.expand_dims(x_sub, axis = 0)
+            self.inference_model.predict(X=x_sub, Y=x)
+
+        #todo: plot result
+
+
     def _process_dataset(self, trajs):
         xs, ys, x_lens, xs_start = [], [], [], []
         for traj in trajs:
@@ -109,9 +129,10 @@ class Predictor(object):
         xs.reshape((len(trajs),self.in_timesteps_max, self.in_dim))
         ys=np.asarray(ys)
         ys.reshape((len(trajs), self.in_timesteps_max, self.out_dim))
-        x_lens=np.asarray(x_lens, dtype=np.float32)
+        x_lens=np.asarray(x_lens, dtype=np.int32)
         xs_start=np.asarray(xs_start)
         return [xs, ys, x_lens, xs_start]
+
 
     def _feed_one_data(self, data):
         # pading dataset
@@ -194,20 +215,11 @@ if __name__ == '__main__':
     if not test_flag:
         # create and initialize session
 
-
-        # rnn_model.init_sess()
-
         # #-----------------for debug--------------
         # rnn_model.plot_dataset()
         #
         # #-----end debug------------------------
 
-        # if args.load:
-        #     try:
-        #         rnn_model.load()
-        #         print("load model successfully")
-        #     except:
-        #         rnn_model.init_sess()
 
         rnn_model.run_training()
 
@@ -215,7 +227,7 @@ if __name__ == '__main__':
         print("start testing...")
         # plot all the validate data step by step
 
-        rnn_model.run_prediction()
+        rnn_model.run_validation()
         # plot and check dataset
         # rnn_model.plot_dataset()
 
