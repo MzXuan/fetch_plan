@@ -110,13 +110,6 @@ class TrainRNN():
 
         self.model.fit(X, Y, batch_size=self.batch_size, epochs=epochs, validation_split=0.1,
                        verbose=1, callbacks=[tbCb, saveCb])
-        # Flush output
-        # sys.stdout.flush()
-
-        # # Save the model after each epoch
-        # if e%2 == 0:
-        #     print("save epoch {}".format(e))
-        #     keras_util.saveLSTMModel(self.model, modelDir, e)
 
         averageTime = (time.time() - t) / epochs
         print('Total time:', time.time() - t, ', Average time per epoch:', averageTime)
@@ -141,7 +134,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_output_steps=50
+        self.max_output_steps=10
 
         self._build_model()
 
@@ -174,6 +167,22 @@ class PredictRNN():
                            loss='mean_squared_error')
         print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
 
+    def load_model(self):
+        # load model
+        modelDir = os.path.join('./pred', self.model_name)
+        weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
+        tfDir = os.path.join('./pred', self.model_name)
+        print("tensorboard directory")
+        print(tfDir)
+        print("modelDir")
+        print(modelDir)
+
+        try:
+            filename = get_weights_file(modelDir, weights_name)
+            self.model.load_weights(filename)
+            print("load model {} successfully".format(filename))
+        except:
+            print("failed to load model, please check the checkpoint directory... use default initialization setting")
 
     def predict(self, X, Y = None):
         '''
@@ -184,25 +193,10 @@ class PredictRNN():
         :param y:
         :return:
         '''
-        # load model
-        modelDir = os.path.join('./pred', self.model_name)
-        weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
-        tfDir = os.path.join('./pred',self.model_name)
-        print("tensorboard directory")
-        print(tfDir)
-        print("modelDir")
-        print(modelDir)
-
-        try:
-            filename=get_weights_file(modelDir, weights_name)
-            self.model.load_weights(filename)
-            print("load model {} successfully".format(filename))
-        except:
-            print("failed to load model, please check the checkpoint directory... use default initialization setting")
-
-        print("the shape of inputs is:")
-        print(X.shape)
+        # print("the shape of inputs is:")
+        # print(X.shape)
         predict_result = self._inference_function(inputs = X)
+        return predict_result
 
 
     def _inference_function(self, inputs):

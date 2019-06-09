@@ -67,6 +67,7 @@ class Predictor(object):
 
         self.inference_model = KP.PredictRNN(1,
                                        self.in_dim, self.out_dim, self.num_units, num_layers=1)
+        self.inference_model.load_model()
 
 
     def run_training(self):
@@ -82,7 +83,7 @@ class Predictor(object):
 
         train_set = self._process_dataset(self.dataset[0:-valid_len])
 
-        self.train_model.training(X=train_set[0], Y=train_set[1], epochs=5)
+        self.train_model.training(X=train_set[0], Y=train_set[1], epochs=self.epochs)
 
 
     def run_prediction(self):
@@ -106,14 +107,22 @@ class Predictor(object):
 
         # for x in valid_set[0]:
         x = valid_set[0][0]
+        y = valid_set[1][0]
         x_len = valid_set[2][0]
+        x_start = valid_set[3][0]
 
-        for i in range(3,x_len):
+        for i in range(20,x_len):
             x_sub = x[0:i,:]
             x_sub = np.expand_dims(x_sub, axis = 0)
-            self.inference_model.predict(X=x_sub, Y=x)
+            y_pred = self.inference_model.predict(X=x_sub, Y=x)
 
-        #todo: plot result
+            # ------plot predicted data-----------
+            import visualize
+            input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
+            _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start[0])
+            visualize.plot_3d_seqs(input_x, origin_traj, output_y)
+            time.sleep(0.5)
+
 
 
     def _process_dataset(self, trajs):
@@ -150,6 +159,11 @@ class Predictor(object):
         y = self._padding(y, self.in_timesteps_max, 0.0)
 
         return x, y,length, x_start
+
+    def _accumulate_data(self, delta_x, delta_y, x_start):
+        x = delta_x + x_start
+        y = delta_y + x_start
+        return x, y
 
     def _padding(self, seq, new_length, my_value=None):
         old_length = len(seq)
@@ -195,7 +209,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=50, type=int)
+    parser.add_argument('--epoch', default=500, type=int)
     parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)

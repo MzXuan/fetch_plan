@@ -99,7 +99,7 @@ def plot_3d_seqs(x, y, y_hat=None, x_whole=None):
             '-+', linewidth=2, color="blue", label="x")
 
     ax.plot(y[:, -3], y[:, -2], y[:, -1],
-            '-+', linewidth=2, color="green", label="y")
+            '-+', linewidth=2, color="green", label="y", alpha=0.5)
 
     if y_hat is not None:
         ax.plot(y_hat[:, -3], y_hat[:, -2], y_hat[:, -1],
