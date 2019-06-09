@@ -103,7 +103,7 @@ class TrainRNN():
         tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
                                  write_graph = True, write_images = True)
         saveCb = ModelCheckpoint( os.path.join(modelDir, weights_name), monitor='val_loss', verbose=0, save_best_only=False,
-                                        save_weights_only=False, mode='auto', period=5)
+                                        save_weights_only=False, mode='auto', period=40)
 
         # Perform batch training with epochs
         t=time.time()
@@ -134,7 +134,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_output_steps=10
+        self.max_output_steps=50
 
         self._build_model()
 
@@ -195,24 +195,45 @@ class PredictRNN():
         '''
         # print("the shape of inputs is:")
         # print(X.shape)
+        self.model.reset_states()
         predict_result = self._inference_function(inputs = X)
         return predict_result
 
 
     def _inference_function(self, inputs):
+        # predict_result = np.copy(inputs)
+        # initial_output = self.model.predict(inputs, batch_size=self.batch_size)
+        # predict_result = np.concatenate( (predict_result, np.expand_dims(initial_output[:,-1,:], axis=1)), axis=1)
 
-        predict_result = self.model.predict(inputs, batch_size=self.batch_size)
+        initial_output = self.model.predict(inputs, batch_size=self.batch_size)
+        predict_result = np.copy(initial_output)
 
         for _ in range(self.max_output_steps):
             new_input = predict_result[:,-1,:]
             new_input = np.expand_dims(new_input, axis=1)
 
             out = self.model.predict(new_input)
+
             predict_result = np.concatenate((predict_result, out), axis=1)
 
-        # print("the shape of output is: ")
-        # print(predict_result.shape)
         return predict_result
+
+
+
+        # #----- for debug, not stateful prediction----#
+        # predict_result = np.copy(inputs)
+        # initial_output = self.model.predict(inputs, batch_size=self.batch_size)
+        # predict_result = np.concatenate( (predict_result, np.expand_dims(initial_output[:,-1,:], axis=1)), axis=1)
+        #
+        # for _ in range(self.max_output_steps):
+        #     out = self.model.predict(predict_result)
+        #
+        #     predict_result = np.concatenate((predict_result,np.expand_dims(out[:,-1,:], axis=1)), axis=1)
+        #
+        # return predict_result
+
+
+
 
 
 

@@ -101,9 +101,16 @@ def plot_3d_seqs(x, y, y_hat=None, x_whole=None):
     ax.plot(y[:, -3], y[:, -2], y[:, -1],
             '-+', linewidth=2, color="green", label="y", alpha=0.5)
 
+
     if y_hat is not None:
         ax.plot(y_hat[:, -3], y_hat[:, -2], y_hat[:, -1],
                 '-+', linewidth=2, color="red", label="pred")
+
+        ax.plot([y_hat[0, -3]], [y_hat[0, -2]], [y_hat[0, -1]],
+                '*', color="red")
+
+        ax.plot([y_hat[-1, -3]], [y_hat[-1, -2]], [y_hat[-1, -1]],
+                'o', color="red")
 
     if x_whole is not None:
         ax.plot(x_whole[:, -3], x_whole[:, -2], x_whole[:, -1],

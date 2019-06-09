@@ -57,16 +57,17 @@ class Predictor(object):
         self.lr = lr
         self.validate_ratio = 0.2
 
-        self.num_units=64
+        self.num_units = 64
+        self.num_layers = 3
 
-        self.in_dim=10
-        self.out_dim=10
+        self.in_dim=3
+        self.out_dim=3
 
         self.train_model = KP.TrainRNN(self.batch_size,
-                                       self.in_dim, self.out_dim, self.num_units, num_layers=1, load=load)
+                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers, load=load)
 
         self.inference_model = KP.PredictRNN(1,
-                                       self.in_dim, self.out_dim, self.num_units, num_layers=1)
+                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers)
         self.inference_model.load_model()
 
 
@@ -83,7 +84,10 @@ class Predictor(object):
 
         train_set = self._process_dataset(self.dataset[0:-valid_len])
 
-        self.train_model.training(X=train_set[0], Y=train_set[1], epochs=self.epochs)
+        x_set = train_set[0]
+        y_set = train_set[1]
+
+        self.train_model.training(X=x_set, Y=y_set, epochs=self.epochs)
 
 
     def run_prediction(self):
@@ -94,7 +98,7 @@ class Predictor(object):
 
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
-        self.inference_model.predict(X=valid_set[0], Y=valid_set[0])
+        self.inference_model.predict(X=valid_set[0], Y=valid_set[1])
 
 
     def run_validation(self):
@@ -103,24 +107,28 @@ class Predictor(object):
         print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
 
+        # valid_set = self._process_dataset(self.dataset[0:-valid_len])
+
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         # for x in valid_set[0]:
-        x = valid_set[0][0]
-        y = valid_set[1][0]
-        x_len = valid_set[2][0]
-        x_start = valid_set[3][0]
+        idx = 6
+        x = valid_set[0][idx]
+        y = valid_set[1][idx]
+        x_len = valid_set[2][idx]
+        x_start = valid_set[3][idx]
 
-        for i in range(20,x_len):
+        for i in range(20,x_len,5):
             x_sub = x[0:i,:]
             x_sub = np.expand_dims(x_sub, axis = 0)
-            y_pred = self.inference_model.predict(X=x_sub, Y=x)
+            y_pred = self.inference_model.predict(X=x_sub, Y=y)
 
             # ------plot predicted data-----------
             import visualize
-            input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
-            _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start[0])
-            visualize.plot_3d_seqs(input_x, origin_traj, output_y)
+            # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
+            # _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
+            # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
+            visualize.plot_3d_seqs(x_sub[0], x, y_pred[0])
             time.sleep(0.5)
 
 
@@ -150,10 +158,10 @@ class Predictor(object):
             x_seq = data.x[0:self.in_timesteps_max,:]
         else:
             x_seq = data.x
-        x_start = x_seq[0,:]
+        x_start = x_seq[0,-3:]
 
-        x = x_seq[1:-1,:] - x_start
-        y = x_seq[2:,:] - x_start
+        x = x_seq[1:-1,-3:] - x_start
+        y = x_seq[2:,-3:] - x_start
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
         y = self._padding(y, self.in_timesteps_max, 0.0)
@@ -209,7 +217,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=500, type=int)
+    parser.add_argument('--epoch', default=300, type=int)
     parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
