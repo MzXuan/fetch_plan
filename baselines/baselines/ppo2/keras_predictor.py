@@ -5,7 +5,6 @@ import keras_util
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, LSTM, Dense, Masking
-from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 
 from datetime import datetime
@@ -60,10 +59,12 @@ class TrainRNN():
 
         for i in range(0, self.num_layers):
             if i == 0:
-                rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,name='0lstm')(
+                rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                                       activation = 'tanh', name='0lstm')(
                     inputs = masked_x))
             else:
-                rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,name=str(i) + 'lstm')(
+                rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
+                                       activation = 'tanh', name=str(i) + 'lstm')(
                     inputs = rnn_layers[i - 1][0]))
 
         train_lstm = rnn_layers[-1][0]
@@ -72,7 +73,7 @@ class TrainRNN():
         self.model = Model(inputs=input_x, outputs=output_layer)
 
         self.model.compile(optimizer='RMSprop',
-                           loss='mean_squared_error')
+                           loss='mean_absolute_percentage_error')
 
         print('Completed training model compilation in %.3f seconds' % (time.time() - t))
 
@@ -134,7 +135,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_output_steps=50
+        self.max_output_steps=20
 
         self._build_model()
 
@@ -153,10 +154,10 @@ class PredictRNN():
         for i in range(0, self.num_layers):
             if i == 0:
                 rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
-                                       stateful = True, name='0lstm')(inputs = masked_x))
+                                       activation = 'tanh',stateful = True, name='0lstm')(inputs = masked_x))
             else:
                 rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
-                                       stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
+                                       activation = 'tanh', stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
 
         train_lstm = rnn_layers[-1][0]
         output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
@@ -164,7 +165,7 @@ class PredictRNN():
         self.model = Model(inputs=input_x, outputs=output_layer)
 
         self.model.compile(optimizer='RMSprop',
-                           loss='mean_squared_error')
+                           loss='mean_absolute_percentage_error')
         print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
 
     def load_model(self):
@@ -196,23 +197,39 @@ class PredictRNN():
         # print("the shape of inputs is:")
         # print(X.shape)
         self.model.reset_states()
-        predict_result = self._inference_function(inputs = X)
+        predict_result = self._inference_function(inputs = X, Y = Y)
         return predict_result
 
 
-    def _inference_function(self, inputs):
+    def _inference_function(self, inputs, Y = None):
         # predict_result = np.copy(inputs)
         # initial_output = self.model.predict(inputs, batch_size=self.batch_size)
+        # predict_result = predict_result[~(predict_result == 0).all(2)]
+        # predict_result = np.expand_dims(predict_result, axis=0)
         # predict_result = np.concatenate( (predict_result, np.expand_dims(initial_output[:,-1,:], axis=1)), axis=1)
+
 
         initial_output = self.model.predict(inputs, batch_size=self.batch_size)
         predict_result = np.copy(initial_output)
+        # predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
 
+        print("inputs")
+        print(inputs)
+        if Y is not None:
+            print("Y:")
+            print(Y)
+        print("predict result")
+        print(predict_result)
         for _ in range(self.max_output_steps):
             new_input = predict_result[:,-1,:]
             new_input = np.expand_dims(new_input, axis=1)
 
             out = self.model.predict(new_input)
+
+            print("new_input")
+            print(new_input)
+            print("out")
+            print(out)
 
             predict_result = np.concatenate((predict_result, out), axis=1)
 

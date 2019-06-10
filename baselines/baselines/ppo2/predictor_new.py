@@ -34,9 +34,6 @@ class DatasetStru(object):
         self.x_ratio = x_ratio
 
 
-
-
-
 class Predictor(object):
     def __init__(self, batch_size, out_max_timestep, train_flag,
                  reset_flag=False, epoch=20, iter_start=0,
@@ -50,18 +47,23 @@ class Predictor(object):
         self.dataset_length = 0
 
         self.batch_size = batch_size
-        self.in_timesteps_max = 300
+        self.in_timesteps_max = 50
         self.out_timesteps = out_max_timestep
         self.train_flag = train_flag
         self.epochs = epoch
         self.lr = lr
         self.validate_ratio = 0.2
-
         self.num_units = 64
-        self.num_layers = 3
-
+        self.num_layers = 2
         self.in_dim=3
         self.out_dim=3
+
+        ## prepare sequcne containers
+        self.xs = [[] for _ in range(0, self.batch_size)]
+        self.x_lens = np.zeros(batch_size, dtype=int)
+        self.x_mean = np.zeros(self.in_dim)
+        self.x_var = np.zeros(self.in_dim)
+        self.x_ratio = [[] for _ in range(0, self.batch_size)]
 
         self.train_model = KP.TrainRNN(self.batch_size,
                                        self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers, load=load)
@@ -107,30 +109,32 @@ class Predictor(object):
         print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
 
-        # valid_set = self._process_dataset(self.dataset[0:-valid_len])
+        valid_set = self._process_dataset(self.dataset[0:-valid_len])
 
-        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
+        # valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         # for x in valid_set[0]:
-        idx = 6
-        x = valid_set[0][idx]
-        y = valid_set[1][idx]
-        x_len = valid_set[2][idx]
-        x_start = valid_set[3][idx]
+        for idx in range(len(valid_set)):
+            x = valid_set[0][idx]
+            y = valid_set[1][idx]
+            x_len = valid_set[2][idx]
+            x_start = valid_set[3][idx]
 
-        for i in range(20,x_len,5):
-            x_sub = x[0:i,:]
-            x_sub = np.expand_dims(x_sub, axis = 0)
-            y_pred = self.inference_model.predict(X=x_sub, Y=y)
+            for i in range(20,x_len,5):
+                x_sub = x[0:i,:]
+                x_sub = np.expand_dims(x_sub, axis = 0)
+                y_sub = y[0:i,:]
+                y_sub = np.expand_dims(y_sub, axis = 0)
+                y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
 
-            # ------plot predicted data-----------
-            import visualize
-            # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
-            # _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
-            # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
-            visualize.plot_3d_seqs(x_sub[0], x, y_pred[0])
-            time.sleep(0.5)
+                # ------plot predicted data-----------
+                import visualize
+                # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
+                # _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
+                # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
 
+                visualize.plot_3d_seqs(x_sub[0], x, y_pred[0]) # plot delta result
+                time.sleep(0.5)
 
 
     def _process_dataset(self, trajs):
@@ -149,7 +153,6 @@ class Predictor(object):
         x_lens=np.asarray(x_lens, dtype=np.int32)
         xs_start=np.asarray(xs_start)
         return [xs, ys, x_lens, xs_start]
-
 
     def _feed_one_data(self, data):
         # pading dataset
@@ -184,6 +187,89 @@ class Predictor(object):
                 seq = np.append(seq, value, axis=0)
         return seq
 
+    def _create_seq(self, obs, dones, infos, mean, var):
+        """
+        create sequences from input observations;
+        reset sequence if a agent is done its task
+        :param obs:  observations from environment
+        :param dones: whether the agent is done its task
+        :param mean: mean of observations
+        :param var: variations of observations
+        :return: done sequences
+        """
+        if mean is not None and var is not None:
+            ## save mean and var
+            self.x_mean = np.concatenate((mean[6:13],
+                                          mean[0:3]))
+            self.x_var = np.concatenate((var[6:13],
+                                         var[0:3]))
+
+        seqs_done, seqs_all = [], []
+
+        for idx, (ob, done) in enumerate(zip(obs, dones)):
+            #-------add end label------------
+            if done:
+                if not infos[idx]['is_collision']:
+                    self.x_ratio[idx] = self.x_ratio[idx]/self.x_lens[idx]
+                    # create a container saving reseted sequences for future usage
+                    seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                                 self.x_mean, self.x_var, self.x_ratio[idx]))
+                else:
+                    print("in collision")
+                self.xs[idx] = []
+                self.x_lens[idx] = 0
+                self.x_ratio[idx] = []
+
+            self.xs[idx].append(np.concatenate((ob[6:13],
+                                                ob[0:3])))
+            #-------------------------------------------------
+
+            self.x_lens[idx] += 1
+            self.x_ratio[idx].append(self.x_lens[idx])
+            seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
+                                        self.x_mean, self.x_var, self.x_ratio[idx]))
+
+        return seqs_done, seqs_all
+
+    def _create_traj(self, trajs):
+        """
+        create dataset from saved sequences
+        :return:
+        """
+        for traj in trajs:
+            if traj.x_len > self.in_timesteps_max and traj.x_len < 200:
+                self.dataset.append(traj)
+
+        # display number of data collected
+        dataset_length = len(self.dataset)
+        if dataset_length % 100 < 10 :
+            print("collected dataset length:{}".format(self.dataset_length))
+
+        # if dataset is large, save it
+        if dataset_length > 2000:
+            print("save dataset...")
+            pickle.dump(self.dataset,
+                open("./pred/" + "/dataset_new" + ".pkl", "wb"))
+            self.collect_flag = True
+
+    def collect(self, obs, dones, infos, mean=None, var=None):
+        """
+        function: collect sequence dataset
+        :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
+        :param dones: dones.shape = [batch_size]
+        :param mean: mean.shape = [batch_size, ob_shape]
+        :param var: var.shape = [batch_size, ob_shape]
+        """
+
+        #create input sequence
+        seqs_done, _ = self._create_seq(obs, dones, infos, mean, var)
+
+        #create training dataset for future training
+        if len(seqs_done) > 0:
+            self._create_traj(seqs_done)
+
+        return self.collect_flag
+
     def load_dataset(self, file_name):
         ## load dataset
         try:
@@ -217,7 +303,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=300, type=int)
+    parser.add_argument('--epoch', default=600, type=int)
     parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -242,7 +328,6 @@ if __name__ == '__main__':
         #
         # #-----end debug------------------------
 
-
         rnn_model.run_training()
 
     else:
@@ -253,7 +338,5 @@ if __name__ == '__main__':
         # plot and check dataset
         # rnn_model.plot_dataset()
 
-        # rnn_model.init_sess()
-        # rnn_model.load()
         # rnn_model.run_test()
         #
