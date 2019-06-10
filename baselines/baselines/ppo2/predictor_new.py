@@ -47,13 +47,13 @@ class Predictor(object):
         self.dataset_length = 0
 
         self.batch_size = batch_size
-        self.in_timesteps_max = 50
+        self.in_timesteps_max = 100
         self.out_timesteps = out_max_timestep
         self.train_flag = train_flag
         self.epochs = epoch
         self.lr = lr
         self.validate_ratio = 0.2
-        self.num_units = 64
+        self.num_units = 128
         self.num_layers = 2
         self.in_dim=3
         self.out_dim=3
@@ -120,7 +120,7 @@ class Predictor(object):
             x_len = valid_set[2][idx]
             x_start = valid_set[3][idx]
 
-            for i in range(20,x_len,5):
+            for i in range(10,x_len,5):
                 x_sub = x[0:i,:]
                 x_sub = np.expand_dims(x_sub, axis = 0)
                 y_sub = y[0:i,:]
@@ -303,7 +303,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=600, type=int)
+    parser.add_argument('--epoch', default=1000, type=int)
     parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)

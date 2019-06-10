@@ -4,7 +4,7 @@ import keras_util
 
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, LSTM, Dense, Masking
+from tensorflow.keras.layers import Input, LSTM, Dense, Masking, TimeDistributed
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 
 from datetime import datetime
@@ -52,6 +52,7 @@ class TrainRNN():
         :return:
         '''
         t = time.time()
+        print('Beginning LSTM compilation')
         input_x = Input(shape=(None, self.in_dim))
         masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
 
@@ -68,7 +69,7 @@ class TrainRNN():
                     inputs = rnn_layers[i - 1][0]))
 
         train_lstm = rnn_layers[-1][0]
-        output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
+        output_layer = TimeDistributed(Dense(self.out_dim, activation='linear'),name='output_layer')(inputs = train_lstm)
         self.rnn_layers = rnn_layers
         self.model = Model(inputs=input_x, outputs=output_layer)
 
@@ -160,7 +161,7 @@ class PredictRNN():
                                        activation = 'tanh', stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
 
         train_lstm = rnn_layers[-1][0]
-        output_layer = Dense(self.out_dim, activation='linear', name='output_layer')(train_lstm)
+        output_layer = TimeDistributed(Dense(self.out_dim, activation='linear'),name='output_layer')(inputs = train_lstm)
         self.rnn_layers = rnn_layers
         self.model = Model(inputs=input_x, outputs=output_layer)
 
@@ -173,10 +174,10 @@ class PredictRNN():
         modelDir = os.path.join('./pred', self.model_name)
         weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
         tfDir = os.path.join('./pred', self.model_name)
-        print("tensorboard directory")
-        print(tfDir)
-        print("modelDir")
-        print(modelDir)
+        # print("tensorboard directory")
+        # print(tfDir)
+        # print("modelDir")
+        # print(modelDir)
 
         try:
             filename = get_weights_file(modelDir, weights_name)
@@ -213,23 +214,23 @@ class PredictRNN():
         predict_result = np.copy(initial_output)
         # predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
 
-        print("inputs")
-        print(inputs)
-        if Y is not None:
-            print("Y:")
-            print(Y)
-        print("predict result")
-        print(predict_result)
+        # print("inputs")
+        # print(inputs)
+        # if Y is not None:
+        #     print("Y:")
+        #     print(Y)
+        # print("predict result")
+        # print(predict_result)
         for _ in range(self.max_output_steps):
             new_input = predict_result[:,-1,:]
             new_input = np.expand_dims(new_input, axis=1)
 
             out = self.model.predict(new_input)
-
-            print("new_input")
-            print(new_input)
-            print("out")
-            print(out)
+            #
+            # print("new_input")
+            # print(new_input)
+            # print("out")
+            # print(out)
 
             predict_result = np.concatenate((predict_result, out), axis=1)
 
@@ -248,9 +249,6 @@ class PredictRNN():
         #     predict_result = np.concatenate((predict_result,np.expand_dims(out[:,-1,:], axis=1)), axis=1)
         #
         # return predict_result
-
-
-
 
 
 
