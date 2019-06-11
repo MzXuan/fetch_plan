@@ -129,11 +129,10 @@ class Predictor(object):
 
                 # ------plot predicted data-----------
                 import visualize
-                # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
-                # _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
-                # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
-
-                visualize.plot_3d_seqs(x_sub[0], x, y_pred[0]) # plot delta result
+                input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
+                _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
+                visualize.plot_3d_seqs(input_x, origin_traj, output_y)
+                # visualize.plot_3d_seqs(x_sub[0], x, y_pred[0]) # plot delta result
                 time.sleep(0.5)
 
 

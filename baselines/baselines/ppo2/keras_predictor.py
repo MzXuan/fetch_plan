@@ -212,7 +212,7 @@ class PredictRNN():
 
         initial_output = self.model.predict(inputs, batch_size=self.batch_size)
         predict_result = np.copy(initial_output)
-        # predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
+        predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
 
         # print("inputs")
         # print(inputs)
@@ -235,7 +235,6 @@ class PredictRNN():
             predict_result = np.concatenate((predict_result, out), axis=1)
 
         return predict_result
-
 
 
         # #----- for debug, not stateful prediction----#
