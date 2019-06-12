@@ -150,7 +150,7 @@ def plot_3d_eef(x):
 
     fig3d = plt.figure(3)
     ax = fig3d.gca(projection='3d')
-    ax.plot(x[:, -4], x[:, -3], x[:, -2],
+    ax.plot(x[:, -3], x[:, -2], x[:, -1],
             '-+', linewidth=2, color='grey', label="x")
     ax.set_xlabel("x")
     ax.set_ylabel("y")

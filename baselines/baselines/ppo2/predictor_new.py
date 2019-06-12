@@ -129,10 +129,10 @@ class Predictor(object):
 
                 # ------plot predicted data-----------
                 import visualize
-                input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
-                _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
-                visualize.plot_3d_seqs(input_x, origin_traj, output_y)
-                # visualize.plot_3d_seqs(x_sub[0], x, y_pred[0]) # plot delta result
+                # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
+                # _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
+                # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
+                visualize.plot_3d_seqs(x_sub[0], x, y_pred[0]) # plot delta result
                 time.sleep(0.5)
 
 
@@ -302,7 +302,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=1000, type=int)
+    parser.add_argument('--epoch', default=500, type=int)
     parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -320,12 +320,6 @@ if __name__ == '__main__':
                           iter_start=args.iter, lr=args.lr, load=args.load)
 
     if not test_flag:
-        # create and initialize session
-
-        # #-----------------for debug--------------
-        # rnn_model.plot_dataset()
-        #
-        # #-----end debug------------------------
 
         rnn_model.run_training()
 
@@ -333,9 +327,6 @@ if __name__ == '__main__':
         print("start testing...")
         # plot all the validate data step by step
 
+        rnn_model.plot_dataset()
         rnn_model.run_validation()
-        # plot and check dataset
-        # rnn_model.plot_dataset()
 
-        # rnn_model.run_test()
-        #

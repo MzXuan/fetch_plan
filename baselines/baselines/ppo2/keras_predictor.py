@@ -136,7 +136,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_output_steps=20
+        self.max_output_steps=50
 
         self._build_model()
 
@@ -214,13 +214,13 @@ class PredictRNN():
         predict_result = np.copy(initial_output)
         predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
 
-        # print("inputs")
-        # print(inputs)
-        # if Y is not None:
-        #     print("Y:")
-        #     print(Y)
-        # print("predict result")
-        # print(predict_result)
+        print("inputs")
+        print(inputs)
+        if Y is not None:
+            print("Y:")
+            print(Y)
+        print("predict result")
+        print(predict_result)
         for _ in range(self.max_output_steps):
             new_input = predict_result[:,-1,:]
             new_input = np.expand_dims(new_input, axis=1)
