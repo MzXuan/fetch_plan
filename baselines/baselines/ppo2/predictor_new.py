@@ -27,7 +27,8 @@ class DatasetStru(object):
         :param x_mean: shape = (self.in_dim)
         :param x_var:  shape = (self.in_dim)
         """
-        self.x = np.asarray(x)
+        # self.x = np.asarray(x)
+        self.x = np.asarray(x)  # input is the delta x after mean and std
         self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
@@ -162,11 +163,14 @@ class Predictor(object):
             x_seq = data.x
         x_start = x_seq[0,-3:]
 
-        x = x_seq[1:-1,-3:] - x_start
-        y = x_seq[2:,-3:] - x_start
+        # x = x_seq[1:-1,-3:] - x_start
+        # y = x_seq[2:,-3:] - x_start
+
+        x = x_seq[0:-1,-3:]
+        y = x_seq[1:,-3:]
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
-        y = self._padding(y, self.in_timesteps_max, 0.0)
+        y = self._padding(y, self.in_timesteps_max, None)
 
         return x, y,length, x_start
 
@@ -177,13 +181,14 @@ class Predictor(object):
 
     def _padding(self, seq, new_length, my_value=None):
         old_length = len(seq)
-        value = seq[-1, :]
+        value = np.copy(seq[-1, :])
         if not my_value is None:
             value.fill(my_value)
         value = np.expand_dims(value, axis=0)
 
-        for _ in range(old_length, new_length):
-                seq = np.append(seq, value, axis=0)
+        if old_length < new_length:
+            for _ in range(old_length, new_length):
+                    seq = np.append(seq, value, axis=0)
         return seq
 
     def _create_seq(self, obs, dones, infos, mean, var):

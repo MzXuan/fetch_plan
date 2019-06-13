@@ -37,6 +37,7 @@ class DatasetStru(object):
         self.x_ratio = x_ratio
 
 
+
     def padding(self, seq, new_length):
         old_length = len(seq)
         value = seq[-1, :]

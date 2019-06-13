@@ -11,6 +11,9 @@ from datetime import datetime
 
 
 epochs = 100  # Number of epochs to train for.
+LSTM_ACT = 'tanh'
+OUTPUT_ACT = 'linear'
+LOSS_MODE = 'mean_squared_logarithmic_error'
 
 def get_weights_file(checkpoint_path, file_name):
     #todo: get latest checkpoint file in this folder
@@ -61,20 +64,20 @@ class TrainRNN():
         for i in range(0, self.num_layers):
             if i == 0:
                 rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
-                                       activation = 'tanh', name='0lstm')(
+                                       activation = LSTM_ACT, name='0lstm')(
                     inputs = masked_x))
             else:
                 rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
-                                       activation = 'tanh', name=str(i) + 'lstm')(
+                                       activation = LSTM_ACT, name=str(i) + 'lstm')(
                     inputs = rnn_layers[i - 1][0]))
 
         train_lstm = rnn_layers[-1][0]
-        output_layer = TimeDistributed(Dense(self.out_dim, activation='linear'),name='output_layer')(inputs = train_lstm)
+        output_layer = TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT),name='output_layer')(inputs = train_lstm)
         self.rnn_layers = rnn_layers
         self.model = Model(inputs=input_x, outputs=output_layer)
 
         self.model.compile(optimizer='RMSprop',
-                           loss='mean_absolute_percentage_error')
+                           loss=LOSS_MODE)
 
         print('Completed training model compilation in %.3f seconds' % (time.time() - t))
 
@@ -155,18 +158,18 @@ class PredictRNN():
         for i in range(0, self.num_layers):
             if i == 0:
                 rnn_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
-                                       activation = 'tanh',stateful = True, name='0lstm')(inputs = masked_x))
+                                       activation = LSTM_ACT, stateful = True, name='0lstm')(inputs = masked_x))
             else:
                 rnn_layers.append(LSTM(self.num_units, return_sequences=True,return_state=True,
-                                       activation = 'tanh', stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
+                                       activation = LSTM_ACT, stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
 
         train_lstm = rnn_layers[-1][0]
-        output_layer = TimeDistributed(Dense(self.out_dim, activation='linear'),name='output_layer')(inputs = train_lstm)
+        output_layer = TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT),name='output_layer')(inputs = train_lstm)
         self.rnn_layers = rnn_layers
         self.model = Model(inputs=input_x, outputs=output_layer)
 
         self.model.compile(optimizer='RMSprop',
-                           loss='mean_absolute_percentage_error')
+                           loss=LOSS_MODE)
         print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
 
     def load_model(self):
@@ -212,7 +215,7 @@ class PredictRNN():
 
         initial_output = self.model.predict(inputs, batch_size=self.batch_size)
         predict_result = np.copy(initial_output)
-        predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
+        # predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
 
         print("inputs")
         print(inputs)

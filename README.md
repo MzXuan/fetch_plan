@@ -100,9 +100,11 @@ For displaying performance, please set
 --point="$YOUR_CHECKPOINT_NUMBER"
 ```
 
-3. seq2seq code
+3. LSTM training code
 ``` shell
-python predictor.py
+python predictor_new.py
+
+python predictor_new.py --test
 ```
 
 ---
