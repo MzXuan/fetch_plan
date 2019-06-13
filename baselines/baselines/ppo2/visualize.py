@@ -84,7 +84,7 @@ def plot_3d_pred(x, goal, pred=None):
     plt.pause(0.1)
 
 
-def plot_3d_seqs(x, y, y_hat=None, x_whole=None):
+def plot_3d_seqs(x, y_pred, y_true=None, x_whole=None):
     fig3d = plt.figure(3)
     plt.clf()
 
@@ -98,19 +98,20 @@ def plot_3d_seqs(x, y, y_hat=None, x_whole=None):
     ax.plot(x[:, -3], x[:, -2], x[:, -1],
             '-+', linewidth=2, color="blue", label="x")
 
-    ax.plot(y[:, -3], y[:, -2], y[:, -1],
-            '-+', linewidth=2, color="green", label="y", alpha=0.5)
+    ax.plot(y_pred[:, -3], y_pred[:, -2], y_pred[:, -1],
+            '-+', linewidth=2, color="red", label="pred", )
+
+    ax.plot([y_pred[0, -3]], [y_pred[0, -2]], [y_pred[0, -1]],
+            '*', color="red")
+
+    ax.plot([y_pred[0, -3]], [y_pred[0, -2]], [y_pred[0, -1]],
+            'o', color="red")
 
 
-    if y_hat is not None:
-        ax.plot(y_hat[:, -3], y_hat[:, -2], y_hat[:, -1],
-                '-+', linewidth=2, color="red", label="pred")
+    if y_true is not None:
+        ax.plot(y_true[:, -3], y_true[:, -2], y_true[:, -1],
+                '-+', linewidth=2, color="green", label="y_true", alpha=0.5)
 
-        ax.plot([y_hat[0, -3]], [y_hat[0, -2]], [y_hat[0, -1]],
-                '*', color="red")
-
-        ax.plot([y_hat[-1, -3]], [y_hat[-1, -2]], [y_hat[-1, -1]],
-                'o', color="red")
 
     if x_whole is not None:
         ax.plot(x_whole[:, -3], x_whole[:, -2], x_whole[:, -1],
@@ -123,24 +124,26 @@ def plot_3d_seqs(x, y, y_hat=None, x_whole=None):
     plt.pause(0.1)
 
 
-def plot_dof_seqs(x, y, y_hat=None):
+def plot_dof_seqs(x, y_pred, y_true=None):
     plt.figure(1)
     plt.ion()
 
     plt.clf()
     time_step_x = range(0,x.shape[0])
-    time_step_y = range(x.shape[0], x.shape[0]+y.shape[0])
+    time_step_y = range(0, y_pred.shape[0])
+    if y_true is not None:
+        time_step_y_true = range(0, y_true.shape[0])
 
     DOFs = x.shape[1]
     for j in range(0, DOFs):
 
         plt.subplot(DOFs,1,j+1)
-        plt.ylim(-2, 2)
+        plt.ylim(-5, 5)
         plt.plot(time_step_x, x[:, j], color="blue")
-        plt.plot(time_step_y, y[:, j], color="green")
+        plt.plot(time_step_y, y_pred[:, j], color="red")
 
-        if y_hat is not None:
-            plt.plot(time_step_y, y_hat[:, j], color="red")
+        if y_true is not None:
+            plt.plot(time_step_y_true, y_true[:, j], color="green", alpha=0.5)
     plt.pause(0.5)
 
 

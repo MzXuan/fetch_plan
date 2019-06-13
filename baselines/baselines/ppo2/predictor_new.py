@@ -133,7 +133,9 @@ class Predictor(object):
                 # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
                 # _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
                 # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
-                visualize.plot_3d_seqs(x_sub[0], x, y_pred[0]) # plot delta result
+                # visualize.plot_3d_seqs(x_sub[0], y_pred[0], y) # plot delta result
+
+                visualize.plot_dof_seqs(x_sub[0], y_pred[0], y)  # plot delta result
                 time.sleep(0.5)
 
 
@@ -332,6 +334,6 @@ if __name__ == '__main__':
         print("start testing...")
         # plot all the validate data step by step
 
-        rnn_model.plot_dataset()
+        # rnn_model.plot_dataset()
         rnn_model.run_validation()
 

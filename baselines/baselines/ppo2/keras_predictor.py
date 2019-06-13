@@ -13,9 +13,9 @@ from datetime import datetime
 epochs = 100  # Number of epochs to train for.
 LSTM_ACT = 'tanh'
 OUTPUT_ACT = 'linear'
-LOSS_MODE = 'mean_squared_logarithmic_error'
+LOSS_MODE = 'mean_squared_error'
 
-def get_weights_file(checkpoint_path, file_name):
+def get_weights_file(checkpoint_path, file_name=None):
     #todo: get latest checkpoint file in this folder
     file_list = glob.glob(os.path.join(checkpoint_path,"weights*"))
     latest_file = max(file_list, key=os.path.getctime)
@@ -139,7 +139,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_output_steps=50
+        self.max_output_steps=100
 
         self._build_model()
 
