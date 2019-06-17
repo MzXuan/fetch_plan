@@ -124,9 +124,11 @@ class Predictor(object):
             # todo: get random goal; normalized by mean_std
             goals = utils.GetRandomGoal(self.out_dim)
             goals.append(y[-1])
+            goal_true = [y[-1]]
 
             print("goals: ")
             print(goals)
+            min_dist_list = []
 
             for i in range(10,x_len,5):
                 x_sub = x[0:i,:]
@@ -135,8 +137,13 @@ class Predictor(object):
                 y_sub = np.expand_dims(y_sub, axis = 0)
                 y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
 
+                #-------calculate minimum distance to true goal-----#
+                _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
+                min_dist_list.append(min_dist)
+                print("min_dist")
+                print(min_dist)
                 # -----find goal based on prediction---#
-                goal_pred, goal_idx = utils.find_goal(y_pred, goals)
+                goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
 
                 # ------plot predicted data-----------
                 import visualize
@@ -146,6 +153,7 @@ class Predictor(object):
                 # visualize.plot_3d_seqs(x_sub[0], y_pred[0], y) # plot delta result
 
                 visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals, goal_pred)  # plot delta result
+                visualize.plot_dist(min_dist_list)
                 time.sleep(0.5)
 
 

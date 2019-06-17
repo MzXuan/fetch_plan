@@ -200,7 +200,7 @@ class PredictRNN():
         # print("the shape of inputs is:")
         # print(X.shape)
         self.model.reset_states()
-        predict_result = self._inference_function(inputs = X, Y = Y, goals=goals)
+        predict_result = self._inference_function(inputs = X, Y = Y)
         return predict_result
 
 

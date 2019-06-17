@@ -122,7 +122,7 @@ def plot_3d_seqs(x, y_pred, y_true=None):
 
 
 def plot_dof_seqs(x, y_pred, y_true=None, goals = None, goal_pred = None):
-    plt.figure(1)
+    plt.figure("dof")
     plt.ion()
 
     plt.clf()
@@ -147,7 +147,21 @@ def plot_dof_seqs(x, y_pred, y_true=None, goals = None, goal_pred = None):
         if goal_pred is not None:
             plt.plot(time_step_y_true[-1], goal_pred[j], 'g*')
 
-    plt.pause(0.5)
+    plt.pause(0.1)
+
+def plot_dist(dist_list):
+    plt.figure("dist")
+    plt.ion()
+    plt.clf()
+
+    plt.ylim(0,1.5)
+
+    plt.title("distance")
+    time_step= range(0,len(dist_list))
+    plt.plot(time_step, dist_list, "b-*")
+
+    plt.pause(0.1)
+
 
 
 
