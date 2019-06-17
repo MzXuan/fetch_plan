@@ -6,7 +6,6 @@ import joblib
 import pickle
 import os
 import time
-import random
 import numpy as np
 
 import tensorflow as tf
@@ -17,10 +16,11 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.font_manager import FontProperties
 from tqdm import tqdm
 
+import utils
 import keras_predictor as KP
 
 class DatasetStru(object):
-    def __init__(self, x, x_len, x_mean, x_var, x_ratio):
+    def __init__(self, x, x_len, x_mean, x_var):
         """
         :param x: shape = (self.in_timesteps_max, self.in_dim)
         :param x_len: shape = 1
@@ -32,13 +32,12 @@ class DatasetStru(object):
         self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
-        self.x_ratio = x_ratio
 
 
 class Predictor(object):
     def __init__(self, batch_size, out_max_timestep, train_flag,
                  reset_flag=False, epoch=20, iter_start=0,
-                 lr=0.001, load=False):
+                 lr=0.001, load=False, model_name="test"):
         ## extract FLAGS
         if iter_start == 0 and lr<0.001:
             self.start_iter = 20
@@ -54,7 +53,7 @@ class Predictor(object):
         self.epochs = epoch
         self.lr = lr
         self.validate_ratio = 0.2
-        self.num_units = 128
+        self.num_units = 64
         self.num_layers = 2
         self.in_dim=3
         self.out_dim=3
@@ -64,13 +63,14 @@ class Predictor(object):
         self.x_lens = np.zeros(batch_size, dtype=int)
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
-        self.x_ratio = [[] for _ in range(0, self.batch_size)]
 
         self.train_model = KP.TrainRNN(self.batch_size,
-                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers, load=load)
+                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers, load=load,
+                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(1,
-                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers)
+                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers,
+                                        model_name = model_name)
         self.inference_model.load_model()
 
 
@@ -121,6 +121,13 @@ class Predictor(object):
             x_len = valid_set[2][idx]
             x_start = valid_set[3][idx]
 
+            # todo: get random goal; normalized by mean_std
+            goals = utils.GetRandomGoal(self.out_dim)
+            goals.append(y[-1])
+
+            print("goals: ")
+            print(goals)
+
             for i in range(10,x_len,5):
                 x_sub = x[0:i,:]
                 x_sub = np.expand_dims(x_sub, axis = 0)
@@ -135,7 +142,7 @@ class Predictor(object):
                 # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
                 # visualize.plot_3d_seqs(x_sub[0], y_pred[0], y) # plot delta result
 
-                visualize.plot_dof_seqs(x_sub[0], y_pred[0], y)  # plot delta result
+                visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals)  # plot delta result
                 time.sleep(0.5)
 
 
@@ -216,24 +223,21 @@ class Predictor(object):
             #-------add end label------------
             if done:
                 if not infos[idx]['is_collision']:
-                    self.x_ratio[idx] = self.x_ratio[idx]/self.x_lens[idx]
                     # create a container saving reseted sequences for future usage
                     seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                                 self.x_mean, self.x_var, self.x_ratio[idx]))
+                                                 self.x_mean, self.x_var))
                 else:
                     print("in collision")
                 self.xs[idx] = []
                 self.x_lens[idx] = 0
-                self.x_ratio[idx] = []
 
             self.xs[idx].append(np.concatenate((ob[6:13],
                                                 ob[0:3])))
             #-------------------------------------------------
 
             self.x_lens[idx] += 1
-            self.x_ratio[idx].append(self.x_lens[idx])
             seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                        self.x_mean, self.x_var, self.x_ratio[idx]))
+                                        self.x_mean, self.x_var))
 
         return seqs_done, seqs_all
 
@@ -309,7 +313,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=500, type=int)
+    parser.add_argument('--epoch', default=800, type=int)
     parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -324,7 +328,7 @@ if __name__ == '__main__':
         os.mkdir("./pred")
 
     rnn_model = Predictor(1024, out_steps, train_flag=True, reset_flag=False, epoch=args.epoch,
-                          iter_start=args.iter, lr=args.lr, load=args.load)
+                          iter_start=args.iter, lr=args.lr, load=args.load, model_name="mean_64_2_gru")
 
     if not test_flag:
 

@@ -13,7 +13,6 @@ def create_traj(X, Y, Z, max_min = None, mean_std = None):
     x_lens = 0
     x_mean = np.zeros(3)
     x_var = np.zeros(3)
-    x_ratio = 0.0
     if mean_std is not None:
         x_mean = mean_std[:, 0]
         x_var = mean_std[:, 1]
@@ -30,24 +29,25 @@ def create_traj(X, Y, Z, max_min = None, mean_std = None):
             xs.append(pos)
         x_lens = len(xs)
 
-        return DatasetStru(xs, x_lens, x_mean, x_var, x_ratio)
+        return DatasetStru(xs, x_lens, x_mean, x_var)
     else:
         print("error data length")
         return 0
+#
+# def find_max_min(data, last_max_min):
+#     new_max_min = np.copy(last_max_min)
+#     data_max = max(data)
+#     data_min = min(data)
+#
+#     if data_max>last_max_min[0]:
+#         new_max_min[0] = data_max
+#     if data_min<last_max_min[1]:
+#         new_max_min[1] = data_min
+#     return new_max_min
 
-def find_max_min(data, last_max_min):
-    new_max_min = np.copy(last_max_min)
-    data_max = max(data)
-    data_min = min(data)
-
-    if data_max>last_max_min[0]:
-        new_max_min[0] = data_max
-    if data_min<last_max_min[1]:
-        new_max_min[1] = data_min
-    return new_max_min
 
 def find_max_min(delta_x, delta_y, delta_z):
-    max_min = np.zeros(3,2)#xyz;max,min
+    max_min = np.zeros((3,2))#xyz;max,min
     max_min[0][0] = max(delta_x)
     max_min[1][0] = max(delta_y)
     max_min[2][0] = max(delta_z)
@@ -119,11 +119,20 @@ def str2float(list):
     return float_list
 
 if __name__ == '__main__':
-    csv_filename = "/home/xuan/Documents/traj_data/trajs_4.csv"
+    csv_filename = "/home/xuan/Documents/traj_data/trajs_5.csv"
 
     # with open(csv_filename, 'r') as f:
     #     f_csv = csv.reader(f, delimiter=',')
-    #     max_min = load_file(f_csv)
+    #     delta_x, delta_y, delta_z = load_file(f_csv)
+    #     max_min = find_max_min(delta_x, delta_y, delta_z)
+    #
+    # with open(csv_filename, 'r') as f:
+    #     f_csv2 = csv.reader(f, delimiter=',')
+    #     dataset = create_set(f_csv2, max_min = max_min, mean_std = None)
+    #
+    # print("save dataset...")
+    # pickle.dump(dataset,
+    #             open("./pred/" + "/dataset_mp_minmax" + ".pkl", "wb"))
 
     with open(csv_filename, 'r') as f:
         f_csv = csv.reader(f, delimiter=',')
@@ -135,11 +144,9 @@ if __name__ == '__main__':
         dataset = create_set(f_csv2, max_min = None, mean_std = mean_std)
 
 
-    #todo: running std
-
     print("save dataset...")
     pickle.dump(dataset,
-                open("./pred/" + "/dataset_mp" + ".pkl", "wb"))
+                open("./pred/" + "/dataset_mp_meanstd" + ".pkl", "wb"))
 
 
 

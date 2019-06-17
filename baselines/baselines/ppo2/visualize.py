@@ -84,7 +84,7 @@ def plot_3d_pred(x, goal, pred=None):
     plt.pause(0.1)
 
 
-def plot_3d_seqs(x, y_pred, y_true=None, x_whole=None):
+def plot_3d_seqs(x, y_pred, y_true=None):
     fig3d = plt.figure(3)
     plt.clf()
 
@@ -113,10 +113,6 @@ def plot_3d_seqs(x, y_pred, y_true=None, x_whole=None):
                 '-+', linewidth=2, color="green", label="y_true", alpha=0.5)
 
 
-    if x_whole is not None:
-        ax.plot(x_whole[:, -3], x_whole[:, -2], x_whole[:, -1],
-                '-+', linewidth=2, color="grey", label="whole x", alpha=0.5)
-
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
@@ -124,7 +120,8 @@ def plot_3d_seqs(x, y_pred, y_true=None, x_whole=None):
     plt.pause(0.1)
 
 
-def plot_dof_seqs(x, y_pred, y_true=None):
+
+def plot_dof_seqs(x, y_pred, y_true=None, goals = None):
     plt.figure(1)
     plt.ion()
 
@@ -144,7 +141,12 @@ def plot_dof_seqs(x, y_pred, y_true=None):
 
         if y_true is not None:
             plt.plot(time_step_y_true, y_true[:, j], color="green", alpha=0.5)
+        if goals is not None:
+            for goal in goals:
+                plt.plot(time_step_y_true[-1], goal[j],'ro')
+
     plt.pause(0.5)
+
 
 
 def plot_3d_eef(x):
