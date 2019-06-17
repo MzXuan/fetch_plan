@@ -135,6 +135,9 @@ class Predictor(object):
                 y_sub = np.expand_dims(y_sub, axis = 0)
                 y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
 
+                # -----find goal based on prediction---#
+                goal_pred, goal_idx = utils.find_goal(y_pred, goals)
+
                 # ------plot predicted data-----------
                 import visualize
                 # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
@@ -142,7 +145,7 @@ class Predictor(object):
                 # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
                 # visualize.plot_3d_seqs(x_sub[0], y_pred[0], y) # plot delta result
 
-                visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals)  # plot delta result
+                visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals, goal_pred)  # plot delta result
                 time.sleep(0.5)
 
 

@@ -188,7 +188,7 @@ class PredictRNN():
         except:
             print("failed to load model, please check the checkpoint directory... use default initialization setting")
 
-    def predict(self, X, Y = None, goals=None):
+    def predict(self, X, Y = None):
         '''
         The inference step
         Firstly iterate the RNN on all ground truth x;
@@ -204,7 +204,7 @@ class PredictRNN():
         return predict_result
 
 
-    def _inference_function(self, inputs, Y = None, goals = None):
+    def _inference_function(self, inputs, Y = None):
         # predict_result = np.copy(inputs)
         # initial_output = self.model.predict(inputs, batch_size=self.batch_size)
         # predict_result = predict_result[~(predict_result == 0).all(2)]

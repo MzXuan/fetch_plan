@@ -121,7 +121,7 @@ def plot_3d_seqs(x, y_pred, y_true=None):
 
 
 
-def plot_dof_seqs(x, y_pred, y_true=None, goals = None):
+def plot_dof_seqs(x, y_pred, y_true=None, goals = None, goal_pred = None):
     plt.figure(1)
     plt.ion()
 
@@ -144,6 +144,8 @@ def plot_dof_seqs(x, y_pred, y_true=None, goals = None):
         if goals is not None:
             for goal in goals:
                 plt.plot(time_step_y_true[-1], goal[j],'ro')
+        if goal_pred is not None:
+            plt.plot(time_step_y_true[-1], goal_pred[j], 'g*')
 
     plt.pause(0.5)
 
