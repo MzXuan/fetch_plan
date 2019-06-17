@@ -110,9 +110,9 @@ class Predictor(object):
         print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
 
-        valid_set = self._process_dataset(self.dataset[0:-valid_len])
+        # valid_set = self._process_dataset(self.dataset[0:-valid_len])
 
-        # valid_set = self._process_dataset(self.dataset[-valid_len:-1])
+        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         # for x in valid_set[0]:
         for idx in range(len(valid_set)):
