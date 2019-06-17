@@ -2,10 +2,10 @@
 
 ---
 ## Details need to be determinted
-* the variance of mean and var with the iteration increasing
-* different length dataset in different iteration, although 5000 trajectories were sampled in one iteration.
-* feed_one_data function in predictor.py
-* why the last trajectory can not be used.
++ Analysis the performance of predictor training
++ Unify the coordinate of mujoco and ros fetch simulation
++ Batch prediction on validation step in keras api based predictor
++ joint training
 
 ---
 ## TODO List
