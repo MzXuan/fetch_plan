@@ -149,16 +149,20 @@ class Runner(object):
             #---- predict reward
             traj_len = np.nan
             pred_weight = self.pred_weight
-            if self.predictor_flag and pred_weight != 0.0:
-                x, goals = collect(self.obs[:], self.dones, infos)
+            if self.predictor_flag and pred_weight != 0.0: #predict process
+                origin_obs = self.env.origin_obs
+                x, goals = self.rl_data_creator.collect(origin_obs, self.dones, infos)
+
                 origin_pred_loss, traj_len = self.predictor.run_online_prediction(self.obs[:], self.dones, infos)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
                 # print("final_reward: {}".format(rewards))
-            elif pred_weight != 0.0:
-                self.collect_flag = collect(self.obs[:], self.dones, infos)
+
+            elif pred_weight != 0.0 and self.collect_flag is not True: #collect process
+                origin_obs = self.env.origin_obs
+                self.collect_flag =  self.rl_data_creator.collect(self.obs[:], self.dones, infos)
                 origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:
@@ -176,6 +180,14 @@ class Runner(object):
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
+
+
+        if self.pred_weight != 0.0 and self.collect_flag is True:
+            print("transfer raw data in to delta x, please wait....")
+            self.rl_data_creator.get_mean_std()
+
+
+
 
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)

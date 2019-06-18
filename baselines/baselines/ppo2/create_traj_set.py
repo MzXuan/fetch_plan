@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 class DatasetStru(object):
-    def __init__(self, x, x_len, x_mean, x_var):
+    def __init__(self, x, x_len, x_mean, x_var, x_start_raw):
         """
         :param x: shape = (self.in_timesteps_max, self.in_dim)
         :param x_len: shape = 1
@@ -16,26 +16,30 @@ class DatasetStru(object):
         self.x_len = x_len
         self.x_mean = x_mean
         self.x_var = x_var
+        self.x_start_raw = x_start_raw
 
 
 class RLDataCreator():
     # todo: change x to delta x, use new mean, std
-    def init(self, batch_size):
+    def __init__(self, batch_size):
 
         self.batch_size = batch_size
         self.in_dim = 10
 
+        self.xs_raw = [[] for _ in range(0, self.batch_size)]
         self.xs = [[] for _ in range(0, self.batch_size)]
         self.x_lens = np.zeros(batch_size, dtype=int)
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
-
         self.dataset = []
+        self.dataset_delta = []
 
-    #     use mean-std method optimize delta x
+        self.collect_flag = False
+
+    #todo: use mean-std method optimize delta x
 
 
-    def _create_seq(self, obs, dones, infos, mean, var):
+    def _create_seq(self, obs_raw, dones, infos):
         """
         create sequences from input observations;
         reset sequence if a agent is done its task
@@ -45,36 +49,24 @@ class RLDataCreator():
         :param var: variations of observations
         :return: done sequences
         """
-        if mean is not None and var is not None:
-            ## save mean and var
-            self.x_mean = np.concatenate((mean[6:13],
-                                          mean[0:3]))
-            self.x_var = np.concatenate((var[6:13],
-                                         var[0:3]))
-
         seqs_done, seqs_all = [], []
-        seqs_done_origin = []
 
-        for idx, (ob, done) in enumerate(zip(obs, dones)):
+        for idx, (ob, done) in enumerate(zip(obs_raw, dones)):
             if done:
                 if not infos[idx]['is_collision']:
                     # create a container saving reseted sequences for future usage
-                    seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                                 self.x_mean, self.x_var))
+                    seqs_done.append(DatasetStru(self.xs_raw[idx][1:]-self.xs_raw[idx][0], self.x_lens[idx],
+                                                 self.x_mean, self.x_var, self.xs_raw[idx][0]))
                 else:
                     print("in collision")
-                self.xs[idx] = []
+                self.xs_raw[idx] = []
                 self.x_lens[idx] = 0
 
-            self.xs[idx].append(np.concatenate((ob[6:13],
+            self.xs_raw[idx].append(np.concatenate((ob[6:13],
                                                 ob[0:3])))
-            # -------------------------------------------------
-
             self.x_lens[idx] += 1
-            seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                        self.x_mean, self.x_var))
 
-        return seqs_done, seqs_all
+        return seqs_done
 
     def _create_traj(self, trajs):
         """
@@ -84,20 +76,54 @@ class RLDataCreator():
         for traj in trajs:
             if traj.x_len > 20 and traj.x_len < 300:
                 self.dataset.append(traj)
-                dataset_length = len(self.dataset)
+
+        dataset_length = len(self.dataset)
 
         # for visualization
-        if dataset_length%100 < 10 :
+        if dataset_length%50 < 2 :
             print("collected dataset length:{}".format(dataset_length))
 
-        # if dataset is large, save it
-        if dataset_length > 1000:
-            print("save dataset...")
-            pickle.dump(self.dataset,
-                open("./pred/" + "/dataset_rl" + ".pkl", "wb"))
+
+        # if dataset is large enough, stop collect new data and save
+        if dataset_length > 100:
+            print("Enough data collected, stop getting new data...")
             self.collect_flag = True
 
-    def collect(self, obs, dones, infos, mean=None, var=None):
+
+    def get_mean_std(self):
+        temp_list = []
+        for data in self.dataset:
+           temp_list.extend(data.x)
+        temp_list = np.asarray(temp_list)
+
+        mean = temp_list.mean(axis = 0)
+        std = temp_list.std(axis = 0)
+
+        for data in self.dataset:
+            x_normal = (data.x - mean)/std
+            self.dataset_delta.append(DatasetStru(x_normal, data.x_len,
+                                                 mean, std, data.x_start_raw))
+
+        print("save dataset...")
+        pickle.dump(self.dataset_delta,
+                    open("./pred/" + "/dataset_rl" + ".pkl", "wb"))
+            # print("new x shape:")
+            # print(x.shape)
+            # print("x")
+            # print(x)
+
+
+        # print("mean:")
+        # print(mean)
+        # print("mean shape: ")
+        # print(mean.shape)
+        #
+        # print("std")
+        # print(std)
+        # print("std shape: ")
+        # print(std.shape)
+
+    def collect(self, obs_raw, dones, infos):
         """
         function: collect sequence dataset
         :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
@@ -107,14 +133,28 @@ class RLDataCreator():
         """
 
         # create input sequence
-        seqs_done, _ = self._create_seq(obs, dones, infos, mean, var)
+        seqs_done = self._create_seq(obs_raw, dones, infos)
 
         # create training dataset for future training
         if len(seqs_done) > 0:
             self._create_traj(seqs_done)
 
-        # print("dataset length: ", self.dataset_length)
+        # post process all the sequences
         return self.collect_flag
+
+
+    def collect_online(self, obs_raw, dones, infos):
+        '''
+
+        :param obs_raw:
+        :param dones:
+        :param infos:
+        :return:
+        '''
+        #todo: get mean and std from dataset
+        # calculate delta x and goals
+
+        return 0
 
 
 
