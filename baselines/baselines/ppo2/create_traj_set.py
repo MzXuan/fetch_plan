@@ -18,7 +18,8 @@ class DatasetStru(object):
         self.x_var = x_var
 
 
-class RLData():
+class RLDataCreator():
+    # todo: change x to delta x, use new mean, std
     def init(self, batch_size):
 
         self.batch_size = batch_size
@@ -30,6 +31,8 @@ class RLData():
         self.x_var = np.zeros(self.in_dim)
 
         self.dataset = []
+
+    #     use mean-std method optimize delta x
 
 
     def _create_seq(self, obs, dones, infos, mean, var):
@@ -50,9 +53,9 @@ class RLData():
                                          var[0:3]))
 
         seqs_done, seqs_all = [], []
+        seqs_done_origin = []
 
         for idx, (ob, done) in enumerate(zip(obs, dones)):
-            # -------add end label------------
             if done:
                 if not infos[idx]['is_collision']:
                     # create a container saving reseted sequences for future usage

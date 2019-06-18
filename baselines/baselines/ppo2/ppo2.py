@@ -7,7 +7,9 @@ import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
+
 from predictor_new import Predictor
+from create_traj_set import RLDataCreator
 from tqdm import tqdm
 import flags
 
@@ -110,6 +112,8 @@ class Runner(object):
         self.dones = [False for _ in range(nenv)]
 
 
+
+        self.rl_data_creator = RLDataCreator(env.num_envs)
         self.predictor = Predictor(1024, out_max_timestep = 100, train_flag=False, model_name="rl_test")
 
         # sess = tf.get_default_session()
