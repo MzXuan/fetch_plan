@@ -108,6 +108,17 @@ python predictor_new.py --test
 ```
 
 ---
+## How to get the observation without normalization
+``` python
+obs = env.reset()
+origin_obs = env.origin_obs
+done = False
+while not done:
+    act = actor.act(obs)
+    obs, rew, done, _ = env.step(act)
+    origin_obs = env.origin_obs
+```
+---
 ## Change log
 1. 0.1.0
 * complete environment test
