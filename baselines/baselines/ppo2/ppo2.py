@@ -7,7 +7,7 @@ import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
-from predictor import Predictor
+from predictor_new import Predictor
 from tqdm import tqdm
 import flags
 
@@ -108,19 +108,23 @@ class Runner(object):
         self.predictor_flag = predictor_flag
         self.pred_weight = pred_weight
         self.dones = [False for _ in range(nenv)]
-        sess = tf.get_default_session()
-        if (not self.predictor_flag) and pred_weight != 0.0:
-            # collect data
-            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
-        else:
-            # train and display
-            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
 
-        self.predictor.init_sess()
+
+        self.predictor = Predictor(1024, out_max_timestep = 100, train_flag=False, model_name="rl_test")
+
+        # sess = tf.get_default_session()
+        # if (not self.predictor_flag) and pred_weight != 0.0:
+        #     # collect data
+        #     self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
+        # else:
+        #     # train and display
+        #     self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
+        # self.predictor.init_sess()
+
         self.collect_flag = False
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
-            self.predictor.load()
+            # self.predictor.load()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
@@ -142,14 +146,15 @@ class Runner(object):
             traj_len = np.nan
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0:
-                origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones, infos)
+                x, goals = collect(self.obs[:], self.dones, infos)
+                origin_pred_loss, traj_len = self.predictor.run_online_prediction(self.obs[:], self.dones, infos)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
                 # print("final_reward: {}".format(rewards))
             elif pred_weight != 0.0:
-                self.collect_flag = self.predictor.collect(self.obs[:], self.dones, infos)
+                self.collect_flag = collect(self.obs[:], self.dones, infos)
                 origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:

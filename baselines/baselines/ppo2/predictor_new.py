@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
-import time, os
+import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-import joblib
 import pickle
 import os
 import time
 import numpy as np
-
-import tensorflow as tf
 
 import visualize
 import matplotlib.pyplot as plt
@@ -18,25 +15,13 @@ from tqdm import tqdm
 
 import utils
 import keras_predictor as KP
+from create_traj_set import DatasetStru
 
-class DatasetStru(object):
-    def __init__(self, x, x_len, x_mean, x_var):
-        """
-        :param x: shape = (self.in_timesteps_max, self.in_dim)
-        :param x_len: shape = 1
-        :param x_mean: shape = (self.in_dim)
-        :param x_var:  shape = (self.in_dim)
-        """
-        # self.x = np.asarray(x)
-        self.x = np.asarray(x)  # input is the delta x after mean and std
-        self.x_len = x_len
-        self.x_mean = x_mean
-        self.x_var = x_var
 
 
 class Predictor(object):
     def __init__(self, batch_size, out_max_timestep, train_flag,
-                 reset_flag=False, epoch=20, iter_start=0,
+                 epoch=20, iter_start=0,
                  lr=0.001, load=False, model_name="test"):
         ## extract FLAGS
         if iter_start == 0 and lr<0.001:
@@ -71,6 +56,9 @@ class Predictor(object):
         self.inference_model = KP.PredictRNN(1,
                                        self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers,
                                         model_name = model_name)
+        if load:
+            self.train_model.load_model()
+
         self.inference_model.load_model()
 
 
@@ -93,16 +81,14 @@ class Predictor(object):
         self.train_model.training(X=x_set, Y=y_set, epochs=self.epochs)
 
 
-    def run_prediction(self):
-        ## load dataset
-        self._load_train_set()
-        print("trajectory numbers: ", len(self.dataset))
-        valid_len = int(self.validate_ratio * len(self.dataset))
+    def run_online_prediction(self, x, goals):
+        '''
 
-        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
-
-        self.inference_model.predict(X=valid_set[0], Y=valid_set[1])
-
+        :param x:
+        :param goals:
+        :return:
+        '''
+        return 0
 
     def run_validation(self):
         ## load dataset
@@ -338,7 +324,7 @@ if __name__ == '__main__':
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(1024, out_steps, train_flag=True, reset_flag=False, epoch=args.epoch,
+    rnn_model = Predictor(1024, out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load, model_name="mean_64_2_gru")
 
     if not test_flag:
