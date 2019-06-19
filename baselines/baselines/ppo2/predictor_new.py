@@ -32,8 +32,8 @@ class Predictor(object):
         self.dataset_length = 0
 
         self.batch_size = batch_size
-        self.in_timesteps_max = 100
-        self.out_timesteps = out_max_timestep
+        self.in_timesteps_max = 200
+        # self.out_timesteps = out_max_timestep
         self.train_flag = train_flag
         self.epochs = epoch
         self.lr = lr
@@ -51,11 +51,11 @@ class Predictor(object):
 
         self.train_model = KP.TrainRNN(self.batch_size,
                                        self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers, load=load,
-                                       model_name=model_name)
+                                      model_name=model_name)
 
         self.inference_model = KP.PredictRNN(1,
                                        self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers,
-                                        model_name = model_name)
+                                        out_steps = out_max_timestep, model_name = model_name)
         if load:
             self.train_model.load_model()
 
@@ -96,12 +96,12 @@ class Predictor(object):
         print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
 
-        # valid_set = self._process_dataset(self.dataset[0:-valid_len])
-
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         # for x in valid_set[0]:
-        for idx in range(len(valid_set)):
+        for idx in range(len(valid_set[0])):
+            print("idx")
+            print(idx)
             x = valid_set[0][idx]
             y = valid_set[1][idx]
             x_len = valid_set[2][idx]
@@ -112,8 +112,8 @@ class Predictor(object):
             goals.append(y[-1])
             goal_true = [y[-1]]
 
-            print("goals: ")
-            print(goals)
+            # print("goals: ")
+            # print(goals)
             min_dist_list = []
 
             for i in range(10,x_len,5):
@@ -126,8 +126,8 @@ class Predictor(object):
                 #-------calculate minimum distance to true goal-----#
                 _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
                 min_dist_list.append(min_dist)
-                print("min_dist")
-                print(min_dist)
+                # print("min_dist")
+                # print(min_dist)
                 # -----find goal based on prediction---#
                 goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
 
@@ -310,7 +310,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=800, type=int)
+    parser.add_argument('--epoch', default=500, type=int)
     parser.add_argument('--lr', default=0.005, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -319,13 +319,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=100
+    out_steps=200
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
     rnn_model = Predictor(1024, out_steps, train_flag=True, epoch=args.epoch,
-                          iter_start=args.iter, lr=args.lr, load=args.load, model_name="mean_64_2_gru")
+                          iter_start=args.iter, lr=args.lr, load=args.load, model_name="64_2_gru_rl")
+
+    # rnn_model.plot_dataset()
 
     if not test_flag:
 

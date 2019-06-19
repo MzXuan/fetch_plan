@@ -54,9 +54,10 @@ class RLDataCreator():
         for idx, (ob, done) in enumerate(zip(obs_raw, dones)):
             if done:
                 if not infos[idx]['is_collision']:
+                    x_seq = np.asarray(self.xs_raw[idx])
                     # create a container saving reseted sequences for future usage
-                    seqs_done.append(DatasetStru(self.xs_raw[idx][1:]-self.xs_raw[idx][0], self.x_lens[idx],
-                                                 self.x_mean, self.x_var, self.xs_raw[idx][0]))
+                    seqs_done.append(DatasetStru(x_seq[1:]-x_seq[0], self.x_lens[idx],
+                                                 self.x_mean, self.x_var, x_seq[0]))
                 else:
                     print("in collision")
                 self.xs_raw[idx] = []
@@ -74,7 +75,7 @@ class RLDataCreator():
         :return:
         """
         for traj in trajs:
-            if traj.x_len > 20 and traj.x_len < 300:
+            if traj.x_len > 20 and traj.x_len < 200:
                 self.dataset.append(traj)
 
         dataset_length = len(self.dataset)
@@ -85,7 +86,7 @@ class RLDataCreator():
 
 
         # if dataset is large enough, stop collect new data and save
-        if dataset_length > 100:
+        if dataset_length > 1000:
             print("Enough data collected, stop getting new data...")
             self.collect_flag = True
 

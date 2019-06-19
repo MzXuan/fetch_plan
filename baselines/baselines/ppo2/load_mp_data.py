@@ -7,7 +7,7 @@ import csv
 from create_traj_set import DatasetStru
 
 
-def create_traj(X, Y, Z, max_min = None, mean_std = None):
+def create_traj(X, Y, Z, start_raw, max_min = None, mean_std = None):
     xs = []
     x_lens = 0
     x_mean = np.zeros(3)
@@ -28,7 +28,7 @@ def create_traj(X, Y, Z, max_min = None, mean_std = None):
             xs.append(pos)
         x_lens = len(xs)
 
-        return DatasetStru(xs, x_lens, x_mean, x_var)
+        return DatasetStru(xs, x_lens, x_mean, x_var, start_raw)
     else:
         print("error data length")
         return 0
@@ -96,7 +96,8 @@ def create_set(f_csv, max_min = None, mean_std = None):
             z = np.asarray(str2float(r[1:]))
             delta_z = get_delta(z)
         elif "next" in r[0]:
-            dataset.append(create_traj(delta_x, delta_y, delta_z, max_min, mean_std))
+            start_raw = np.asarray([x[0], y[0], z[0]])
+            dataset.append(create_traj(delta_x, delta_y, delta_z, start_raw, max_min, mean_std))
             delta_x, delta_y, delta_z = [], [], []
     return dataset
 

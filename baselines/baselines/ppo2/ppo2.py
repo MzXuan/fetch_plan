@@ -114,7 +114,7 @@ class Runner(object):
 
 
         self.rl_data_creator = RLDataCreator(env.num_envs)
-        self.predictor = Predictor(1024, out_max_timestep = 100, train_flag=False, model_name="rl_test")
+        self.predictor = Predictor(1024, out_max_timestep = 200, train_flag=False, model_name="rl_test")
 
         # sess = tf.get_default_session()
         # if (not self.predictor_flag) and pred_weight != 0.0:

@@ -27,7 +27,7 @@ class TrainRNN():
     #todo: save model
     #todo: plot training and validate error
 
-    def __init__(self,  batch_size, in_dim, out_dim, num_units, num_layers=1,
+    def __init__(self, batch_size, in_dim, out_dim, num_units, num_layers=1,
                  directories="./pred", model_name="test", load=False):
         '''
         initialize my rnn model
@@ -122,7 +122,7 @@ class TrainRNN():
 
 
 class PredictRNN():
-    def __init__(self, batch_size, in_dim, out_dim, num_units, num_layers=1,
+    def __init__(self, batch_size, in_dim, out_dim, num_units, num_layers=1, out_steps=100,
                  directories="./pred", model_name="test"):
         '''
         initialize my rnn model
@@ -138,7 +138,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_output_steps=100
+        self.max_output_steps=out_steps
 
         self._build_model()
 
