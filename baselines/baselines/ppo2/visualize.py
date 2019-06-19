@@ -135,9 +135,9 @@ def plot_dof_seqs(x, y_pred, y_true=None, goals = None, goal_pred = None):
     for j in range(0, DOFs):
 
         plt.subplot(DOFs,1,j+1)
-        plt.ylim(-5, 5)
-        plt.plot(time_step_x, x[:, j], color="blue")
-        plt.plot(time_step_y, y_pred[:, j], color="red")
+        plt.ylim(-3, 3)
+        plt.plot(time_step_x, x[:, j], "b-")
+        plt.plot(time_step_y, y_pred[:, j], "r-")
 
         if y_true is not None:
             plt.plot(time_step_y_true, y_true[:, j], color="green", alpha=0.5)

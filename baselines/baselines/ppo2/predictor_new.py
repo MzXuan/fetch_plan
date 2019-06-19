@@ -18,6 +18,8 @@ import keras_predictor as KP
 from create_traj_set import DatasetStru
 
 
+NUM_UNITS = 100
+NUM_LAYERS = 1
 
 class Predictor(object):
     def __init__(self, batch_size, out_max_timestep, train_flag,
@@ -38,8 +40,8 @@ class Predictor(object):
         self.epochs = epoch
         self.lr = lr
         self.validate_ratio = 0.2
-        self.num_units = 64
-        self.num_layers = 2
+        self.num_units = NUM_UNITS
+        self.num_layers = NUM_LAYERS
         self.in_dim=3
         self.out_dim=3
 
@@ -140,7 +142,7 @@ class Predictor(object):
 
                 visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals, goal_pred)  # plot delta result
                 visualize.plot_dist(min_dist_list)
-                time.sleep(0.5)
+                time.sleep(20)
 
 
     def _process_dataset(self, trajs):
@@ -311,7 +313,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--epoch', default=500, type=int)
-    parser.add_argument('--lr', default=0.005, type=float)
+    parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
     parser.add_argument('--model_name', default='test1', type=str)
@@ -319,13 +321,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=200
+    out_steps=5
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
     rnn_model = Predictor(1024, out_steps, train_flag=True, epoch=args.epoch,
-                          iter_start=args.iter, lr=args.lr, load=args.load, model_name="64_2_gru_rl")
+                          iter_start=args.iter, lr=args.lr, load=args.load, model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 
     # rnn_model.plot_dataset()
 

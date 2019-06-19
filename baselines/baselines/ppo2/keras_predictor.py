@@ -2,17 +2,20 @@ import os, sys, time, glob
 import numpy as np
 
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, LSTM, Dense, Masking, TimeDistributed, GRU
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.layers import Input, LSTM, Dense, Masking, TimeDistributed, GRU, Bidirectional
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
-
+from tensorflow.keras import regularizers
 from datetime import datetime
 
 
 epochs = 100  # Number of epochs to train for.
 LSTM_ACT = 'tanh'
+REC_ACT = 'hard_sigmoid'
 OUTPUT_ACT = 'linear'
 LOSS_MODE = 'mean_squared_error'
+BIAS_REG = 'random_uniform'
+DROPOUT = 0.1
 
 def get_weights_file(checkpoint_path, file_name=None):
     #todo: get latest checkpoint file in this folder
@@ -55,28 +58,50 @@ class TrainRNN():
         '''
         t = time.time()
         print('Beginning LSTM compilation')
-        input_x = Input(shape=(None, self.in_dim))
-        masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
-
-        rnn_layers = []
+        self.model = Sequential()
+        # self.model.add(Input(shape=(None, self.in_dim)))
+        self.model.add(Masking(mask_value=0.0, input_shape=(None, self.in_dim)))
 
         for i in range(0, self.num_layers):
-            if i == 0:
-                rnn_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
-                                       activation = LSTM_ACT, name='0lstm')(
-                    inputs = masked_x))
-            else:
-                rnn_layers.append(GRU(self.num_units, return_sequences=True,return_state=True,
-                                       activation = LSTM_ACT, name=str(i) + 'lstm')(
-                    inputs = rnn_layers[i - 1][0]))
-
-        train_lstm = rnn_layers[-1][0]
-        output_layer = TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT),name='output_layer')(inputs = train_lstm)
-        self.rnn_layers = rnn_layers
-        self.model = Model(inputs=input_x, outputs=output_layer)
+            self.model.add(Bidirectional(GRU(self.num_units, return_sequences=True, return_state=False,
+                                       activation = LSTM_ACT, recurrent_activation = REC_ACT,
+                                      kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
+                                      dropout=DROPOUT)))
+        self.model.add(TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT, bias_initializer=BIAS_REG)))
 
         self.model.compile(optimizer='RMSprop',
                            loss=LOSS_MODE)
+
+        # t = time.time()
+        # print('Beginning LSTM compilation')
+        # input_x = Input(shape=(None, self.in_dim))
+        # masked_x = Masking(mask_value=0.0, input_shape=(None, self.in_dim))(input_x)
+        #
+        # rnn_layers = []
+        #
+        # for i in range(0, self.num_layers):
+        #     if i == 0:
+        #         rnn_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
+        #                                activation = LSTM_ACT, recurrent_activation = REC_ACT,
+        #                               kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
+        #                               dropout=DROPOUT,
+        #                               name='0lstm')(
+        #             inputs = masked_x))
+        #     else:
+        #         rnn_layers.append(GRU(self.num_units, return_sequences=True,return_state=True,
+        #                                activation = LSTM_ACT, recurrent_activation = REC_ACT,
+        #                               kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
+        #                               dropout = DROPOUT,
+        #                               name=str(i) + 'lstm')(
+        #             inputs = rnn_layers[i - 1][0]))
+        #
+        # train_lstm = rnn_layers[-1][0]
+        # output_layer = TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT),name='output_layer')(inputs = train_lstm)
+        # self.rnn_layers = rnn_layers
+        # self.model = Model(inputs=input_x, outputs=output_layer)
+        #
+        # self.model.compile(optimizer='RMSprop',
+        #                    loss=LOSS_MODE)
 
         print('Completed training model compilation in %.3f seconds' % (time.time() - t))
 
@@ -148,25 +173,45 @@ class PredictRNN():
         build the rnn model
         :return:
         '''
-        t = time.time()
-        input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
-        masked_x = Masking(mask_value=0.0, batch_input_shape=(self.batch_size, None, self.in_dim))(input_x)
+        # t = time.time()
+        # input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
+        # masked_x = Masking(mask_value=0.0, batch_input_shape=(self.batch_size, None, self.in_dim))(input_x)
+        #
+        # rnn_layers = []
+        #
+        # for i in range(0, self.num_layers):
+        #     if i == 0:
+        #         rnn_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
+        #                                activation = LSTM_ACT, recurrent_activation = REC_ACT, stateful = True,
+        #                               kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
+        #                               dropout = DROPOUT, name='0lstm')(inputs = masked_x))
+        #     else:
+        #         rnn_layers.append(GRU(self.num_units, return_sequences=True,return_state=True,
+        #                                activation = LSTM_ACT, recurrent_activation = REC_ACT, stateful = True,
+        #                               kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
+        #                               dropout = DROPOUT, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
+        #
+        # train_lstm = rnn_layers[-1][0]
+        # output_layer = TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT),name='output_layer')(inputs = train_lstm)
+        # self.rnn_layers = rnn_layers
+        # self.model = Model(inputs=input_x, outputs=output_layer)
+        #
+        # self.model.compile(optimizer='RMSprop',
+        #                    loss=LOSS_MODE)
 
-        rnn_layers = []
+        t = time.time()
+        print('Beginning LSTM compilation')
+        self.model = Sequential()
+        # self.model.add(Input(shape=(None, self.in_dim)))
+        self.model.add(Masking(mask_value=0.0, batch_input_shape=(self.batch_size, None, self.in_dim)))
 
         for i in range(0, self.num_layers):
-            if i == 0:
-                rnn_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
-                                       activation = LSTM_ACT, stateful = True, name='0lstm')(inputs = masked_x))
-            else:
-                rnn_layers.append(GRU(self.num_units, return_sequences=True,return_state=True,
-                                       activation = LSTM_ACT, stateful = True, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
-
-        train_lstm = rnn_layers[-1][0]
-        output_layer = TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT),name='output_layer')(inputs = train_lstm)
-        self.rnn_layers = rnn_layers
-        self.model = Model(inputs=input_x, outputs=output_layer)
-
+            self.model.add(Bidirectional(GRU(self.num_units, return_sequences=True, return_state=False,
+                                       activation = LSTM_ACT, recurrent_activation = REC_ACT,
+                                             stateful = True,
+                                      kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
+                                      dropout=DROPOUT)))
+        self.model.add(TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT, bias_initializer=BIAS_REG)))
         self.model.compile(optimizer='RMSprop',
                            loss=LOSS_MODE)
         print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
@@ -216,26 +261,27 @@ class PredictRNN():
         # predict_result = np.copy(initial_output)
         predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
 
-        # print("inputs")
-        # print(inputs)
-        # if Y is not None:
-        #     print("Y:")
-        #     print(Y)
-        # print("predict result")
-        # print(predict_result)
+        print("inputs")
+        print(inputs)
+        if Y is not None:
+            print("Y:")
+            print(Y)
+        print("predict result")
+        print(predict_result)
+
         for _ in range(self.max_output_steps):
             new_input = predict_result[:,-1,:]
             new_input = np.expand_dims(new_input, axis=1)
 
             out = self.model.predict(new_input)
-            #
-            # print("new_input")
-            # print(new_input)
-            # print("out")
-            # print(out)
+
+            print("new_input")
+            print(new_input)
+            print("out")
+            print(out)
+
 
             predict_result = np.concatenate((predict_result, out), axis=1)
-
         return predict_result
 
 
