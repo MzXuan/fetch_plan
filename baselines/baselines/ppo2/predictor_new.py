@@ -148,11 +148,12 @@ class Predictor(object):
     def _process_dataset(self, trajs):
         xs, ys, x_lens, xs_start = [], [], [], []
         for traj in trajs:
-            x, y, x_len, x_start = self._feed_one_data(traj)
-            xs.append(x)
-            ys.append(y)
-            x_lens.append(x_len)
-            xs_start.append(x_start)
+            for t_start in range(0, traj.x_len-self.in_timesteps_max):
+                x, y, x_len, x_start = self._feed_one_data(traj, t_start)
+                xs.append(x)
+                ys.append(y)
+                x_lens.append(x_len)
+                xs_start.append(x_start)
 
         xs=np.asarray(xs, dtype=np.float32)
         xs.reshape((len(trajs),self.in_timesteps_max, self.in_dim))
@@ -162,25 +163,40 @@ class Predictor(object):
         xs_start=np.asarray(xs_start)
         return [xs, ys, x_lens, xs_start]
 
-    def _feed_one_data(self, data):
-        # pading dataset
+    def _feed_one_data(self, data, id_start = 0):
+        # # whole x and whole y
+        # length = data.x_len
+        # if length > self.in_timesteps_max:
+        #     x_seq = data.x[0:self.in_timesteps_max,:]
+        # else:
+        #     x_seq = data.x
+        # x_start = x_seq[0,-3:]
+        #
+        # x = x_seq[0:-1,-3:]
+        # y = x_seq[1:,-3:]
+        #
+        # x = self._padding(x, self.in_timesteps_max, 0.0)
+        # y = self._padding(y, self.in_timesteps_max, None)
+        #
+        # return x, y, length, x_start
+
+        # X: N step; Y: N+1 step
         length = data.x_len
+        x_seq = data.x
         if length > self.in_timesteps_max:
-            x_seq = data.x[0:self.in_timesteps_max,:]
+            id_end = id_start + self.in_timesteps_max
         else:
-            x_seq = data.x
-        x_start = x_seq[0,-3:]
+            id_end = length
 
-        # x = x_seq[1:-1,-3:] - x_start
-        # y = x_seq[2:,-3:] - x_start
-
-        x = x_seq[0:-1,-3:]
-        y = x_seq[1:,-3:]
+        x_start = x_seq[0, -3:]
+        x = x_seq[id_start:id_end, -3:]
+        y = x_seq[id_end]
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
         y = self._padding(y, self.in_timesteps_max, None)
 
-        return x, y,length, x_start
+        return x, y, length, x_start
+
 
     def _accumulate_data(self, delta_x, delta_y, x_start):
         x = delta_x + x_start
