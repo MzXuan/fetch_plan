@@ -18,8 +18,8 @@ import keras_predictor as KP
 from create_traj_set import DatasetStru
 
 
-NUM_UNITS = 100
-NUM_LAYERS = 1
+NUM_UNITS = 32
+NUM_LAYERS = 2
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
