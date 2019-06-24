@@ -107,7 +107,7 @@ def str2float(list):
     return float_list
 
 if __name__ == '__main__':
-    csv_filename = "/home/xuan/Documents/traj_data/trajs_5.csv"
+    csv_filename = "/home/xuan/Documents/traj_data/trajs_6_8000.csv"
 
 
     with open(csv_filename, 'r') as f:

@@ -67,7 +67,7 @@ class TrainRNN():
                                        activation = LSTM_ACT, recurrent_activation = REC_ACT,
                                       kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
                                       dropout=DROPOUT)))
-        self.model.add(TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT, bias_initializer=BIAS_REG)))
+        self.model.add(Dense(self.out_dim, activation=OUTPUT_ACT, bias_initializer=BIAS_REG))
 
         self.model.compile(optimizer='RMSprop',
                            loss=LOSS_MODE)

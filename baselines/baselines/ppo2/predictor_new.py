@@ -22,7 +22,7 @@ NUM_UNITS = 100
 NUM_LAYERS = 1
 
 class Predictor(object):
-    def __init__(self, batch_size, out_max_timestep, train_flag,
+    def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
                  epoch=20, iter_start=0,
                  lr=0.001, load=False, model_name="test"):
         ## extract FLAGS
@@ -34,8 +34,9 @@ class Predictor(object):
         self.dataset_length = 0
 
         self.batch_size = batch_size
-        self.in_timesteps_max = 200
-        # self.out_timesteps = out_max_timestep
+        self.in_timesteps_max = in_max_timestep
+        self.out_timesteps = out_max_timestep
+
         self.train_flag = train_flag
         self.epochs = epoch
         self.lr = lr
@@ -156,9 +157,9 @@ class Predictor(object):
                 xs_start.append(x_start)
 
         xs=np.asarray(xs, dtype=np.float32)
-        xs.reshape((len(trajs),self.in_timesteps_max, self.in_dim))
+        # xs.reshape((len(trajs),self.in_timesteps_max, self.in_dim))
         ys=np.asarray(ys)
-        ys.reshape((len(trajs), self.in_timesteps_max, self.out_dim))
+        # ys.reshape((len(trajs), self.in_timesteps_max, self.out_dim))
         x_lens=np.asarray(x_lens, dtype=np.int32)
         xs_start=np.asarray(xs_start)
         return [xs, ys, x_lens, xs_start]
@@ -189,11 +190,14 @@ class Predictor(object):
             id_end = length
 
         x_start = x_seq[0, -3:]
+
         x = x_seq[id_start:id_end, -3:]
-        y = x_seq[id_end]
+        y = x_seq[id_end, -3:]
+
+        y = np.expand_dims(y, axis=0)
+
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
-        y = self._padding(y, self.in_timesteps_max, None)
 
         return x, y, length, x_start
 
@@ -319,6 +323,9 @@ class Predictor(object):
     def plot_dataset(self):
         self._load_train_set()
         #plot dataset
+        print("dataset length is: ")
+        print(len(self.dataset))
+
         for idx, data in enumerate(self.dataset):
             if idx%10 == 0:
                 visualize.plot_3d_eef(data.x)
@@ -342,8 +349,9 @@ if __name__ == '__main__':
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(64, out_steps, train_flag=True, epoch=args.epoch,
-                          iter_start=args.iter, lr=args.lr, load=args.load, model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
+    rnn_model = Predictor(64, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
+                          iter_start=args.iter, lr=args.lr, load=args.load,
+                          model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 
     # rnn_model.plot_dataset()
 
