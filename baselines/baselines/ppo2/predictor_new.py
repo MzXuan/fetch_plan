@@ -349,7 +349,7 @@ if __name__ == '__main__':
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(64, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
+    rnn_model = Predictor(1024, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
                           model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 
