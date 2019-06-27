@@ -45,7 +45,7 @@ into
 cell = tf.nn.rnn_cell.GRUCell(rnn_size)
 '''
 def recurrent_neural_network(inputs, w, b):
-    layers = 10
+    layers = 30
     # cell_ = tf.nn.rnn_cell.GRUCell(rnn_size)
     cell = tf.contrib.rnn.MultiRNNCell([gru_cell() for _ in range(layers)])
     att_cell = tf.contrib.rnn.AttentionCellWrapper(cell, attn_length = 30)

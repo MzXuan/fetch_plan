@@ -19,7 +19,7 @@ from create_traj_set import DatasetStru
 
 
 NUM_UNITS = 32
-NUM_LAYERS = 2
+NUM_LAYERS = 10
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
@@ -335,7 +335,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=500, type=int)
+    parser.add_argument('--epoch', default=50, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -349,7 +349,7 @@ if __name__ == '__main__':
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(1024, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
+    rnn_model = Predictor(256, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
                           model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 
