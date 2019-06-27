@@ -20,7 +20,7 @@ from create_traj_set import DatasetStru
 
 
 NUM_UNITS = 32
-NUM_LAYERS = 3
+NUM_LAYERS = 5
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
@@ -110,6 +110,7 @@ class Predictor(object):
             y = valid_set[1][idx]
             x_len = valid_set[2][idx]
             x_start = valid_set[3][idx]
+            x_full = valid_set[4][idx]
 
             # todo: get random goal; normalized by mean_std
             goals = utils.GetRandomGoal(self.out_dim)
@@ -127,10 +128,10 @@ class Predictor(object):
 
             # y_pred = self.inference_model.predict(X=np.expand_dims(x, axis=0), Y=None)
 
-            print("new!!!")
+            # print("new!!!")
 
             for i in range(10,x_len,5):
-                print("hahahaha")
+                # print("hahahaha")
                 print(i)
                 x_sub = x[0:i,:]
                 x_sub = np.expand_dims(x_sub, axis = 0)
@@ -138,52 +139,67 @@ class Predictor(object):
                 y_sub = np.expand_dims(y_sub, axis = 0)
                 y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
 
-                #-------calculate minimum distance to true goal-----#
-                _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
+                # -------calculate minimum distance to true goal-----#
+                _, _, min_dist = utils.find_goal(y_pred, goal_true)
                 min_dist_list.append(min_dist)
                 # print("min_dist")
                 # print(min_dist)
                 # -----find goal based on prediction---#
-                goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
+                goal_pred, goal_idx, _ = utils.find_goal(y_pred, goals)
 
                 # ------plot predicted data-----------
                 import visualize
-                # input_x, origin_traj = self._accumulate_data(x_sub[0], y, x_start)
-                # _, output_y = self._accumulate_data(x_sub[0], y_pred[0], x_start)
-                # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
-                # visualize.plot_3d_seqs(x_sub[0], y_pred[0], y) # plot delta result
 
                 print("length of y:")
                 print(y.shape)
 
-                visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals, goal_pred)  # plot delta result
+                visualize.plot_dof_seqs(x_sub[0], y_pred, x_full, goals, goal_pred)  # plot delta result
                 visualize.plot_dist(min_dist_list)
                 time.sleep(2)
 
+                # #-------calculate minimum distance to true goal-----#
+                # _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
+                # min_dist_list.append(min_dist)
+                # # print("min_dist")
+                # # print(min_dist)
+                # # -----find goal based on prediction---#
+                # goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
+                #
+                # # ------plot predicted data-----------
+                # import visualize
+                #
+                # print("length of y:")
+                # print(y.shape)
+                #
+                # visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals, goal_pred)  # plot delta result
+                # visualize.plot_dist(min_dist_list)
+                # time.sleep(2)
+
 
     def _process_dataset(self, trajs):
-        xs, ys, x_lens, xs_start = [], [], [], []
+        xs, ys, x_lens, xs_start, xs_full = [], [], [], [], []
         for traj in trajs:
             for t_start in range(0, traj.x_len-self.in_timesteps_max-self.out_timesteps):
-                x, y, x_len, x_start = self._feed_one_data(traj, t_start)
+                x, y, x_len, x_start, x_full = self._feed_one_data(traj, t_start)
                 xs.append(x)
                 ys.append(y)
                 x_lens.append(x_len)
                 xs_start.append(x_start)
+                xs_full.append(x_full)
 
         xs=np.asarray(xs, dtype=np.float32)
-        # xs.reshape((len(trajs),self.in_timesteps_max, self.in_dim))
         ys=np.asarray(ys)
-        # ys.reshape((len(trajs), self.in_timesteps_max, self.out_dim))
         x_lens=np.asarray(x_lens, dtype=np.int32)
         xs_start=np.asarray(xs_start)
-        return [xs, ys, x_lens, xs_start]
+        return [xs, ys, x_lens, xs_start, xs_full]
+
 
 
     def _feed_one_data(self, data, id_start = 0):
         # X: N step; Y: N+M step
         length = data.x_len
         x_seq = data.x
+        x_full = data.x
         if length > self.in_timesteps_max:
             id_end = id_start + self.in_timesteps_max + self.out_timesteps
         else:
@@ -197,44 +213,7 @@ class Predictor(object):
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
 
-        return x, y, length, x_start
-
-
-
-        # # whole x and whole y
-        # length = data.x_len
-        # if length > self.in_timesteps_max:
-        #     x_seq = data.x[0:self.in_timesteps_max,:]
-        # else:
-        #     x_seq = data.x
-        # x_start = x_seq[0,-3:]
-        #
-        # x = x_seq[0:-1,-3:]
-        # y = x_seq[1:,-3:]
-        #
-        # x = self._padding(x, self.in_timesteps_max, 0.0)
-        # y = self._padding(y, self.in_timesteps_max, None)
-        #
-        # return x, y, length, x_start
-
-        # # X: N step; Y: N+1 step
-        # length = data.x_len
-        # x_seq = data.x
-        # if length > self.in_timesteps_max:
-        #     id_end = id_start + self.in_timesteps_max
-        # else:
-        #     id_end = length
-        #
-        # x_start = x_seq[0, -3:]
-        #
-        # x = x_seq[id_start:id_end, -3:]
-        # y = x_seq[id_end, -3:]
-        #
-        # y = np.expand_dims(y, axis=0)
-        #
-        # x = self._padding(x, self.in_timesteps_max, 0.0)
-        #
-        # return x, y, length, x_start
+        return x, y, length, x_start, x_full
 
 
     def _accumulate_data(self, delta_x, delta_y, x_start):
@@ -384,7 +363,7 @@ if __name__ == '__main__':
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(256, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
+    rnn_model = Predictor(512, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
                           model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 

@@ -173,31 +173,6 @@ class PredictRNN():
         build the rnn model
         :return:
         '''
-        # t = time.time()
-        # input_x = Input(batch_shape=(self.batch_size, None, self.in_dim))
-        # masked_x = Masking(mask_value=0.0, batch_input_shape=(self.batch_size, None, self.in_dim))(input_x)
-        #
-        # rnn_layers = []
-        #
-        # for i in range(0, self.num_layers):
-        #     if i == 0:
-        #         rnn_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
-        #                                activation = LSTM_ACT, recurrent_activation = REC_ACT, stateful = True,
-        #                               kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
-        #                               dropout = DROPOUT, name='0lstm')(inputs = masked_x))
-        #     else:
-        #         rnn_layers.append(GRU(self.num_units, return_sequences=True,return_state=True,
-        #                                activation = LSTM_ACT, recurrent_activation = REC_ACT, stateful = True,
-        #                               kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
-        #                               dropout = DROPOUT, name=str(i) + 'lstm')(inputs = rnn_layers[i - 1][0]))
-        #
-        # train_lstm = rnn_layers[-1][0]
-        # output_layer = TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT),name='output_layer')(inputs = train_lstm)
-        # self.rnn_layers = rnn_layers
-        # self.model = Model(inputs=input_x, outputs=output_layer)
-        #
-        # self.model.compile(optimizer='RMSprop',
-        #                    loss=LOSS_MODE)
 
         t = time.time()
         print('Beginning LSTM compilation')
@@ -221,10 +196,6 @@ class PredictRNN():
         modelDir = os.path.join('./pred', self.model_name)
         weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
         tfDir = os.path.join('./pred', self.model_name)
-        # print("tensorboard directory")
-        # print(tfDir)
-        # print("modelDir")
-        # print(modelDir)
 
         try:
             filename = get_weights_file(modelDir, weights_name)
