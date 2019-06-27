@@ -19,7 +19,7 @@ from create_traj_set import DatasetStru
 
 
 NUM_UNITS = 32
-NUM_LAYERS = 10
+NUM_LAYERS = 6
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
@@ -119,6 +119,13 @@ class Predictor(object):
             # print(goals)
             min_dist_list = []
 
+            # print("x")
+            # print(x)
+            # print("y")
+            # print(y)
+            #
+            # y_pred = self.inference_model.predict(X=np.expand_dims(x, axis=0), Y=None)
+
             for i in range(10,x_len,5):
                 x_sub = x[0:i,:]
                 x_sub = np.expand_dims(x_sub, axis = 0)
@@ -165,41 +172,41 @@ class Predictor(object):
         return [xs, ys, x_lens, xs_start]
 
     def _feed_one_data(self, data, id_start = 0):
-        # # whole x and whole y
-        # length = data.x_len
-        # if length > self.in_timesteps_max:
-        #     x_seq = data.x[0:self.in_timesteps_max,:]
-        # else:
-        #     x_seq = data.x
-        # x_start = x_seq[0,-3:]
-        #
-        # x = x_seq[0:-1,-3:]
-        # y = x_seq[1:,-3:]
-        #
-        # x = self._padding(x, self.in_timesteps_max, 0.0)
-        # y = self._padding(y, self.in_timesteps_max, None)
-        #
-        # return x, y, length, x_start
-
-        # X: N step; Y: N+1 step
+        # whole x and whole y
         length = data.x_len
-        x_seq = data.x
         if length > self.in_timesteps_max:
-            id_end = id_start + self.in_timesteps_max
+            x_seq = data.x[0:self.in_timesteps_max,:]
         else:
-            id_end = length
+            x_seq = data.x
+        x_start = x_seq[0,-3:]
 
-        x_start = x_seq[0, -3:]
-
-        x = x_seq[id_start:id_end, -3:]
-        y = x_seq[id_end, -3:]
-
-        y = np.expand_dims(y, axis=0)
-
+        x = x_seq[0:-1,-3:]
+        y = x_seq[1:,-3:]
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
+        y = self._padding(y, self.in_timesteps_max, None)
 
         return x, y, length, x_start
+
+        # # X: N step; Y: N+1 step
+        # length = data.x_len
+        # x_seq = data.x
+        # if length > self.in_timesteps_max:
+        #     id_end = id_start + self.in_timesteps_max
+        # else:
+        #     id_end = length
+        #
+        # x_start = x_seq[0, -3:]
+        #
+        # x = x_seq[id_start:id_end, -3:]
+        # y = x_seq[id_end, -3:]
+        #
+        # y = np.expand_dims(y, axis=0)
+        #
+        #
+        # x = self._padding(x, self.in_timesteps_max, 0.0)
+        #
+        # return x, y, length, x_start
 
 
     def _accumulate_data(self, delta_x, delta_y, x_start):

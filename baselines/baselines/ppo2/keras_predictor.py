@@ -132,7 +132,7 @@ class TrainRNN():
         tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
                                  write_graph = True, write_images = True)
         saveCb = ModelCheckpoint( os.path.join(modelDir, weights_name), monitor='val_loss', verbose=0, save_best_only=False,
-                                        save_weights_only=False, mode='auto', period=40)
+                                        save_weights_only=False, mode='auto', period=2)
 
         # Perform batch training with epochs
         t=time.time()
@@ -211,7 +211,7 @@ class PredictRNN():
                                              stateful = True,
                                       kernel_regularizer=regularizers.l2(0.01), bias_initializer = BIAS_REG,
                                       dropout=DROPOUT)))
-        self.model.add(TimeDistributed(Dense(self.out_dim, activation=OUTPUT_ACT, bias_initializer=BIAS_REG)))
+        self.model.add(Dense(self.out_dim, activation=OUTPUT_ACT, bias_initializer=BIAS_REG))
         self.model.compile(optimizer='RMSprop',
                            loss=LOSS_MODE)
         print('Completed prediction model compilation in %.3f seconds' % (time.time() - t))
@@ -259,13 +259,16 @@ class PredictRNN():
 
         initial_output = self.model.predict(inputs, batch_size=self.batch_size)
         # predict_result = np.copy(initial_output)
-        predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
+        # predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
+        predict_result = np.concatenate( (inputs, initial_output) )
 
         print("inputs")
         print(inputs)
         if Y is not None:
             print("Y:")
             print(Y)
+        print("initial_output")
+        print(initial_output)
         print("predict result")
         print(predict_result)
 
