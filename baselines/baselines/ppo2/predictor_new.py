@@ -123,10 +123,14 @@ class Predictor(object):
             # print(x)
             # print("y")
             # print(y)
-            #
+
             # y_pred = self.inference_model.predict(X=np.expand_dims(x, axis=0), Y=None)
 
+            print("new!!!")
+
             for i in range(10,x_len,5):
+                print("hahahaha")
+                print(i)
                 x_sub = x[0:i,:]
                 x_sub = np.expand_dims(x_sub, axis = 0)
                 y_sub = y[0:i,:]
@@ -148,9 +152,12 @@ class Predictor(object):
                 # visualize.plot_3d_seqs(input_x, origin_traj, output_y)
                 # visualize.plot_3d_seqs(x_sub[0], y_pred[0], y) # plot delta result
 
+                print("length of y:")
+                print(y.shape)
+
                 visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals, goal_pred)  # plot delta result
                 visualize.plot_dist(min_dist_list)
-                time.sleep(20)
+                time.sleep(2)
 
 
     def _process_dataset(self, trajs):

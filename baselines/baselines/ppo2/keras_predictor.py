@@ -259,8 +259,8 @@ class PredictRNN():
 
         initial_output = self.model.predict(inputs, batch_size=self.batch_size)
         # predict_result = np.copy(initial_output)
-        # predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
-        predict_result = np.concatenate( (inputs, initial_output) )
+        predict_result = np.concatenate( (np.expand_dims(inputs[:,0,:], axis=1), initial_output), axis=1)
+        # predict_result = np.concatenate( (inputs, initial_output) )
 
         print("inputs")
         print(inputs)
