@@ -14,12 +14,13 @@ from matplotlib.font_manager import FontProperties
 from tqdm import tqdm
 
 import utils
-import keras_predictor as KP
+# import keras_predictor as KP
+import keras_seq2seq as KP
 from create_traj_set import DatasetStru
 
 
 NUM_UNITS = 32
-NUM_LAYERS = 6
+NUM_LAYERS = 3
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
@@ -53,11 +54,11 @@ class Predictor(object):
         self.x_var = np.zeros(self.in_dim)
 
         self.train_model = KP.TrainRNN(self.batch_size,
-                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers, load=load,
+                                       self.in_dim, self.out_dim, self.out_timesteps, self.num_units, num_layers=self.num_layers, load=load,
                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(1,
-                                       self.in_dim, self.out_dim, self.num_units, num_layers=self.num_layers,
+                                       self.in_dim, self.out_dim, self.out_timesteps, self.num_units, num_layers=self.num_layers,
                                         out_steps = out_max_timestep, model_name = model_name)
         if load:
             self.train_model.load_model()
@@ -163,7 +164,7 @@ class Predictor(object):
     def _process_dataset(self, trajs):
         xs, ys, x_lens, xs_start = [], [], [], []
         for traj in trajs:
-            for t_start in range(0, traj.x_len-self.in_timesteps_max):
+            for t_start in range(0, traj.x_len-self.in_timesteps_max-self.out_timesteps):
                 x, y, x_len, x_start = self._feed_one_data(traj, t_start)
                 xs.append(x)
                 ys.append(y)
@@ -178,22 +179,43 @@ class Predictor(object):
         xs_start=np.asarray(xs_start)
         return [xs, ys, x_lens, xs_start]
 
-    def _feed_one_data(self, data, id_start = 0):
-        # whole x and whole y
-        length = data.x_len
-        if length > self.in_timesteps_max:
-            x_seq = data.x[0:self.in_timesteps_max,:]
-        else:
-            x_seq = data.x
-        x_start = x_seq[0,-3:]
 
-        x = x_seq[0:-1,-3:]
-        y = x_seq[1:,-3:]
+    def _feed_one_data(self, data, id_start = 0):
+        # X: N step; Y: N+M step
+        length = data.x_len
+        x_seq = data.x
+        if length > self.in_timesteps_max:
+            id_end = id_start + self.in_timesteps_max + self.out_timesteps
+        else:
+            id_end = length
+
+        x_start = x_seq[0, -3:]
+
+        x = x_seq[id_start:id_start+self.in_timesteps_max, -3:]
+        y = x_seq[id_start+self.in_timesteps_max:id_end, -3:]
+
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
-        y = self._padding(y, self.in_timesteps_max, None)
 
         return x, y, length, x_start
+
+
+
+        # # whole x and whole y
+        # length = data.x_len
+        # if length > self.in_timesteps_max:
+        #     x_seq = data.x[0:self.in_timesteps_max,:]
+        # else:
+        #     x_seq = data.x
+        # x_start = x_seq[0,-3:]
+        #
+        # x = x_seq[0:-1,-3:]
+        # y = x_seq[1:,-3:]
+        #
+        # x = self._padding(x, self.in_timesteps_max, 0.0)
+        # y = self._padding(y, self.in_timesteps_max, None)
+        #
+        # return x, y, length, x_start
 
         # # X: N step; Y: N+1 step
         # length = data.x_len
@@ -209,7 +231,6 @@ class Predictor(object):
         # y = x_seq[id_end, -3:]
         #
         # y = np.expand_dims(y, axis=0)
-        #
         #
         # x = self._padding(x, self.in_timesteps_max, 0.0)
         #
