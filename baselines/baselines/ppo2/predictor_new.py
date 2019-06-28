@@ -19,11 +19,11 @@ import keras_seq2seq as KP
 from create_traj_set import DatasetStru
 
 
-NUM_UNITS = 32
-NUM_LAYERS = 8
+NUM_UNITS = 64
+NUM_LAYERS = 3
 
 class Predictor(object):
-    def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
+    def __init__(self, batch_size, in_max_timestep, out_timesteps, train_flag,
                  epoch=20, iter_start=0,
                  lr=0.001, load=False, model_name="test"):
         ## extract FLAGS
@@ -36,7 +36,7 @@ class Predictor(object):
 
         self.batch_size = batch_size
         self.in_timesteps_max = in_max_timestep
-        self.out_timesteps = out_max_timestep
+        self.out_timesteps = out_timesteps
 
         self.train_flag = train_flag
         self.epochs = epoch
@@ -58,8 +58,8 @@ class Predictor(object):
                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(1,
-                                       self.in_dim, self.out_dim, self.out_timesteps, self.num_units, num_layers=self.num_layers,
-                                        out_steps = out_max_timestep, model_name = model_name)
+                                       self.in_dim, self.out_dim, 200, self.num_units, num_layers=self.num_layers,
+                                    model_name = model_name)
         if load:
             self.train_model.load_model()
 
@@ -356,7 +356,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=5, type=int)
+    parser.add_argument('--epoch', default=3, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -365,12 +365,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=10
+    out_steps=50
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(512, in_max_timestep=30, out_max_timestep=out_steps, train_flag=True, epoch=args.epoch,
+    rnn_model = Predictor(512, in_max_timestep=50, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
                           model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 
