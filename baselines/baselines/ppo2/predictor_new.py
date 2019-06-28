@@ -19,8 +19,8 @@ import keras_seq2seq as KP
 from create_traj_set import DatasetStru
 
 
-NUM_UNITS = 64
-NUM_LAYERS = 3
+NUM_UNITS = 100
+NUM_LAYERS = 2
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_timesteps, train_flag,
@@ -103,7 +103,7 @@ class Predictor(object):
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         # for x in valid_set[0]:
-        for idx in range(len(valid_set[0])):
+        for idx in range(0,len(valid_set[0]), 10):
             print("idx")
             print(idx)
             x = valid_set[0][idx]
@@ -112,19 +112,12 @@ class Predictor(object):
             x_start = valid_set[3][idx]
             x_full = valid_set[4][idx]
 
-            # todo: get random goal; normalized by mean_std
             goals = utils.GetRandomGoal(self.out_dim)
-            goals.append(y[-1])
-            goal_true = [y[-1]]
+            goals.append(x_full[-1])
+            goal_true = [x_full[-1]]
 
-            # print("goals: ")
-            # print(goals)
             min_dist_list = []
 
-            # print("x")
-            # print(x)
-            # print("y")
-            # print(y)
 
             # y_pred = self.inference_model.predict(X=np.expand_dims(x, axis=0), Y=None)
 
@@ -164,23 +157,6 @@ class Predictor(object):
                 visualize.plot_dist(min_dist_list)
                 time.sleep(2)
 
-                # #-------calculate minimum distance to true goal-----#
-                # _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
-                # min_dist_list.append(min_dist)
-                # # print("min_dist")
-                # # print(min_dist)
-                # # -----find goal based on prediction---#
-                # goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
-                #
-                # # ------plot predicted data-----------
-                # import visualize
-                #
-                # print("length of y:")
-                # print(y.shape)
-                #
-                # visualize.plot_dof_seqs(x_sub[0], y_pred[0], y, goals, goal_pred)  # plot delta result
-                # visualize.plot_dist(min_dist_list)
-                # time.sleep(2)
 
 
     def _process_dataset(self, trajs):
@@ -365,12 +341,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=50
+    out_steps=30
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(512, in_max_timestep=50, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
+    rnn_model = Predictor(1024, in_max_timestep=30, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
                           model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 

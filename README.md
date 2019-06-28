@@ -2,9 +2,9 @@
 
 ---
 ## Details need to be determinted
++ change loss function (reference to huzhe's code)
 + Analysis the performance of predictor training
 + Unify the coordinate of mujoco and ros fetch simulation
-+ Batch prediction on validation step in keras api based predictor
 + joint training
 
 ---

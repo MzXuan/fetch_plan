@@ -351,7 +351,6 @@ def CreateSeqs(batch_size):
     data1 = np.random.random(size=(batch_size*10, 100, 3))  # batch_size = 1, timespan = 100
     x=data1
     y=data1
-    # print([data1][0].shape) # (1, 20)
     return x,y
 
 
@@ -370,4 +369,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-# padding sequence and prepare to cut it
