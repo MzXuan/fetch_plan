@@ -50,11 +50,23 @@ def recurrent_neural_network(inputs, w, b):
     cell = tf.contrib.rnn.MultiRNNCell([gru_cell() for _ in range(layers)])
     att_cell = tf.contrib.rnn.AttentionCellWrapper(cell, attn_length = 30)
 
-    outputs, last_State = tf.nn.dynamic_rnn(att_cell, inputs, dtype = tf.float32, scope = "dynamic_rnn")
-    outputs = tf.transpose(outputs, [1, 0, 2])
-    last_output = tf.gather(outputs, 1, name="last_output")
-    
-    prediction = tf.matmul(last_output, w) + b
+    prediction = []
+    in_seq = inputs
+    ini_state = None
+    for _ in range(5):
+
+        outputs, last_State = tf.nn.dynamic_rnn(att_cell, inputs = in_seq, initial_state = ini_state, dtype = tf.float32, scope = "dynamic_rnn")
+
+        outputs = tf.transpose(outputs, [1, 0, 2])
+        last_output = tf.gather(outputs, 1, name="last_output")
+
+        pred = tf.matmul(last_output, w) + b
+
+        in_seq = outputs
+        ini_state = last_State
+
+        prediction.append(pred)
+
     return prediction
 
 '''
@@ -69,7 +81,6 @@ def train_neural_network(inputs):
     #print(prediction.shape)
     #print(tf.reduce_sum(prediction - targets, 0).shape)
     cost = tf.reduce_sum(tf.square(tf.norm(prediction - targets, ord='euclidean', axis=1)))
-    #cost = tf.square(tf.norm(tf.reduce_sum(prediction - targets, 0)))      # prediction: (len,2)
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
     
     with tf.Session() as sess:

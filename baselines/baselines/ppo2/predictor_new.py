@@ -20,7 +20,7 @@ from create_traj_set import DatasetStru
 
 
 NUM_UNITS = 32
-NUM_LAYERS = 5
+NUM_LAYERS = 8
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_max_timestep, train_flag,
@@ -132,12 +132,18 @@ class Predictor(object):
 
             for i in range(10,x_len,5):
                 # print("hahahaha")
-                print(i)
+
                 x_sub = x_full[0:i,:]
                 x_sub = np.expand_dims(x_sub, axis = 0)
                 y_sub = x_full[0:i,:]
                 y_sub = np.expand_dims(y_sub, axis = 0)
+
+                print(i)
+                print("inputx")
+                print(x_sub)
+
                 y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
+
 
 
                 # -------calculate minimum distance to true goal-----#
@@ -350,7 +356,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=50, type=int)
+    parser.add_argument('--epoch', default=5, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
