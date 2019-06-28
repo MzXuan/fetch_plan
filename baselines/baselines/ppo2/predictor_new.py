@@ -133,19 +133,20 @@ class Predictor(object):
             for i in range(10,x_len,5):
                 # print("hahahaha")
                 print(i)
-                x_sub = x[0:i,:]
+                x_sub = x_full[0:i,:]
                 x_sub = np.expand_dims(x_sub, axis = 0)
-                y_sub = y[0:i,:]
+                y_sub = x_full[0:i,:]
                 y_sub = np.expand_dims(y_sub, axis = 0)
                 y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
 
+
                 # -------calculate minimum distance to true goal-----#
-                _, _, min_dist = utils.find_goal(y_pred, goal_true)
+                _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
                 min_dist_list.append(min_dist)
                 # print("min_dist")
                 # print(min_dist)
                 # -----find goal based on prediction---#
-                goal_pred, goal_idx, _ = utils.find_goal(y_pred, goals)
+                goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
 
                 # ------plot predicted data-----------
                 import visualize
@@ -153,7 +154,7 @@ class Predictor(object):
                 print("length of y:")
                 print(y.shape)
 
-                visualize.plot_dof_seqs(x_sub[0], y_pred, x_full, goals, goal_pred)  # plot delta result
+                visualize.plot_dof_seqs(x_sub[0], y_pred[0], x_full, goals, goal_pred)  # plot delta result
                 visualize.plot_dist(min_dist_list)
                 time.sleep(2)
 
@@ -358,7 +359,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=5
+    out_steps=10
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
