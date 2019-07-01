@@ -9,7 +9,7 @@ class InitParameter():
 
         self.in_dim = 10
         self.out_dim = 10
-        self.in_timesteps_max = 40
+        self.in_timesteps_max = 100
         self.learning_rate = 1e-3
 
         self.validation_interval = 50

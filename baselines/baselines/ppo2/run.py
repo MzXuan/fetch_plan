@@ -3,7 +3,7 @@ import os, sys
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import numpy as np
-from baselines import bench, logger
+from baselines import logger, bench
 
 def train(env_id, num_timesteps, seed, d_targ, load, point,
           pred_weight=0.01, ent_coef=0.0):
