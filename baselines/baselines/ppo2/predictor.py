@@ -19,8 +19,10 @@ import keras_seq2seq as KP
 from create_traj_set import DatasetStru
 
 
-NUM_UNITS = 100
-NUM_LAYERS = 2
+NUM_UNITS = 50
+NUM_LAYERS = 3
+
+
 
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_timesteps, train_flag,
@@ -103,9 +105,10 @@ class Predictor(object):
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         # for x in valid_set[0]:
-        for idx in range(0,len(valid_set[0]), 10):
-            print("idx")
-            print(idx)
+
+        for idx in range(1,len(valid_set[0]), 10):
+            if valid_set[4][idx] is valid_set[4][idx-1]:
+                continue
             x = valid_set[0][idx]
             y = valid_set[1][idx]
             x_len = valid_set[2][idx]
@@ -121,7 +124,7 @@ class Predictor(object):
 
             # y_pred = self.inference_model.predict(X=np.expand_dims(x, axis=0), Y=None)
 
-            # print("new!!!")
+            print("test new trajectory!!!")
 
             for i in range(10,x_len,5):
                 # print("hahahaha")
@@ -131,13 +134,7 @@ class Predictor(object):
                 y_sub = x_full[0:i,:]
                 y_sub = np.expand_dims(y_sub, axis = 0)
 
-                print(i)
-                print("inputx")
-                print(x_sub)
-
                 y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
-
-
 
                 # -------calculate minimum distance to true goal-----#
                 _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
@@ -150,8 +147,8 @@ class Predictor(object):
                 # ------plot predicted data-----------
                 import visualize
 
-                print("length of y:")
-                print(y.shape)
+                # print("length of y:")
+                # print(y.shape)
 
                 visualize.plot_dof_seqs(x_sub[0], y_pred[0], x_full, goals, goal_pred)  # plot delta result
                 visualize.plot_dist(min_dist_list)
@@ -332,7 +329,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=3, type=int)
+    parser.add_argument('--epoch', default=5, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)

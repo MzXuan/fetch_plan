@@ -2,23 +2,18 @@ import os, sys, time, glob
 import numpy as np
 
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
+import tensorflow as tf
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Input, LSTM, Dense, Masking, TimeDistributed, GRU, Bidirectional
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
-from tensorflow.keras import regularizers
 
 from tensorflow.keras.layers import Lambda
 from tensorflow.keras import backend as K
-from datetime import datetime
 
 
-epochs = 100  # Number of epochs to train for.
-LSTM_ACT = 'tanh'
-REC_ACT = 'hard_sigmoid'
-OUTPUT_ACT = 'linear'
-LOSS_MODE = 'mean_squared_error'
-BIAS_REG = 'random_uniform'
-DROPOUT = 0.1
+
+
 
 def get_weights_file(checkpoint_path, file_name=None):
     #todo: get latest checkpoint file in this folder
@@ -27,6 +22,20 @@ def get_weights_file(checkpoint_path, file_name=None):
 
     return latest_file
 
+def mean_absolute_error_custome(y_true, y_pred):
+    # return K.mean(K.abs(y_pred - y_true), axis=-1)
+    return tf.reduce_sum(tf.square(tf.norm(y_pred - y_true, ord='euclidean', axis=1)))
+
+
+# epochs = 100  # Number of epochs to train for.
+LSTM_ACT = 'tanh'
+REC_ACT = 'hard_sigmoid'
+OUTPUT_ACT = 'linear'
+# LOSS_MODE = 'mean_squared_error'
+LOSS_MODE = mean_absolute_error_custome
+BIAS_REG = 'random_uniform'
+
+DROPOUT = 0.1
 
 class TrainRNN():
 
@@ -325,9 +334,9 @@ class PredictRNN():
             # Update the target sequence (of length 1).
             target_seq = np.zeros((1, 1, self.out_dim))
             target_seq[0, 0, :] = output_seq
-
-            print("target_seq")
-            print(target_seq)
+            #
+            # print("target_seq")
+            # print(target_seq)
 
             # # Update states
             states_value = output_result[1:]
