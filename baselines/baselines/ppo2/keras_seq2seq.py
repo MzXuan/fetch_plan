@@ -8,6 +8,8 @@ from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Input, LSTM, Dense, Masking, TimeDistributed, GRU, Bidirectional
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 
+from attention import AttentionLayer
+
 from tensorflow.keras.layers import Lambda
 from tensorflow.keras import backend as K
 
@@ -37,9 +39,12 @@ BIAS_REG = 'random_uniform'
 
 DROPOUT = 0.1
 
+
+
+
 class TrainRNN():
 
-    def __init__(self, batch_size, in_dim, out_dim, out_timesteps, num_units, num_layers=1,
+    def __init__(self, batch_size, in_dim, out_dim, in_timesteps , out_timesteps, num_units, num_layers=1,
                  directories="./pred", model_name="test", load=False):
         '''
         initialize my rnn model
@@ -57,6 +62,7 @@ class TrainRNN():
         self.model_name = model_name
         self.load = load
 
+        self.in_timesteps = in_timesteps
         self.max_outsteps = out_timesteps
 
         self._build_model()
@@ -76,7 +82,7 @@ class TrainRNN():
 
         # enc
         enc_layers = []
-        encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
+        encoder_inputs = Input(shape=(self.in_timesteps, self.in_dim), name="enc_inputs")
         for i in range(0, self.num_layers):
             if i == 0:
                 enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
@@ -87,15 +93,19 @@ class TrainRNN():
                                        name="enc_"+str(i)+"lstm")(
                                 inputs = enc_layers[i - 1][0]))
                 dec_ini_states += [enc_layers[i][1], enc_layers[i][2]]
+        enc_output = enc_layers[-1][0]
 
 
-
+        #dec
         dec_layers = []
+
         # Set up the decoder, which will only process one timestep at a time.
         decoder_inputs = Input(shape=(1, self.out_dim), name = 'dec_input')
         for i in range(self.num_layers):
             dec_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True, name="dec_"+str(i)+"lstm"))
         decoder_dense = Dense(self.out_dim, activation=OUTPUT_ACT, name='outputs')
+        #att
+        attn_layer = AttentionLayer(name="atten")
 
         all_outputs = []
         inputs = decoder_inputs
@@ -114,7 +124,19 @@ class TrainRNN():
                 dec_ini_states[2*i] = dec_layers_outputs[i][1]
                 dec_ini_states[2*i+1] = dec_layers_outputs[i][2]
 
-            inputs = decoder_dense(dec_layers_outputs[-1][0])
+
+            #for attention
+
+            dec_h = dec_layers_outputs[-1][0]
+
+            attn_out, attn_states = attn_layer([enc_output, dec_h])
+
+            inputs = decoder_dense(attn_out)
+
+
+
+            # inputs = decoder_dense(dec_layers_outputs[-1][0])
+
             all_outputs.append(inputs)
 
         # Concatenate all predictions
