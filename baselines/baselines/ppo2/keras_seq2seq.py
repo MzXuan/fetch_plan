@@ -210,7 +210,8 @@ class TrainRNN():
             self.model.load_weights(filename, by_name=True)
             print("load model {} successfully".format(filename))
         except:
-            print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            print("failed to load model {}, "
+                  "please check the checkpoint directory... use default initialization setting".format(filename))
 
 
 
