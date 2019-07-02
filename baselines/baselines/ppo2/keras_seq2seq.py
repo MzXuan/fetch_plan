@@ -94,7 +94,8 @@ class TrainRNN():
                                 inputs = enc_layers[i - 1][0]))
                 dec_ini_states += [enc_layers[i][1], enc_layers[i][2]]
         enc_output = enc_layers[-1][0]
-
+        print("enc_output layer")
+        print(enc_output.shape)
 
         #dec
         dec_layers = []
@@ -128,11 +129,8 @@ class TrainRNN():
             #for attention
 
             dec_h = dec_layers_outputs[-1][0]
-
             attn_out, attn_states = attn_layer([enc_output, dec_h])
-
             inputs = decoder_dense(attn_out)
-
 
 
             # inputs = decoder_dense(dec_layers_outputs[-1][0])
@@ -218,7 +216,7 @@ class TrainRNN():
 
 
 class PredictRNN():
-    def __init__(self, batch_size, in_dim, out_dim, out_timesteps, num_units, num_layers=1, out_steps=100,
+    def __init__(self, batch_size, in_dim, out_dim, in_timesteps, out_timesteps, num_units, num_layers=1, out_steps=100,
                  directories="./pred", model_name="test"):
         '''
         initialize my rnn model
@@ -234,6 +232,8 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
+
+        self.in_timesteps = in_timesteps
         self.max_outsteps=out_timesteps
 
 
@@ -250,7 +250,7 @@ class PredictRNN():
 
         # The first part is unchanged
         enc_layers = []
-        encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
+        encoder_inputs = Input(shape=(self.in_timesteps, self.in_dim), name="enc_inputs")
         for i in range(0,self.num_layers):
             if i == 0:
                 enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
@@ -261,16 +261,19 @@ class PredictRNN():
                                        name="enc_"+str(i)+"lstm")(
                                 inputs = enc_layers[i - 1][0]))
                 enc_states += [enc_layers[i][1], enc_layers[i][2]]
+        enc_output = [enc_layers[-1][0]]
 
 
-        self.encoder_model = Model(encoder_inputs, enc_states)
+        self.encoder_model = Model(encoder_inputs, enc_output + enc_states)
 
         # Set up the decoder, which will only process one timestep at a time.
         dec_layers = []
         decoder_inputs = Input(shape=(1, self.out_dim), name = 'dec_input')
         decoder_states_inputs = [Input(shape=(self.num_units,)) for _ in range(2*self.num_layers)]
 
-
+        enc_output = Input(shape=(self.in_timesteps, self.num_units))
+        #att
+        attn_layer = AttentionLayer(name="atten")
 
         for i in range(0,self.num_layers):
             if i == 0:
@@ -286,11 +289,14 @@ class PredictRNN():
 
         decoder_dense = Dense(self.out_dim, activation=OUTPUT_ACT, name='outputs')
 
-        # decorder
+
+
+        # decorder && attention
         decoder_outputs, state_h, state_c = dec_layers[-1]
-        decoder_outputs = decoder_dense(decoder_outputs)
+        attn_out, attn_states = attn_layer([enc_output, decoder_outputs])
+        decoder_outputs = decoder_dense(attn_out)
         self.decoder_model = Model(
-            [decoder_inputs] + decoder_states_inputs,
+            [decoder_inputs] + [enc_output] + decoder_states_inputs,
             [decoder_outputs] + dec_states)
 
         print('Completed training model compilation in %.3f seconds' % (time.time() - t))
@@ -331,7 +337,7 @@ class PredictRNN():
         print("inputs")
         print(input)
 
-        states_value = self.encoder_model.predict(inputs)
+        enc_output_result = self.encoder_model.predict(inputs)
 
         # Generate empty target sequence of length 1.
         target_seq = np.zeros((1, 1, self.out_dim))
@@ -343,10 +349,12 @@ class PredictRNN():
         stop_condition = False
         decoded_sequence =[]
 
+        enc_output = enc_output_result[0]
+        states_value = enc_output_result[1:]
 
         while not stop_condition:
             output_result = self.decoder_model.predict(
-                [target_seq] + states_value)
+                [target_seq] + [enc_output] + states_value)
 
             output_seq = output_result[0]
 

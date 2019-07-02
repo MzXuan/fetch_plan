@@ -60,7 +60,7 @@ class Predictor(object):
                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(1,
-                                       self.in_dim, self.out_dim, 200, self.num_units, num_layers=self.num_layers,
+                                       self.in_dim, self.out_dim, self.in_timesteps_max, 200, self.num_units, num_layers=self.num_layers,
                                     model_name = model_name)
         if load:
             self.train_model.load_model()
@@ -107,52 +107,53 @@ class Predictor(object):
         # for x in valid_set[0]:
 
         for idx in range(1,len(valid_set[0]), 10):
-            if valid_set[4][idx] is valid_set[4][idx-1]:
-                continue
-            x = valid_set[0][idx]
-            y = valid_set[1][idx]
-            x_len = valid_set[2][idx]
-            x_start = valid_set[3][idx]
             x_full = valid_set[4][idx]
 
-            goals = utils.GetRandomGoal(self.out_dim)
-            goals.append(x_full[-1])
-            goal_true = [x_full[-1]]
+            if idx == 1 or valid_set[4][idx] is not valid_set[4][idx-1]:
+                min_dist_list = []
+                goals = utils.GetRandomGoal(self.out_dim)
+                goals.append(x_full[-1])
+                goal_true = [x_full[-1]]
 
-            min_dist_list = []
 
 
-            # y_pred = self.inference_model.predict(X=np.expand_dims(x, axis=0), Y=None)
 
-            print("test new trajectory!!!")
+            x = np.expand_dims(valid_set[0][idx], axis=0)
+            y = np.expand_dims(valid_set[1][idx], axis=0)
+            x_len = valid_set[2][idx]
+            x_start = valid_set[3][idx]
 
-            for i in range(10,x_len,5):
-                # print("hahahaha")
+            y_pred = self.inference_model.predict(X=x, Y=y)
 
-                x_sub = x_full[0:i,:]
-                x_sub = np.expand_dims(x_sub, axis = 0)
-                y_sub = x_full[0:i,:]
-                y_sub = np.expand_dims(y_sub, axis = 0)
+            # -------calculate minimum distance to true goal-----#
+            _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
+            min_dist_list.append(min_dist)
+            # print("min_dist")
+            # print(min_dist)
+            # -----find goal based on prediction---#
+            goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
 
-                y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
+            # ------plot predicted data-----------
+            import visualize
 
-                # -------calculate minimum distance to true goal-----#
-                _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
-                min_dist_list.append(min_dist)
-                # print("min_dist")
-                # print(min_dist)
-                # -----find goal based on prediction---#
-                goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
+            x_s = x[0][0]
+            for idx, point in enumerate(x_full):
+                if np.linalg.norm(x_s-point) < (1e-6):
+                    print("idx")
+                    print(idx)
+                    break
 
-                # ------plot predicted data-----------
-                import visualize
+            # print("idx_result")
+            # print(result)
+            # show_x = x_full[0:result[0]]
 
-                # print("length of y:")
-                # print(y.shape)
+            show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
+            show_y = np.concatenate((x_full[:idx], y_pred[0]), axis=0)
 
-                visualize.plot_dof_seqs(x_sub[0], y_pred[0], x_full, goals, goal_pred)  # plot delta result
-                visualize.plot_dist(min_dist_list)
-                time.sleep(2)
+            visualize.plot_dof_seqs(show_x, show_y, x_full, goals, goal_pred)  # plot delta result
+            visualize.plot_dist(min_dist_list)
+            time.sleep(2)
+
 
 
 
