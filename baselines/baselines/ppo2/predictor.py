@@ -139,13 +139,8 @@ class Predictor(object):
             x_s = x[0][0]
             for idx, point in enumerate(x_full):
                 if np.linalg.norm(x_s-point) < (1e-6):
-                    print("idx")
-                    print(idx)
                     break
 
-            # print("idx_result")
-            # print(result)
-            # show_x = x_full[0:result[0]]
 
             show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
             show_y = np.concatenate((x_full[:idx], y_pred[0]), axis=0)
@@ -346,7 +341,7 @@ if __name__ == '__main__':
 
     rnn_model = Predictor(1024, in_max_timestep=30, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
-                          model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
+                          model_name="att_{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 
     # rnn_model.plot_dataset()
 
