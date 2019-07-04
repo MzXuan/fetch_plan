@@ -131,10 +131,6 @@ class TrainRNN():
             dec_h = dec_layers_outputs[-1][0]
             attn_out, attn_states = attn_layer([enc_output, dec_h])
             inputs = decoder_dense(attn_out)
-
-
-            # inputs = decoder_dense(dec_layers_outputs[-1][0])
-
             all_outputs.append(inputs)
 
         # Concatenate all predictions
@@ -365,9 +361,6 @@ class PredictRNN():
             # Update the target sequence (of length 1).
             target_seq = np.zeros((1, 1, self.out_dim))
             target_seq[0, 0, :] = output_seq
-            #
-            # print("target_seq")
-            # print(target_seq)
 
             # # Update states
             states_value = output_result[1:]

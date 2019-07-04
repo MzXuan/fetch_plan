@@ -17,6 +17,7 @@ class AttentionLayer(Layer):
         assert isinstance(input_shape, list)
         # Create a trainable weight variable for this layer.
 
+
         self.W_a = self.add_weight(name='W_a',
                                    shape=tf.TensorShape((input_shape[0][2], input_shape[0][2])),
                                    initializer='uniform',
@@ -75,7 +76,9 @@ class AttentionLayer(Layer):
             # <= batch_size, en_seq_len
             e_i = K.reshape(K.dot(reshaped_Ws_plus_Uh, self.V_a), (-1, en_seq_len))
             # <= batch_size, en_seq_len
-            e_i = K.softmax(e_i)
+            # e_i = K.softmax(e_i)
+
+            e_i = K.hard_sigmoid(e_i)
 
             if verbose:
                 print('ei>', e_i.shape)

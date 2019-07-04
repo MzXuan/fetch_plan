@@ -104,18 +104,19 @@ class Predictor(object):
 
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
+        last_traj = []
         # for x in valid_set[0]:
 
         for idx in range(1,len(valid_set[0]), 10):
             x_full = valid_set[4][idx]
 
-            if idx == 1 or valid_set[4][idx] is not valid_set[4][idx-1]:
+            if idx == 1 or (valid_set[4][idx] is not last_traj):
+                print("update to new dataset")
                 min_dist_list = []
                 goals = utils.GetRandomGoal(self.out_dim)
                 goals.append(x_full[-1])
                 goal_true = [x_full[-1]]
-
-
+            last_traj = valid_set[4][idx]
 
 
             x = np.expand_dims(valid_set[0][idx], axis=0)
@@ -325,7 +326,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=15, type=int)
+    parser.add_argument('--epoch', default=5, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -334,14 +335,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=30
+    out_steps=50
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
     rnn_model = Predictor(1024, in_max_timestep=30, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
-                          model_name="att_{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
+                          model_name="att_{}_{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS, out_steps))
 
     # rnn_model.plot_dataset()
 
