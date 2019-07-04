@@ -154,7 +154,7 @@ def plot_dist(dist_list):
     plt.ion()
     plt.clf()
 
-    plt.ylim(0,1.5)
+    plt.ylim(0,2)
 
     plt.title("distance")
     time_step= range(0,len(dist_list))

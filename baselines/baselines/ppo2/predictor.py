@@ -60,7 +60,7 @@ class Predictor(object):
                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(1,
-                                       self.in_dim, self.out_dim, 200, self.num_units, num_layers=self.num_layers,
+                                       self.in_dim, self.out_dim, self.in_timesteps_max, self.num_units, num_layers=self.num_layers,
                                     model_name = model_name)
         if load:
             self.train_model.load_model()

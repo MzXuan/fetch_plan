@@ -196,7 +196,7 @@ class TrainRNN():
 
 
 class PredictRNN():
-    def __init__(self, batch_size, in_dim, out_dim, out_timesteps, num_units, num_layers=1, out_steps=100,
+    def __init__(self, batch_size, in_dim, out_dim, in_timesteps, num_units, num_layers=1, out_steps=100,
                  directories="./pred", model_name="test"):
         '''
         initialize my rnn model
@@ -212,7 +212,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_outsteps=out_timesteps
+        self.max_outsteps=4*in_timesteps
 
 
         self._build_model()
