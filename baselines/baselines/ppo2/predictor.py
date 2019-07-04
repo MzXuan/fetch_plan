@@ -20,7 +20,7 @@ from create_traj_set import DatasetStru
 
 
 NUM_UNITS = 50
-NUM_LAYERS = 3
+NUM_LAYERS = 2
 
 
 
@@ -60,7 +60,7 @@ class Predictor(object):
                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(1,
-                                       self.in_dim, self.out_dim, self.in_timesteps_max, 200, self.num_units, num_layers=self.num_layers,
+                                       self.in_dim, self.out_dim, self.in_timesteps_max, self.out_timesteps, self.num_units, num_layers=self.num_layers,
                                     model_name = model_name)
         if load:
             self.train_model.load_model()
@@ -107,7 +107,7 @@ class Predictor(object):
         last_traj = []
         # for x in valid_set[0]:
 
-        for idx in range(1,len(valid_set[0]), 10):
+        for idx in range(230,len(valid_set[0]), 10):
             x_full = valid_set[4][idx]
 
             if idx == 1 or (valid_set[4][idx] is not last_traj):
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=50
+    out_steps=30
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")

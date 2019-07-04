@@ -28,6 +28,9 @@ def mean_absolute_error_custome(y_true, y_pred):
     # return K.mean(K.abs(y_pred - y_true), axis=-1)
     return tf.reduce_sum(tf.square(tf.norm(y_pred - y_true, ord='euclidean', axis=1)))
 
+def slice_layer(x):
+    return x[:,1:,:]
+
 
 # epochs = 100  # Number of epochs to train for.
 LSTM_ACT = 'tanh'
@@ -94,8 +97,6 @@ class TrainRNN():
                                 inputs = enc_layers[i - 1][0]))
                 dec_ini_states += [enc_layers[i][1], enc_layers[i][2]]
         enc_output = enc_layers[-1][0]
-        print("enc_output layer")
-        print(enc_output.shape)
 
         #dec
         dec_layers = []
@@ -110,7 +111,7 @@ class TrainRNN():
 
         all_outputs = []
         inputs = decoder_inputs
-        for _ in range(self.max_outsteps):
+        for steps in range(self.max_outsteps):
             dec_layers_outputs = []
             # Run the decoder on one timestep
             for i, dec_layer in enumerate(dec_layers):
@@ -125,16 +126,25 @@ class TrainRNN():
                 dec_ini_states[2*i] = dec_layers_outputs[i][1]
                 dec_ini_states[2*i+1] = dec_layers_outputs[i][2]
 
-
-            #for attention
-
             dec_h = dec_layers_outputs[-1][0]
             attn_out, attn_states = attn_layer([enc_output, dec_h])
+            #output
             inputs = decoder_dense(attn_out)
             all_outputs.append(inputs)
 
+
+            # # for attention update, send output to new attention enc states
+            # enc_output = Lambda(slice_layer)(enc_output)
+            # enc_output = tf.keras.layers.concatenate([enc_output, dec_h], axis=1)
+
+
         # Concatenate all predictions
         decoder_outputs = Lambda(lambda x: K.concatenate(x, axis=1))(all_outputs)
+
+        print("decoder_outputs")
+        print(decoder_outputs)
+
+
 
         # Define and compile model as previously
         self.model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
@@ -231,7 +241,7 @@ class PredictRNN():
         self.model_name = model_name
 
         self.in_timesteps = in_timesteps
-        self.max_outsteps=out_timesteps
+        self.max_outsteps= 4*in_timesteps
 
 
         self._build_model()
@@ -260,7 +270,6 @@ class PredictRNN():
                 enc_states += [enc_layers[i][1], enc_layers[i][2]]
         enc_output = [enc_layers[-1][0]]
 
-
         self.encoder_model = Model(encoder_inputs, enc_output + enc_states)
 
         # Set up the decoder, which will only process one timestep at a time.
@@ -285,16 +294,16 @@ class PredictRNN():
                 dec_states += [dec_layers[i][1], dec_layers[i][2]]
 
         decoder_dense = Dense(self.out_dim, activation=OUTPUT_ACT, name='outputs')
-
+        dec_output = [dec_layers[-1][0]] #output from lstm cells
 
 
         # decorder && attention
         decoder_outputs, state_h, state_c = dec_layers[-1]
         attn_out, attn_states = attn_layer([enc_output, decoder_outputs])
-        decoder_outputs = decoder_dense(attn_out)
+        decoder_outputs = decoder_dense(attn_out) #output after dense
         self.decoder_model = Model(
             [decoder_inputs] + [enc_output] + decoder_states_inputs,
-            [decoder_outputs] + dec_states)
+            [decoder_outputs] + dec_output + dec_states)
 
         print('Completed training model compilation in %.3f seconds' % (time.time() - t))
 
@@ -330,31 +339,37 @@ class PredictRNN():
 
 
     def _inference_function(self, inputs, Y = None):
-        # Encode the input as state vectors.
-        print("inputs")
-        print(input)
-
-        enc_output_result = self.encoder_model.predict(inputs)
-
-        # Generate empty target sequence of length 1.
-        target_seq = np.zeros((1, 1, self.out_dim))
-        # Populate the first character of target sequence with the start character.
-        target_seq[0, 0, :] = 1.
-
-        # Sampling loop for a batch of sequences
-        # (to simplify, here we assume a batch of size 1).
         stop_condition = False
-        decoded_sequence =[]
+        decoded_sequence = []
+        enc_in_bc = np.empty((self.batch_size, self.in_timesteps, self.out_dim), dtype = np.float32)
 
-        enc_output = enc_output_result[0]
-        states_value = enc_output_result[1:]
+        step = 0
 
         while not stop_condition:
+            if step % self.in_timesteps == 0:
+
+                target_seq = np.zeros((1, 1, self.out_dim))
+                target_seq[0, 0, :] = 1.
+
+                if step == 0:
+                    enc_input = inputs
+
+                else:
+                    enc_input = np.asarray(enc_in_bc)
+                    enc_in_bc = np.empty((self.batch_size, self.in_timesteps, self.out_dim), dtype = np.float32)
+
+
+                # Encode the input as state vectors.
+                enc_output_result = self.encoder_model.predict(enc_input)
+                enc_output = enc_output_result[0]
+                states_value = enc_output_result[1:]
+
+
             output_result = self.decoder_model.predict(
                 [target_seq] + [enc_output] + states_value)
 
-            output_seq = output_result[0]
 
+            output_seq = output_result[0]
             # Sample a token
             decoded_sequence.append(output_seq[0,0,:])
 
@@ -363,9 +378,20 @@ class PredictRNN():
             target_seq[0, 0, :] = output_seq
 
             # # Update states
-            states_value = output_result[1:]
+            states_value = output_result[2:]
 
-            if (len(decoded_sequence) >= self.max_outsteps):
+            enc_in_bc[:,step%self.in_timesteps,:] = output_seq
+
+
+
+            # enc_output = np.delete(enc_output,0,1)
+            # enc_output = np.concatenate((enc_output, output_result[1]), axis=1)
+
+
+
+
+            step += 1
+            if step >= self.max_outsteps:
                 stop_condition = True
 
         decoded_sequence = np.asarray(decoded_sequence)
