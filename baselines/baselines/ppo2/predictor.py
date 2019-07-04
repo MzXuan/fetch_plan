@@ -104,56 +104,49 @@ class Predictor(object):
 
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
+        last_traj = []
         # for x in valid_set[0]:
 
-        for idx in range(1,len(valid_set[0]), 10):
-            if valid_set[4][idx] is valid_set[4][idx-1]:
-                continue
-            x = valid_set[0][idx]
-            y = valid_set[1][idx]
-            x_len = valid_set[2][idx]
-            x_start = valid_set[3][idx]
+        for idx in range(170, len(valid_set[0]), 10):
             x_full = valid_set[4][idx]
 
-            goals = utils.GetRandomGoal(self.out_dim)
-            goals.append(x_full[-1])
-            goal_true = [x_full[-1]]
+            if idx == 1 or (valid_set[4][idx] is not last_traj):
+                print("update to new dataset")
+                min_dist_list = []
+                goals = utils.GetRandomGoal(self.out_dim)
+                goals.append(x_full[-1])
+                goal_true = [x_full[-1]]
+            last_traj = valid_set[4][idx]
 
-            min_dist_list = []
+            x = np.expand_dims(valid_set[0][idx], axis=0)
+            y = np.expand_dims(valid_set[1][idx], axis=0)
+            x_len = valid_set[2][idx]
+            x_start = valid_set[3][idx]
 
+            y_pred = self.inference_model.predict(X=x, Y=y)
 
-            # y_pred = self.inference_model.predict(X=np.expand_dims(x, axis=0), Y=None)
+            # -------calculate minimum distance to true goal-----#
+            _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
+            min_dist_list.append(min_dist)
+            # print("min_dist")
+            # print(min_dist)
+            # -----find goal based on prediction---#
+            goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
 
-            print("test new trajectory!!!")
+            # ------plot predicted data-----------
+            import visualize
 
-            for i in range(10,x_len,5):
-                # print("hahahaha")
+            x_s = x[0][0]
+            for idx, point in enumerate(x_full):
+                if np.linalg.norm(x_s - point) < (1e-6):
+                    break
 
-                x_sub = x_full[0:i,:]
-                x_sub = np.expand_dims(x_sub, axis = 0)
-                y_sub = x_full[0:i,:]
-                y_sub = np.expand_dims(y_sub, axis = 0)
+            show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
+            show_y = np.concatenate((x_full[:idx], y_pred[0]), axis=0)
 
-                y_pred = self.inference_model.predict(X=x_sub, Y=y_sub)
-
-                # -------calculate minimum distance to true goal-----#
-                _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
-                min_dist_list.append(min_dist)
-                # print("min_dist")
-                # print(min_dist)
-                # -----find goal based on prediction---#
-                goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
-
-                # ------plot predicted data-----------
-                import visualize
-
-                # print("length of y:")
-                # print(y.shape)
-
-                visualize.plot_dof_seqs(x_sub[0], y_pred[0], x_full, goals, goal_pred)  # plot delta result
-                visualize.plot_dist(min_dist_list)
-                time.sleep(2)
-
+            visualize.plot_dof_seqs(show_x, show_y, x_full, goals, goal_pred)  # plot delta result
+            visualize.plot_dist(min_dist_list)
+            time.sleep(5)
 
 
     def _process_dataset(self, trajs):
