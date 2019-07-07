@@ -86,24 +86,40 @@ class RLDataCreator():
 
 
         # if dataset is large enough, stop collect new data and save
-        if dataset_length > 1000:
+        if dataset_length > 100:
             print("Enough data collected, stop getting new data...")
             self.collect_flag = True
 
 
     def get_mean_std(self):
+        #calculate the mean and std for of the dataset on each dimension
         temp_list = []
         for data in self.dataset:
-           temp_list.extend(data.x)
+           temp_list.extend(data)
         temp_list = np.asarray(temp_list)
+
+        # print("shape of temp list")
+        # print(temp_list.shape)
 
         mean = temp_list.mean(axis = 0)
         std = temp_list.std(axis = 0)
 
+        # print("shape of mean")
+        # print(mean.shape)
+        # print("shape of std")
+        # print(std.shape)
+
+
+
         for data in self.dataset:
-            x_normal = (data.x - mean)/std
-            self.dataset_delta.append(DatasetStru(x_normal, data.x_len,
-                                                 mean, std, data.x_start_raw))
+            x_normal = (data - mean)/std
+            x_len = data.shape[0]
+            x_start_raw = data[0,:]
+
+            # print("x_len", x_len)
+            # print("x_start_raw", x_start_raw)
+            self.dataset_delta.append(DatasetStru(x_normal, x_len,
+                                                 mean, std, x_start_raw))
 
         print("save dataset...")
         pickle.dump(self.dataset_delta,

@@ -188,7 +188,7 @@ class Runner(object):
 
         if self.pred_weight != 0.0 and self.collect_flag is True:
             print("transfer raw data in to delta x, please wait....")
-            self.rl_data_creator.get_mean_std()
+            self.dataset_creator.get_mean_std()
 
 
 

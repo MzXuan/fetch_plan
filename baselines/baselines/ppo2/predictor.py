@@ -219,7 +219,7 @@ class Predictor(object):
 
     def _load_train_set(self):
         ## check saved data set
-        filelist = [f for f in os.listdir("./pred/") if f.endswith(".pkl")]
+        filelist = [f for f in os.listdir("./pred/") if f.endswith("rl.pkl")]
         num_sets = len(filelist)
 
         self.dataset = []
@@ -263,7 +263,7 @@ if __name__ == '__main__':
                           iter_start=args.iter, lr=args.lr, load=args.load,
                           model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
 
-    # rnn_model.plot_dataset()
+    rnn_model.plot_dataset()
 
     if not test_flag:
 
