@@ -56,8 +56,7 @@ class RLDataCreator():
                 if not infos[idx]['is_collision']:
                     x_seq = np.asarray(self.xs_raw[idx])
                     # create a container saving reseted sequences for future usage
-                    seqs_done.append(DatasetStru(x_seq[1:]-x_seq[0], self.x_lens[idx],
-                                                 self.x_mean, self.x_var, x_seq[0]))
+                    seqs_done.append(x_seq)
                 else:
                     print("in collision")
                 self.xs_raw[idx] = []
@@ -75,7 +74,8 @@ class RLDataCreator():
         :return:
         """
         for traj in trajs:
-            if traj.x_len > 20 and traj.x_len < 200:
+            x_len = traj.shape[0]
+            if x_len > 20 and x_len < 200:
                 self.dataset.append(traj)
 
         dataset_length = len(self.dataset)
@@ -113,16 +113,6 @@ class RLDataCreator():
             # print("x")
             # print(x)
 
-
-        # print("mean:")
-        # print(mean)
-        # print("mean shape: ")
-        # print(mean.shape)
-        #
-        # print("std")
-        # print(std)
-        # print("std shape: ")
-        # print(std.shape)
 
     def collect(self, obs_raw, dones, infos):
         """

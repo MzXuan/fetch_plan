@@ -17,7 +17,7 @@ import utils
 # import keras_predictor as KP
 import keras_seq2seq as KP
 from create_traj_set import DatasetStru
-
+from create_traj_set import RLDataCreator
 
 NUM_UNITS = 50
 NUM_LAYERS = 3
@@ -62,6 +62,8 @@ class Predictor(object):
         self.inference_model = KP.PredictRNN(1,
                                        self.in_dim, self.out_dim, self.in_timesteps_max, self.num_units, num_layers=self.num_layers,
                                     model_name = model_name)
+
+
         if load:
             self.train_model.load_model()
 
@@ -146,7 +148,7 @@ class Predictor(object):
 
             visualize.plot_dof_seqs(show_x, show_y, x_full, goals, goal_pred)  # plot delta result
             visualize.plot_dist(min_dist_list)
-            time.sleep(5)
+            time.sleep(6)
 
 
     def _process_dataset(self, trajs):
@@ -206,85 +208,6 @@ class Predictor(object):
                     seq = np.append(seq, value, axis=0)
         return seq
 
-    def _create_seq(self, obs, dones, infos, mean, var):
-        """
-        create sequences from input observations;
-        reset sequence if a agent is done its task
-        :param obs:  observations from environment
-        :param dones: whether the agent is done its task
-        :param mean: mean of observations
-        :param var: variations of observations
-        :return: done sequences
-        """
-        if mean is not None and var is not None:
-            ## save mean and var
-            self.x_mean = np.concatenate((mean[6:13],
-                                          mean[0:3]))
-            self.x_var = np.concatenate((var[6:13],
-                                         var[0:3]))
-
-        seqs_done, seqs_all = [], []
-
-        for idx, (ob, done) in enumerate(zip(obs, dones)):
-            #-------add end label------------
-            if done:
-                if not infos[idx]['is_collision']:
-                    # create a container saving reseted sequences for future usage
-                    seqs_done.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                                 self.x_mean, self.x_var))
-                else:
-                    print("in collision")
-                self.xs[idx] = []
-                self.x_lens[idx] = 0
-
-            self.xs[idx].append(np.concatenate((ob[6:13],
-                                                ob[0:3])))
-            #-------------------------------------------------
-
-            self.x_lens[idx] += 1
-            seqs_all.append(DatasetStru(self.xs[idx], self.x_lens[idx],
-                                        self.x_mean, self.x_var))
-
-        return seqs_done, seqs_all
-
-    def _create_traj(self, trajs):
-        """
-        create dataset from saved sequences
-        :return:
-        """
-        for traj in trajs:
-            if traj.x_len > self.in_timesteps_max and traj.x_len < 200:
-                self.dataset.append(traj)
-
-        # display number of data collected
-        dataset_length = len(self.dataset)
-        if dataset_length % 100 < 10 :
-            print("collected dataset length:{}".format(self.dataset_length))
-
-        # if dataset is large, save it
-        if dataset_length > 2000:
-            print("save dataset...")
-            pickle.dump(self.dataset,
-                open("./pred/" + "/dataset_new" + ".pkl", "wb"))
-            self.collect_flag = True
-
-    def collect(self, obs, dones, infos, mean=None, var=None):
-        """
-        function: collect sequence dataset
-        :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
-        :param dones: dones.shape = [batch_size]
-        :param mean: mean.shape = [batch_size, ob_shape]
-        :param var: var.shape = [batch_size, ob_shape]
-        """
-
-        #create input sequence
-        seqs_done, _ = self._create_seq(obs, dones, infos, mean, var)
-
-        #create training dataset for future training
-        if len(seqs_done) > 0:
-            self._create_traj(seqs_done)
-
-        return self.collect_flag
 
     def load_dataset(self, file_name):
         ## load dataset

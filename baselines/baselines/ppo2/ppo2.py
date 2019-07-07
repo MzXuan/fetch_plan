@@ -8,7 +8,7 @@ from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
 
-from predictor_new import Predictor
+from predictor import Predictor
 from create_traj_set import RLDataCreator
 from tqdm import tqdm
 import flags
@@ -94,6 +94,7 @@ class Model(object):
         self.load = load
         tf.global_variables_initializer().run(session=sess) #pylint: disable=E1101
 
+
 class Runner(object):
     def __init__(self, *, env, model, 
                  nsteps, gamma, lam, load, point, 
@@ -112,9 +113,14 @@ class Runner(object):
         self.dones = [False for _ in range(nenv)]
 
 
+        #parameter for predictor
+        self.in_timesteps = 30
+        self.out_timesteps = 30
 
-        self.rl_data_creator = RLDataCreator(env.num_envs)
-        self.predictor = Predictor(1024, out_max_timestep = 200, train_flag=False, model_name="rl_test")
+        self.predictor = Predictor(nenv, in_max_timestep=self.in_timesteps, out_timesteps = self.out_timesteps,
+                                   train_flag=False, model_name="rl_test")
+
+        self.dataset_creator = RLDataCreator(nenv)
 
         # sess = tf.get_default_session()
         # if (not self.predictor_flag) and pred_weight != 0.0:
@@ -151,9 +157,7 @@ class Runner(object):
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
-                x, goals = self.rl_data_creator.collect(origin_obs, self.dones, infos)
-
-                origin_pred_loss, traj_len = self.predictor.run_online_prediction(self.obs[:], self.dones, infos)
+                origin_pred_loss, traj_len = self.predictor.run_online_prediction(origin_obs, self.dones, infos)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
@@ -162,7 +166,7 @@ class Runner(object):
 
             elif pred_weight != 0.0 and self.collect_flag is not True: #collect process
                 origin_obs = self.env.origin_obs
-                self.collect_flag =  self.rl_data_creator.collect(self.obs[:], self.dones, infos)
+                self.collect_flag =  self.dataset_creator.collect(origin_obs, self.dones, infos)
                 origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:
