@@ -49,9 +49,7 @@ class Predictor(object):
         self.in_dim=3
         self.out_dim=3
 
-        ## prepare sequcne containers
-        self.xs = [[] for _ in range(0, self.batch_size)]
-        self.x_lens = np.zeros(batch_size, dtype=int)
+        #  prepare containers
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
 
@@ -62,7 +60,6 @@ class Predictor(object):
         self.inference_model = KP.PredictRNN(1,
                                        self.in_dim, self.out_dim, self.in_timesteps_max, self.num_units, num_layers=self.num_layers,
                                     model_name = model_name)
-
 
         if load:
             self.train_model.load_model()
@@ -91,12 +88,23 @@ class Predictor(object):
 
     def run_online_prediction(self, x, goals):
         '''
-
-        :param x:
-        :param goals:
-        :return:
+        :param x: raw x (batch size * input shape)
+        :param goals: raw goals / true goal (batch size * goal shape)
+        :return: reward of this prediction, batch size * 1
         '''
-        return 0
+        ## todo: this function is unfinished
+
+        #first we need to normalize x and predict sequence
+        x_normal = (x - self.x_mean) / self.x_var
+        _, y_pred = self.inference_model.predict(X=x_normal)
+
+        # then we restore the origin x and calculate the reward
+        raw_y_pred = y_pred * self.x_var + self.x_mean
+        _, _, min_dist = utils.find_goal(raw_y_pred, goals)
+
+        reward = min_dist
+
+        return reward
 
     def run_validation(self):
         ## load dataset
@@ -128,7 +136,7 @@ class Predictor(object):
             x_start = valid_set[3][idx]
 
 
-            y_pred = self.inference_model.predict(X=x, Y=y)
+            y_pred, _ = self.inference_model.predict(X=x, Y=y)
 
             # -------calculate minimum distance to true goal-----#
             _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
@@ -223,13 +231,18 @@ class Predictor(object):
         filelist = [f for f in os.listdir("./pred/") if f.endswith("rl.pkl")]
         num_sets = len(filelist)
 
+        # NOTICE: we can only use one dataset here because of mean and var problem
         self.dataset = []
         for idx in range(num_sets):
             dataset = self.load_dataset(filelist[idx])
             if dataset == 0:
+                self.x_mean = np.zeros(self.in_dim)
+                self.x_var = np.zeros(self.in_dim)
                 return 0
             else:
                 self.dataset.extend(dataset)
+                self.x_mean = dataset[0].x_mean
+                self.x_var = dataset[0].x_var
 
     def plot_dataset(self):
         self._load_train_set()

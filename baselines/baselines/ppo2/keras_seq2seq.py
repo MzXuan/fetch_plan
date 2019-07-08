@@ -346,7 +346,7 @@ class PredictRNN():
 
         full_sequence = np.concatenate((inputs, decoded_sequence), axis=1)
 
-        return full_sequence
+        return full_sequence, decoded_sequence
 
 
 def CreateSeqs(batch_size):

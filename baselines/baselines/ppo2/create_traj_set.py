@@ -98,36 +98,21 @@ class RLDataCreator():
            temp_list.extend(data)
         temp_list = np.asarray(temp_list)
 
-        # print("shape of temp list")
-        # print(temp_list.shape)
 
         mean = temp_list.mean(axis = 0)
         std = temp_list.std(axis = 0)
-
-        # print("shape of mean")
-        # print(mean.shape)
-        # print("shape of std")
-        # print(std.shape)
-
-
 
         for data in self.dataset:
             x_normal = (data - mean)/std
             x_len = data.shape[0]
             x_start_raw = data[0,:]
 
-            # print("x_len", x_len)
-            # print("x_start_raw", x_start_raw)
             self.dataset_delta.append(DatasetStru(x_normal, x_len,
                                                  mean, std, x_start_raw))
 
         print("save dataset...")
         pickle.dump(self.dataset_delta,
                     open("./pred/" + "/dataset_rl" + ".pkl", "wb"))
-            # print("new x shape:")
-            # print(x.shape)
-            # print("x")
-            # print(x)
 
 
     def collect(self, obs_raw, dones, infos):
