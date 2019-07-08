@@ -274,10 +274,10 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         rew = []
         print("finding best pred weight... this will take 1 epochs...")
         for _ in tqdm(range(1)):
+            print("start finding...")
             obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
             loss.append(origin_ploss)
             rew.append(origin_rew)
-            print("origin_ploss", origin_ploss)
 
         runner.pred_weight = np.mean(rew)/np.mean(loss) * (1)
         print("current pred weight is: ")

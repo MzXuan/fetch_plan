@@ -57,7 +57,7 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
     def constant_lr(lr, kl=0.0, d_targ=0.0):
         return lr
 
-    ppo2.learn(policy=policy, env=env, nsteps=512, nminibatches=4,
+    ppo2.learn(policy=policy, env=env, nsteps=128, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
         ent_coef=ent_coef,
         lr=constant_lr,
@@ -106,7 +106,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
     def constant_lr(lr, kl=0.0, d_targ=0.0):
         return lr
 
-    ppo2.test(policy=policy, env=env, nsteps=512, nminibatches=4,
+    ppo2.test(policy=policy, env=env, nsteps=128, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
         ent_coef=0.00,
         lr=constant_lr,
