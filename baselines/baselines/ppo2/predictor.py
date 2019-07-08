@@ -59,7 +59,7 @@ class Predictor(object):
                                        self.in_dim, self.out_dim, self.out_timesteps, self.num_units, num_layers=self.num_layers, load=load,
                                       model_name=model_name)
 
-        self.inference_model = KP.PredictRNN(1,
+        self.inference_model = KP.PredictRNN(self.batch_size,
                                        self.in_dim, self.out_dim, self.in_timesteps_max, self.num_units, num_layers=self.num_layers,
                                     model_name = model_name)
 
@@ -96,47 +96,72 @@ class Predictor(object):
         :param batched_goals: raw goals / true goal (batch size * goal shape)
         :return: reward of this prediction, batch size * 1
         '''
-        ## todo: this function is unfinished
-
+        # todo: rewrite this to fit batch size
         rewards = []
-        # preprocess batched seqs:
-        for seq, goal in zip(batched_seqs, batched_goals):
-            seq = seq[:,-3:]
-
-            if seq.shape[0] < 5:
-                # print("seq.shape:", seq.shape)
-                rewards.append(0.0)
-                self.min_dist_list = []
+        batched_seqs_normal = []
+        for seq in batched_seqs:
+            seq = seq[:, -3:]
+            seq_normal = (seq - self.x_mean) / self.x_var
+            if seq_normal.shape[0] < self.in_timesteps_max:
+                seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
             else:
-                seq_normal = (seq - self.x_mean) / self.x_var
-                if seq_normal.shape[0] < self.in_timesteps_max:
-                    seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
-                else:
-                    seq_normal = seq_normal[-self.in_timesteps_max:]
+                seq_normal = seq_normal[-self.in_timesteps_max:]
+            batched_seqs_normal.append(seq_normal)
 
-                #predict
-                seq_normal = np.expand_dims(seq_normal, axis=0)
-                _, y_pred = self.inference_model.predict(X=seq_normal)
+        batched_seqs_normal = np.asarray(batched_seqs_normal)
+        _, ys_pred = self.inference_model.predict(X=batched_seqs_normal)
 
-                # then we restore the origin x and calculate the reward
+        # then we restore the origin x and calculate the reward
+        for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
+            if seq.shape[0] < 5:
+                rewards.append(0.0)
+            else:
                 raw_y_pred = y_pred * self.x_var + self.x_mean
-                _, _, min_dist = utils.find_goal(raw_y_pred[0], [goal])
-
+                _, _, min_dist = utils.find_goal(raw_y_pred, [goal])
                 rewards.append(min_dist)
-
-                # ------plot predicted data-----------
-                if visial_flags is True:
-                    import visualize
-                    show_y = np.concatenate((seq, raw_y_pred[0]), axis=0)
-                    self.min_dist_list.append(min_dist)
-                    visualize.plot_dof_seqs(x=seq, y_pred = show_y, goals = [goal])  # plot delta result
-                    visualize.plot_dist(self.min_dist_list)
-                    time.sleep(0.1)
 
         # print("rewards: ", rewards)
         rewards = np.asarray(rewards)
-        #
         return rewards
+
+
+        # rewards = []
+        # # preprocess batched seqs:
+        # for seq, goal in zip(batched_seqs, batched_goals):
+        #     seq = seq[:,-3:]
+        #     if seq.shape[0] < 5:
+        #         # print("seq.shape:", seq.shape)
+        #         rewards.append(0.0)
+        #         self.min_dist_list = []
+        #     else:
+        #         seq_normal = (seq - self.x_mean) / self.x_var
+        #         if seq_normal.shape[0] < self.in_timesteps_max:
+        #             seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+        #         else:
+        #             seq_normal = seq_normal[-self.in_timesteps_max:]
+        #
+        #         #predict
+        #         seq_normal = np.expand_dims(seq_normal, axis=0)
+        #         _, y_pred = self.inference_model.predict(X=seq_normal)
+        #
+        #         # then we restore the origin x and calculate the reward
+        #         raw_y_pred = y_pred * self.x_var + self.x_mean
+        #         _, _, min_dist = utils.find_goal(raw_y_pred[0], [goal])
+        #
+        #         rewards.append(min_dist)
+        #
+        #         # ------plot predicted data-----------
+        #         if visial_flags is True:
+        #             import visualize
+        #             show_y = np.concatenate((seq, raw_y_pred[0]), axis=0)
+        #             self.min_dist_list.append(min_dist)
+        #             visualize.plot_dof_seqs(x=seq, y_pred = show_y, goals = [goal])  # plot delta result
+        #             visualize.plot_dist(self.min_dist_list)
+        #             time.sleep(0.1)
+        #
+        # # print("rewards: ", rewards)
+        # rewards = np.asarray(rewards)
+        # return rewards
 
     def run_validation(self):
         ## load dataset
@@ -238,9 +263,11 @@ class Predictor(object):
 
     def _padding(self, seq, new_length, my_value=None):
         old_length = len(seq)
-        value = np.copy(seq[-1, :])
+        value=np.zeros((seq.shape[-1]))
         if not my_value is None:
             value.fill(my_value)
+        else:
+            value = np.copy(seq[-1, :])
         value = np.expand_dims(value, axis=0)
 
         if old_length < new_length:

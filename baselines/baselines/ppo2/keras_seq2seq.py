@@ -309,14 +309,15 @@ class PredictRNN():
         states_value = self.encoder_model.predict(inputs)
 
         # Generate empty target sequence of length 1.
-        target_seq = np.zeros((1, 1, self.out_dim))
+        target_seq = np.zeros((self.batch_size, 1, self.out_dim))
         # Populate the first character of target sequence with the start character.
-        target_seq[0, 0, :] = 1.
+        target_seq[:, 0, :] = 1.
 
         # Sampling loop for a batch of sequences
         # (to simplify, here we assume a batch of size 1).
         stop_condition = False
-        decoded_sequence =[]
+        decoded_sequence = np.zeros((self.batch_size, self.max_outsteps, self.out_dim))
+        decoded_len = 0
 
 
         while not stop_condition:
@@ -326,23 +327,24 @@ class PredictRNN():
             output_seq = output_result[0]
 
             # Sample a token
-            decoded_sequence.append(output_seq[0,0,:])
+            decoded_sequence[:, decoded_len, :] = np.swapaxes(output_seq,0,1)
 
-            # Update the target sequence (of length 1).
-            target_seq = np.zeros((1, 1, self.out_dim))
-            target_seq[0, 0, :] = output_seq
-            #
-            # print("target_seq")
-            # print(target_seq)
+            # Update the target sequence
+            target_seq = output_seq
+
 
             # # Update states
             states_value = output_result[1:]
 
-            if (len(decoded_sequence) >= self.max_outsteps):
+            decoded_len += 1
+            if (decoded_len >= self.max_outsteps):
                 stop_condition = True
 
-        decoded_sequence = np.asarray(decoded_sequence)
-        decoded_sequence = decoded_sequence.reshape((self.batch_size, self.max_outsteps, self.out_dim))
+        # decoded_sequence = np.asarray(decoded_sequence)
+        # decoded_sequence = decoded_sequence.reshape((self.batch_size, self.max_outsteps, self.out_dim))
+        # decoded_sequence = np.swapaxes(decoded_sequence,0,1)
+
+        print("shape of decoded sequence:", decoded_sequence.shape)
 
         full_sequence = np.concatenate((inputs, decoded_sequence), axis=1)
 
