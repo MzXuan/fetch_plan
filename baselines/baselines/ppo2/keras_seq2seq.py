@@ -306,9 +306,6 @@ class PredictRNN():
 
     def _inference_function(self, inputs, Y = None):
         # Encode the input as state vectors.
-        print("inputs")
-        print(input)
-
         states_value = self.encoder_model.predict(inputs)
 
         # Generate empty target sequence of length 1.

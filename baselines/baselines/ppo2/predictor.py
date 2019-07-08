@@ -106,32 +106,33 @@ class Predictor(object):
 
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
-        last_traj = []
-        # for x in valid_set[0]:
+        start_id = 170
+        last_traj = valid_set[4][start_id]
 
-        for idx in range(170, len(valid_set[0]), 10):
+        for idx in range(start_id, len(valid_set[0]), 10):
             x_full = valid_set[4][idx]
 
-            if idx == 1 or (valid_set[4][idx] is not last_traj):
+            diff = ((x_full[:10]-last_traj[:10])**2).mean() #for detect change of new trajectory
+
+            if idx == start_id or (diff>1e-5):
                 print("update to new dataset")
                 min_dist_list = []
                 goals = utils.GetRandomGoal(self.out_dim)
                 goals.append(x_full[-1])
                 goal_true = [x_full[-1]]
-            last_traj = valid_set[4][idx]
+            last_traj = x_full
 
             x = np.expand_dims(valid_set[0][idx], axis=0)
             y = np.expand_dims(valid_set[1][idx], axis=0)
             x_len = valid_set[2][idx]
             x_start = valid_set[3][idx]
 
+
             y_pred = self.inference_model.predict(X=x, Y=y)
 
             # -------calculate minimum distance to true goal-----#
             _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
             min_dist_list.append(min_dist)
-            # print("min_dist")
-            # print(min_dist)
             # -----find goal based on prediction---#
             goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
 
@@ -148,7 +149,7 @@ class Predictor(object):
 
             visualize.plot_dof_seqs(show_x, show_y, x_full, goals, goal_pred)  # plot delta result
             visualize.plot_dist(min_dist_list)
-            time.sleep(6)
+            time.sleep(1)
 
 
     def _process_dataset(self, trajs):
@@ -174,7 +175,7 @@ class Predictor(object):
         # X: N step; Y: N+M step
         length = data.x_len
         x_seq = data.x
-        x_full = data.x
+        x_full = data.x[:,-3:]
         if length > self.in_timesteps_max:
             id_end = id_start + self.in_timesteps_max + self.out_timesteps
         else:
@@ -261,9 +262,9 @@ if __name__ == '__main__':
 
     rnn_model = Predictor(1024, in_max_timestep=30, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
-                          model_name="{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS))
+                          model_name="rl_{}_{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS, out_steps))
 
-    rnn_model.plot_dataset()
+    # rnn_model.plot_dataset()
 
     if not test_flag:
 
