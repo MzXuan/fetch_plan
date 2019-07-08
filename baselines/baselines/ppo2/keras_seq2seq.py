@@ -212,7 +212,7 @@ class PredictRNN():
         self.batch_size = batch_size
         self.directories = directories
         self.model_name = model_name
-        self.max_outsteps=4*in_timesteps
+        self.max_outsteps=2*in_timesteps
 
 
         self._build_model()

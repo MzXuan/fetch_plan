@@ -19,8 +19,10 @@ import keras_seq2seq as KP
 from create_traj_set import DatasetStru
 from create_traj_set import RLDataCreator
 
-NUM_UNITS = 50
-NUM_LAYERS = 3
+import pred_flags
+
+NUM_UNITS = pred_flags.num_units
+NUM_LAYERS = pred_flags.num_layers
 
 
 
@@ -66,6 +68,8 @@ class Predictor(object):
 
         self.inference_model.load_model()
 
+        self._load_train_set()
+
 
     def run_training(self):
         ## check whether in training
@@ -86,25 +90,53 @@ class Predictor(object):
         self.train_model.training(X=x_set, Y=y_set, epochs=self.epochs)
 
 
-    def run_online_prediction(self, x, goals):
+    def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
         '''
-        :param x: raw x (batch size * input shape)
-        :param goals: raw goals / true goal (batch size * goal shape)
+        :param batched_seqs: raw x (batch size * input shape)
+        :param batched_goals: raw goals / true goal (batch size * goal shape)
         :return: reward of this prediction, batch size * 1
         '''
         ## todo: this function is unfinished
 
-        #first we need to normalize x and predict sequence
-        x_normal = (x - self.x_mean) / self.x_var
-        _, y_pred = self.inference_model.predict(X=x_normal)
+        rewards = []
+        # preprocess batched seqs:
+        for seq, goal in zip(batched_seqs, batched_goals):
+            seq = seq[:,-3:]
 
-        # then we restore the origin x and calculate the reward
-        raw_y_pred = y_pred * self.x_var + self.x_mean
-        _, _, min_dist = utils.find_goal(raw_y_pred, goals)
+            if seq.shape[0] < 5:
+                # print("seq.shape:", seq.shape)
+                rewards.append(0.0)
+                self.min_dist_list = []
+            else:
+                seq_normal = (seq - self.x_mean) / self.x_var
+                if seq_normal.shape[0] < self.in_timesteps_max:
+                    seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+                else:
+                    seq_normal = seq_normal[-self.in_timesteps_max:]
 
-        reward = min_dist
+                #predict
+                seq_normal = np.expand_dims(seq_normal, axis=0)
+                _, y_pred = self.inference_model.predict(X=seq_normal)
 
-        return reward
+                # then we restore the origin x and calculate the reward
+                raw_y_pred = y_pred * self.x_var + self.x_mean
+                _, _, min_dist = utils.find_goal(raw_y_pred[0], [goal])
+
+                rewards.append(min_dist)
+
+                # ------plot predicted data-----------
+                if visial_flags is True:
+                    import visualize
+                    show_y = np.concatenate((seq, raw_y_pred[0]), axis=0)
+                    self.min_dist_list.append(min_dist)
+                    visualize.plot_dof_seqs(x=seq, y_pred = show_y, goals = [goal])  # plot delta result
+                    visualize.plot_dist(self.min_dist_list)
+                    time.sleep(0.1)
+
+        # print("rewards: ", rewards)
+        rewards = np.asarray(rewards)
+        #
+        return rewards
 
     def run_validation(self):
         ## load dataset
@@ -134,7 +166,6 @@ class Predictor(object):
             y = np.expand_dims(valid_set[1][idx], axis=0)
             x_len = valid_set[2][idx]
             x_start = valid_set[3][idx]
-
 
             y_pred, _ = self.inference_model.predict(X=x, Y=y)
 
@@ -241,8 +272,8 @@ class Predictor(object):
                 return 0
             else:
                 self.dataset.extend(dataset)
-                self.x_mean = dataset[0].x_mean
-                self.x_var = dataset[0].x_var
+                self.x_mean = dataset[0].x_mean[-3:]
+                self.x_var = dataset[0].x_var[-3:]
 
     def plot_dataset(self):
         self._load_train_set()
@@ -259,7 +290,7 @@ class Predictor(object):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=5, type=int)
+    parser.add_argument('--epoch', default=10, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)
@@ -268,14 +299,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     test_flag=args.test
-    out_steps=30
+    out_steps=pred_flags.out_steps
 
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
 
-    rnn_model = Predictor(1024, in_max_timestep=30, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
+    rnn_model = Predictor(1024, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps, train_flag=True, epoch=args.epoch,
                           iter_start=args.iter, lr=args.lr, load=args.load,
-                          model_name="rl_{}_{}_{}_seq_tanh".format(NUM_UNITS, NUM_LAYERS, out_steps))
+                          model_name=pred_flags.model_name)
 
     # rnn_model.plot_dataset()
 

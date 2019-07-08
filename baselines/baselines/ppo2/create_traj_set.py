@@ -36,7 +36,6 @@ class RLDataCreator():
 
         self.collect_flag = False
 
-    #todo: use mean-std method optimize delta x
 
 
     def _create_seq(self, obs_raw, dones, infos):
@@ -49,14 +48,15 @@ class RLDataCreator():
         :param var: variations of observations
         :return: done sequences
         """
-        seqs_done, seqs_all = [], []
+        seqs_done = []
 
         for idx, (ob, done) in enumerate(zip(obs_raw, dones)):
             if done:
                 if not infos[idx]['is_collision']:
                     x_seq = np.asarray(self.xs_raw[idx])
                     # create a container saving reseted sequences for future usage
-                    seqs_done.append(x_seq)
+                    seqs_done.append(DatasetStru(x_seq[1:] - x_seq[0], self.x_lens[idx],
+                                                 self.x_mean, self.x_var, x_seq[0]))
                 else:
                     print("in collision")
                 self.xs_raw[idx] = []
@@ -68,14 +68,39 @@ class RLDataCreator():
 
         return seqs_done
 
+    def _create_online_seq(self, obs_raw, dones):
+        '''
+        similar to _create_seq, but for online usage
+        :param obs_raw:
+        :param dones:
+        :param infos:
+        :return:
+        '''
+        seqs_raw_all, goals_all = [], []
+
+        for idx, (ob, done) in enumerate(zip(obs_raw, dones)):
+            x_seq = np.asarray(self.xs_raw[idx])
+            if x_seq.shape[0] == 0:
+                seqs_raw_all.append(np.zeros((1,self.in_dim)))
+            else:
+                seqs_raw_all.append(x_seq[1:] - x_seq[0])
+            goals_all.append(ob[3:6])
+
+            if done:
+                self.xs_raw[idx] = []
+
+            self.xs_raw[idx].append(np.concatenate((ob[6:13],
+                                                    ob[0:3])))
+
+        return seqs_raw_all, goals_all
+
     def _create_traj(self, trajs):
         """
         create dataset from saved sequences
         :return:
         """
         for traj in trajs:
-            x_len = traj.shape[0]
-            if x_len > 20 and x_len < 200:
+            if traj.x_len > 20 and traj.x_len < 200:
                 self.dataset.append(traj)
 
         dataset_length = len(self.dataset)
@@ -95,20 +120,16 @@ class RLDataCreator():
         #calculate the mean and std for of the dataset on each dimension
         temp_list = []
         for data in self.dataset:
-           temp_list.extend(data)
+            temp_list.extend(data.x)
         temp_list = np.asarray(temp_list)
-
 
         mean = temp_list.mean(axis = 0)
         std = temp_list.std(axis = 0)
 
         for data in self.dataset:
-            x_normal = (data - mean)/std
-            x_len = data.shape[0]
-            x_start_raw = data[0,:]
-
-            self.dataset_delta.append(DatasetStru(x_normal, x_len,
-                                                 mean, std, x_start_raw))
+            x_normal = (data.x - mean) / std
+            self.dataset_delta.append(DatasetStru(x_normal, data.x_len,
+                                                  mean, std, data.x_start_raw))
 
         print("save dataset...")
         pickle.dump(self.dataset_delta,
@@ -118,7 +139,7 @@ class RLDataCreator():
     def collect(self, obs_raw, dones, infos):
         """
         function: collect sequence dataset
-        :param obs: obs.shape = [batch_size, ob_shape] include joint angle etc.
+        :param obs_raw: obs.shape = [batch_size, ob_shape] include joint angle etc.
         :param dones: dones.shape = [batch_size]
         :param mean: mean.shape = [batch_size, ob_shape]
         :param var: var.shape = [batch_size, ob_shape]
@@ -135,18 +156,19 @@ class RLDataCreator():
         return self.collect_flag
 
 
-    def collect_online(self, obs_raw, dones, infos):
+    def collect_online(self, obs_raw, dones):
         '''
-
-        :param obs_raw:
-        :param dones:
-        :param infos:
+        function: collect sequence and prepare data for online prediction
+        :param obs_raw: obs.shape = [batch_size, ob_shape] include joint angle etc.
+        :param dones: dones.shape = [batch_size]
+        :param mean: mean.shape = [batch_size, ob_shape]
+        :param var: var.shape = [batch_size, ob_shape]
         :return:
         '''
-        #todo: get mean and std from dataset
-        # calculate delta x and goals
+        # create input sequence
+        seqs_raw_all, goals_all = self._create_online_seq(obs_raw, dones)
 
-        return 0
+        return seqs_raw_all, goals_all
 
 
 

@@ -51,12 +51,12 @@ if [ ${counter} -eq 0 ]
 then
     python predictor.py --iter=${counter} --lr=0.03 --epoch=20
     sleep 1
-    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=3000
+    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=3
 elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.0003 --epoch=1000
+    python predictor.py --load --iter=${counter} --lr=0.0003 --epoch=3
 else
-    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=3000
+    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=3
 fi
 
 # copy saved file and rename
