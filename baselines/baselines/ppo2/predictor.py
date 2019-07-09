@@ -51,6 +51,8 @@ class Predictor(object):
         self.in_dim=3
         self.out_dim=3
 
+        self.step = 5
+
         #  prepare containers
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.zeros(self.in_dim)
@@ -60,7 +62,7 @@ class Predictor(object):
                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(self.batch_size,
-                                       self.in_dim, self.out_dim, self.in_timesteps_max, self.num_units, num_layers=self.num_layers,
+                                       self.in_dim, self.out_dim, self.in_timesteps_max, 3*self.out_timesteps, self.num_units, num_layers=self.num_layers,
                                     model_name = model_name)
 
         if load:
@@ -192,7 +194,7 @@ class Predictor(object):
             x_len = valid_set[2][idx]
             x_start = valid_set[3][idx]
 
-            y_pred, _ = self.inference_model.predict(X=x, Y=y)
+            _, y_pred = self.inference_model.predict(X=x, Y=y)
 
             # -------calculate minimum distance to true goal-----#
             _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
@@ -209,9 +211,10 @@ class Predictor(object):
                     break
 
             show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
-            show_y = np.concatenate((x_full[:idx], y_pred[0]), axis=0)
 
-            visualize.plot_dof_seqs(show_x, show_y, x_full, goals, goal_pred)  # plot delta result
+
+            visualize.plot_dof_seqs(show_x, y_pred[0], step = self.step, y_true = x_full,
+                                    goals= goals, goal_pred = goal_pred)  # plot delta result
             visualize.plot_dist(min_dist_list)
             time.sleep(1)
 
@@ -235,25 +238,53 @@ class Predictor(object):
 
 
 
-    def _feed_one_data(self, data, id_start = 0):
+    def _feed_one_data(self, data, id_start = 0, step=5):
         # X: N step; Y: N+M step
         length = data.x_len
         x_seq = data.x
         x_full = data.x[:,-3:]
+
+        step = self.step
+
+
         if length > self.in_timesteps_max:
-            id_end = id_start + self.in_timesteps_max + self.out_timesteps
+            id_end = id_start + self.in_timesteps_max + step*self.out_timesteps
         else:
             id_end = length
 
         x_start = x_seq[0, -3:]
 
         x = x_seq[id_start:id_start+self.in_timesteps_max, -3:]
-        y = x_seq[id_start+self.in_timesteps_max:id_end, -3:]
+        y = x_seq[id_start+self.in_timesteps_max:id_end:step, -3:]
 
 
         x = self._padding(x, self.in_timesteps_max, 0.0)
+        y = self._padding(y, self.out_timesteps)
+
 
         return x, y, length, x_start, x_full
+
+    # def _feed_one_data(self, data, id_start = 0):
+    #     # X: N step; Y: N+M step
+    #     length = data.x_len
+    #     x_seq = data.x
+    #     x_full = data.x[:,-3:]
+    #
+    #     if length > id_start + self.in_timesteps_max + self.out_timesteps:
+    #         id_end = id_start + self.in_timesteps_max + self.out_timesteps
+    #     else:
+    #         id_end = length
+    #
+    #     x_start = x_seq[0, -3:]
+    #
+    #     x = x_seq[id_start:id_start+self.in_timesteps_max, -3:]
+    #     y = x_seq[id_start+self.in_timesteps_max:id_end, -3:]
+    #
+    #
+    #     x = self._padding(x, self.in_timesteps_max, 0.0)
+    #     y = self._padding(y, self.out_timesteps)
+    #
+    #     return x, y, length, x_start, x_full
 
 
     def _accumulate_data(self, delta_x, delta_y, x_start):
@@ -263,14 +294,13 @@ class Predictor(object):
 
     def _padding(self, seq, new_length, my_value=None):
         old_length = len(seq)
-        value=np.zeros((seq.shape[-1]))
-        if not my_value is None:
-            value.fill(my_value)
-        else:
-            value = np.copy(seq[-1, :])
-        value = np.expand_dims(value, axis=0)
-
         if old_length < new_length:
+            value = np.zeros((seq.shape[-1]))
+            if not my_value is None:
+                value.fill(my_value)
+            else:
+                value = np.copy(seq[-1, :])
+            value = np.expand_dims(value, axis=0)
             for _ in range(old_length, new_length):
                     seq = np.append(seq, value, axis=0)
         return seq

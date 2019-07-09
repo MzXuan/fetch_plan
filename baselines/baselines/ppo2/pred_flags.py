@@ -5,7 +5,7 @@ import tensorflow as tf
 
 num_units = 32
 num_layers = 2
-out_steps = 20
+out_steps = 5
 in_timesteps_max = 20
 
 model_name = "rl_{}_{}_{}_seq_tanh".format(num_units, num_layers, out_steps)

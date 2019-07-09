@@ -121,13 +121,13 @@ def plot_3d_seqs(x, y_pred, y_true=None):
 
 
 
-def plot_dof_seqs(x, y_pred, y_true=None, goals = None, goal_pred = None):
+def plot_dof_seqs(x, y_pred, step = 1,  y_true=None, goals = None, goal_pred = None):
     plt.figure("dof")
     plt.ion()
 
     plt.clf()
     time_step_x = range(0,x.shape[0])
-    time_step_y = range(0, y_pred.shape[0])
+    time_step_y = range(x.shape[0], x.shape[0]+step*y_pred.shape[0], step)
     if y_true is not None:
         time_step_y_true = range(0, y_true.shape[0])
 
