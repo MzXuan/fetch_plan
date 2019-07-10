@@ -5,6 +5,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import pickle
 import os
 import time
+import csv
 import numpy as np
 
 import visualize
@@ -168,13 +169,20 @@ class Predictor(object):
     def run_validation(self):
         ## load dataset
         self._load_train_set()
-        print("trajectory numbers: ", len(self.dataset))
+
         valid_len = int(self.validate_ratio * len(self.dataset))
 
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
-        start_id = 170
+        print("validate dataset numbers: ", len(valid_set[0]))
+
+        start_id = 1
         last_traj = valid_set[4][start_id]
+
+        # for percentage error saving
+        ratio_vals = 0.01 * np.array(range(0, 101, 5))
+        errors = []
+        errors_x = []
 
         for idx in range(start_id, len(valid_set[0]), 10):
             x_full = valid_set[4][idx]
@@ -182,8 +190,17 @@ class Predictor(object):
             diff = ((x_full[:10]-last_traj[:10])**2).mean() #for detect change of new trajectory
 
             if idx == start_id or (diff>1e-5):
-                print("update to new dataset")
+                print("update to new dataset {}, processing".format(idx))
+                # saving error of last trajectory
+                if idx != start_id:
+                    errors.append(np.interp(ratio_vals, ratio, min_dist_list))
+                    errors_x.append(np.interp(ratio_vals, ratio, min_dist_list_x))
+                # clear container
                 min_dist_list = []
+                min_dist_list_x = []
+                ratio = []
+
+                # prepare of next goal
                 goals = utils.GetRandomGoal(self.out_dim)
                 goals.append(x_full[-1])
                 goal_true = [x_full[-1]]
@@ -194,29 +211,45 @@ class Predictor(object):
             x_len = valid_set[2][idx]
             x_start = valid_set[3][idx]
 
+
             _, y_pred = self.inference_model.predict(X=x, Y=y)
 
             # -------calculate minimum distance to true goal-----#
             _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
             min_dist_list.append(min_dist)
+
+            _, _, min_dist_x = utils.find_goal(x[0], goal_true)
+            min_dist_list_x.append(min_dist_x)
             # -----find goal based on prediction---#
             goal_pred, goal_idx, _ = utils.find_goal(y_pred[0], goals)
 
-            # ------plot predicted data-----------
-            import visualize
 
             x_s = x[0][0]
             for idx, point in enumerate(x_full):
                 if np.linalg.norm(x_s - point) < (1e-6):
                     break
 
-            show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
+            ratio.append(idx/x_len)
 
+            # ------plot predicted data (step by step)-----------
+            # import visualize
+            # show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
+            # visualize.plot_dof_seqs(show_x, y_pred[0], step = self.step, y_true = x_full,
+            #                         goals= goals, goal_pred = goal_pred)  # plot delta result
+            # visualize.plot_dist(min_dist_list)
+            # time.sleep(1)
 
-            visualize.plot_dof_seqs(show_x, y_pred[0], step = self.step, y_true = x_full,
-                                    goals= goals, goal_pred = goal_pred)  # plot delta result
-            visualize.plot_dist(min_dist_list)
-            time.sleep(1)
+        # ----------write average error and save result------------
+        import visualize
+        errors = np.asarray(errors)
+        error_mean = np.mean(errors, axis=0)
+        err_x_mean = np.asarray(errors_x).mean(axis=0)
+        with open('./pred/errors.csv', 'a', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+            spamwriter.writerow(error_mean)
+
+        visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
+        print("error_mean: ", error_mean)
 
 
     def _process_dataset(self, trajs):

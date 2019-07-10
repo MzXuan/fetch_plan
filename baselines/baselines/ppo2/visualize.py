@@ -164,7 +164,6 @@ def plot_dist(dist_list):
 
 
 
-
 def plot_3d_eef(x):
     # colors = ['grey', 'brown','orange','olive','green','cyan',
     #           'blue','purple','pink','red','black','yellow']
@@ -176,3 +175,14 @@ def plot_3d_eef(x):
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
+
+
+def plot_avg_err(ratio, err_y, err_x):
+    plt.figure("dist_err")
+    plt.title("minimum distance to actually goal")
+    plt.xlabel("observed percentage")
+    plt.ylabel("distance / m^2")
+    plt.plot(ratio, err_y,'r-', label='predict distance')
+    plt.plot(ratio,err_x,'b-', label='observed distance')
+    plt.legend()
+    plt.show()
