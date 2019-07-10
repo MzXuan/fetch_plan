@@ -28,9 +28,9 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=1000000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=8000000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=800000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -49,15 +49,28 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --lr=0.03 --epoch=20
-    sleep 1
-    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=3
+    python predictor.py --iter=${counter} --epoch=15
+
 elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --lr=0.0003 --epoch=3
+    python predictor.py --load --iter=${counter} --epoch=8
 else
-    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=3
+    python predictor.py --load --iter=${counter} --epoch=8
 fi
+
+
+## train seq2seq
+#if [ ${counter} -eq 0 ]
+#then
+#    python predictor.py --iter=${counter} --lr=0.01 --epoch=15
+#    sleep 1
+#    python predictor.py --load --iter=${counter} --lr=0.00025 --epoch=3
+#elif [ ${counter} -le 3 ]
+#then
+#    python predictor.py --load --iter=${counter} --lr=0.0003 --epoch=3
+#else
+#    python predictor.py --load --iter=${counter} --lr=0.0001 --epoch=3
+#fi
 
 # copy saved file and rename
 cp -R ${rl_model} "./models/log_${counter}"
