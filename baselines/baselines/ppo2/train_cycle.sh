@@ -36,6 +36,8 @@ fi
 # run new training cycle
 sleep 1
 
+cp -R ${rl_model} "./models/log_${counter}"
+
 # sample dataset
 if [ ${counter} -eq 0 ]
 then
@@ -45,6 +47,7 @@ else
 fi
 
 sleep 1
+
 
 # train seq2seq
 if [ ${counter} -eq 0 ]
@@ -73,11 +76,12 @@ fi
 #fi
 
 # copy saved file and rename
-cp -R ${rl_model} "./models/log_${counter}"
-cp -R ${pred_model} "./models/pred_${counter}"
 
-rm -rf "${pred_model}/test1/checkpoint_" 
+
+cp -R ${pred_model} "./models/pred_${counter}"
+rm -rf "${pred_model}/test1/checkpoint_"
 rm -rf "${rl_model}/tb"
+
 
 ((counter++))
 done

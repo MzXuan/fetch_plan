@@ -249,8 +249,8 @@ class Predictor(object):
             spamwriter.writerow(error_mean)
         print("error_mean: ", error_mean)
 
-        import visualize
-        visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
+        # import visualize
+        # visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
 
 
 
