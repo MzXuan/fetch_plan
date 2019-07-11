@@ -240,16 +240,18 @@ class Predictor(object):
             # time.sleep(1)
 
         # ----------write average error and save result------------
-        import visualize
+
         errors = np.asarray(errors)
         error_mean = np.mean(errors, axis=0)
         err_x_mean = np.asarray(errors_x).mean(axis=0)
         with open('./pred/errors.csv', 'a', newline='') as csvfile:
             spamwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
             spamwriter.writerow(error_mean)
-
-        visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
         print("error_mean: ", error_mean)
+
+        import visualize
+        visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
+
 
 
     def _process_dataset(self, trajs):
