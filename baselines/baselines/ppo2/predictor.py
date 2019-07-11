@@ -405,6 +405,14 @@ if __name__ == '__main__':
 
         rnn_model.run_training()
 
+        print("start testing.....")
+        rnn_model2 = Predictor(1, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
+                              train_flag=True, epoch=args.epoch,
+                              iter_start=args.iter, lr=args.lr, load=args.load,
+                              model_name=pred_flags.model_name)
+        rnn_model2.run_validation()
+
+
     else:
 
         rnn_model = Predictor(1, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
