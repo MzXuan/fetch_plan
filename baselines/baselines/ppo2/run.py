@@ -164,7 +164,7 @@ def main():
     parser.add_argument('--log-file', default='log', type=str)
     args = parser.parse_args()
 
-    each_iter_num = 100
+    each_iter_num = 500
 
     curr_path = sys.path[0]
     if args.display:

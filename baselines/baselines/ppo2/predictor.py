@@ -59,7 +59,8 @@ class Predictor(object):
         self.x_var = np.zeros(self.in_dim)
 
         self.train_model = KP.TrainRNN(self.batch_size,
-                                       self.in_dim, self.out_dim, self.out_timesteps, self.num_units, num_layers=self.num_layers, load=load,
+                                       self.in_dim, self.out_dim, self.out_timesteps, self.num_units, 
+                                       initial_epoch = self.start_iter , num_layers=self.num_layers, load=load,
                                       model_name=model_name)
 
         self.inference_model = KP.PredictRNN(self.batch_size,

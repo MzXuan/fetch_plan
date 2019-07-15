@@ -39,7 +39,7 @@ DROPOUT = 0.1
 
 class TrainRNN():
 
-    def __init__(self, batch_size, in_dim, out_dim, out_timesteps, num_units, num_layers=1,
+    def __init__(self, batch_size, in_dim, out_dim, out_timesteps, num_units, initial_epoch=0, num_layers=1,
                  directories="./pred", model_name="test", load=False):
         '''
         initialize my rnn model
@@ -56,6 +56,7 @@ class TrainRNN():
         self.directories = directories
         self.model_name = model_name
         self.load = load
+        self.iniial_epoch = initial_epoch
 
         self.max_outsteps = out_timesteps
 
@@ -171,6 +172,7 @@ class TrainRNN():
         self.model.fit([X, decoder_input_data], Y,
                        batch_size=self.batch_size,
                        epochs=epochs,
+                       initial_epoch = 0，
                        validation_split=0.2,verbose=1, callbacks=[tbCb, saveCb])
 
         # self.model.fit(X, Y, batch_size=self.batch_size, epochs=epochs, validation_split=0.1,
