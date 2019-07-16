@@ -49,6 +49,9 @@ cd baselines
 pip install -e .
 ```
 
+6. if connot import baseline.logger:
+export PYTHONPATH=$PYTHONPATH:{path to baselines}
+
 ---
 
 ## Run
