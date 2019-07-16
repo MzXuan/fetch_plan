@@ -49,8 +49,8 @@ cd baselines
 pip install -e .
 ```
 
-6. if connot import baseline.logger:
-export PYTHONPATH=$PYTHONPATH:{path to baselines}
+6. if can not import baseline.logger:
+remove old package and reinstall baselines
 
 ---
 
