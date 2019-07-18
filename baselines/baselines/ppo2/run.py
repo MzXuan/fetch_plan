@@ -35,7 +35,7 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
                             inter_op_parallelism_threads=ncpu)
     tf.Session(config=config).__enter__()
     
-    nenvs = 16
+    nenvs = 32
     env = SubprocVecEnv([make_env(i) for i in range(nenvs)])
     if load:
         curr_path = sys.path[0]
@@ -57,7 +57,7 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
     def constant_lr(lr, kl=0.0, d_targ=0.0):
         return lr
 
-    ppo2.learn(policy=policy, env=env, nsteps=128, nminibatches=4,
+    ppo2.learn(policy=policy, env=env, nsteps=400, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
         ent_coef=ent_coef,
         lr=constant_lr,
@@ -94,7 +94,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
         return _thunk
 
     curr_path = sys.path[0]
-    nenvs = 16
+    nenvs = 32
     env = SubprocVecEnv([make_env(i) for i in range(nenvs)])
     ob_mean = np.load('{}/log/ob_mean.npy'.format(curr_path))
     ob_var = np.load('{}/log/ob_var.npy'.format(curr_path))
@@ -106,7 +106,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
     def constant_lr(lr, kl=0.0, d_targ=0.0):
         return lr
 
-    ppo2.test(policy=policy, env=env, nsteps=128, nminibatches=4,
+    ppo2.test(policy=policy, env=env, nsteps=400, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
         ent_coef=0.00,
         lr=constant_lr,

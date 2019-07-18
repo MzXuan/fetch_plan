@@ -56,7 +56,7 @@ class Predictor(object):
 
         #  prepare containers
         self.x_mean = np.zeros(self.in_dim)
-        self.x_var = np.zeros(self.in_dim)
+        self.x_var = np.ones(self.in_dim)
 
         self.train_model = KP.TrainRNN(self.batch_size,
                                        self.in_dim, self.out_dim, self.out_timesteps, self.num_units, 
@@ -361,7 +361,7 @@ class Predictor(object):
             dataset = self.load_dataset(filelist[idx])
             if dataset == 0:
                 self.x_mean = np.zeros(self.in_dim)
-                self.x_var = np.zeros(self.in_dim)
+                self.x_var = np.ones(self.in_dim)
                 return 0
             else:
                 self.dataset.extend(dataset)
