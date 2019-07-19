@@ -154,7 +154,7 @@ class TrainRNN():
         tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
                                  write_graph = True, write_images = True)
         saveCb = ModelCheckpoint( os.path.join(modelDir, weights_name), monitor='val_loss', verbose=0, save_best_only=False,
-                                        save_weights_only=False, mode='auto', period=1)
+                                        save_weights_only=False, mode='auto', period=5)
 
         # Perform batch training with epochs
         t=time.time()
@@ -193,6 +193,7 @@ class TrainRNN():
             print("load model {} successfully".format(filename))
         except:
             print("failed to load model, please check the checkpoint directory... use default initialization setting")
+
 
 
 
