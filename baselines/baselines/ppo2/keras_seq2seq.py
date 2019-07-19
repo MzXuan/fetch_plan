@@ -56,7 +56,7 @@ class TrainRNN():
         self.directories = directories
         self.model_name = model_name
         self.load = load
-        self.iniial_epoch = initial_epoch
+        self.initial_epoch = initial_epoch
 
         self.max_outsteps = out_timesteps
 
@@ -172,7 +172,7 @@ class TrainRNN():
         self.model.fit([X, decoder_input_data], Y,
                        batch_size=self.batch_size,
                        epochs=epochs,
-                       initial_epoch = 0,
+                       initial_epoch = self.initial_epoch,
                        validation_split=0.2,verbose=1, callbacks=[tbCb, saveCb])
 
         # self.model.fit(X, Y, batch_size=self.batch_size, epochs=epochs, validation_split=0.1,
