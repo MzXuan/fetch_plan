@@ -191,7 +191,7 @@ class Predictor(object):
             diff = ((x_full[:10]-last_traj[:10])**2).mean() #for detect change of new trajectory
 
             if idx == start_id or (diff>1e-5):
-                print("update to new dataset {}, processing".format(idx))
+                # print("update to new dataset {}, processing".format(idx))
                 # saving error of last trajectory
                 if idx != start_id:
                     errors.append(np.interp(ratio_vals, ratio, min_dist_list))

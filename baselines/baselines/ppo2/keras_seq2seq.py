@@ -171,7 +171,7 @@ class TrainRNN():
 
         self.model.fit([X, decoder_input_data], Y,
                        batch_size=self.batch_size,
-                       epochs=epochs,
+                       epochs=epochs+self.initial_epoch,
                        initial_epoch = self.initial_epoch,
                        validation_split=0.2,verbose=1, callbacks=[tbCb, saveCb])
 
