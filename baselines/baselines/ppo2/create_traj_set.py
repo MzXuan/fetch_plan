@@ -106,12 +106,12 @@ class RLDataCreator():
         dataset_length = len(self.dataset)
 
         # for visualization
-        if dataset_length%50 < 2 :
+        if dataset_length%200 < 2 :
             print("collected dataset length:{}".format(dataset_length))
 
 
         # if dataset is large enough, stop collect new data and save
-        if dataset_length > 2000:
+        if dataset_length > 20000:
             print("Enough data collected, stop getting new data...")
             self.collect_flag = True
 
