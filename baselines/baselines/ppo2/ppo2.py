@@ -153,33 +153,21 @@ class Runner(object):
             #---- predict reward
             # traj_len = np.nan
             pred_weight = self.pred_weight
-<<<<<<< HEAD
 
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
                 xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
                 origin_pred_loss = self.predictor.run_online_prediction(xs, goals)
-
-=======
-            if self.predictor_flag and pred_weight != 0.0:
-                origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones, infos)
->>>>>>> origin/xuanz
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
-<<<<<<< HEAD
                 # print("final_reward: {}".format(rewards))
                 #---------------
 
             elif pred_weight != 0.0 and self.collect_flag is not True: #collect process
                 origin_obs = self.env.origin_obs   # [achieved goal; true goal; joint obs states]
                 self.collect_flag =  self.dataset_creator.collect(origin_obs, self.dones, infos)
-=======
-                # print("final_reward: {}".format(rewards))`
-            elif pred_weight != 0.0:
-                self.collect_flag = self.predictor.collect(self.obs[:], self.dones, infos)
->>>>>>> origin/xuanz
                 origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:

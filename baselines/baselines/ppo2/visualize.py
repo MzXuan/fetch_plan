@@ -153,8 +153,6 @@ def plot_dist(dist_list):
     plt.figure("dist")
     plt.ion()
     plt.clf()
-
-<<<<<<< HEAD
     plt.ylim(0,2)
 
     plt.title("distance")
@@ -187,20 +185,3 @@ def plot_avg_err(ratio, err_y, err_x):
     plt.plot(ratio,err_x,'b-', label='observed distance')
     plt.legend()
     plt.show()
-=======
-        if y_hat is not None:
-            plt.plot(time_step_y, y_hat[:, j], color="red")
-    plt.pause(0.5)
-
-def plot_3d_eef(x, label):
-    colors = ['grey', 'brown','orange','olive','green','cyan',
-              'blue','purple','pink','red','black','yellow']
-    label_idx=np.where(label==1.0)
-    fig3d = plt.figure(3)
-    ax = fig3d.gca(projection='3d')
-    ax.plot(x[:, -3], x[:, -2], x[:, -1],
-            '-+', linewidth=2, color=colors[label_idx[0][0]], label="x")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
->>>>>>> origin/xuanz
