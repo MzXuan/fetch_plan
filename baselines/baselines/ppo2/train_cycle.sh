@@ -12,9 +12,13 @@ rl_model="./log/"
 pred_model="./pred/"
 
 # start from beginning
-rm -rf "./models"
-mkdir "./models"
+
 counter=${3}
+if [ ${counter} -eq 0 ]
+then
+    rm -rf "./models"
+    mkdir "./models"
+fi
 
 # # start with trained initial model
 # counter=1
