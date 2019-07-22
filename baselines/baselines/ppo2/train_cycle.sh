@@ -14,7 +14,7 @@ pred_model="./pred/"
 # start from beginning
 rm -rf "./models"
 mkdir "./models"
-counter=0
+counter=${3}
 
 # # start with trained initial model
 # counter=1
