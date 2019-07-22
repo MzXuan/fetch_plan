@@ -84,7 +84,7 @@ def plot_3d_pred(x, goal, pred=None):
     plt.pause(0.1)
 
 
-def plot_3d_seqs(x, y, y_hat=None):
+def plot_3d_seqs(x, y_pred, y_true=None):
     fig3d = plt.figure(3)
     plt.clf()
 
@@ -98,45 +98,90 @@ def plot_3d_seqs(x, y, y_hat=None):
     ax.plot(x[:, -3], x[:, -2], x[:, -1],
             '-+', linewidth=2, color="blue", label="x")
 
-    ax.plot(y[:, -3], y[:, -2], y[:, -1],
-            '-+', linewidth=2, color="green", label="y")
+    ax.plot(y_pred[:, -3], y_pred[:, -2], y_pred[:, -1],
+            '-+', linewidth=2, color="red", label="pred", )
 
-    if y_hat is not None:
-        ax.plot(y_hat[:, -3], y_hat[:, -2], y_hat[:, -1],
-                '-+', linewidth=2, color="red", label="pred")
+    ax.plot([y_pred[0, -3]], [y_pred[0, -2]], [y_pred[0, -1]],
+            '*', color="red")
 
+    ax.plot([y_pred[0, -3]], [y_pred[0, -2]], [y_pred[0, -1]],
+            'o', color="red")
+
+
+    if y_true is not None:
+        ax.plot(y_true[:, -3], y_true[:, -2], y_true[:, -1],
+                '-+', linewidth=2, color="green", label="y_true", alpha=0.5)
+
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
     ax.legend()
     plt.pause(0.1)
 
 
-def plot_dof_seqs(x, y, y_hat=None):
-    plt.figure(1)
+
+def plot_dof_seqs(x, y_pred, step = 1,  y_true=None, goals = None, goal_pred = None):
+    plt.figure("dof")
     plt.ion()
 
     plt.clf()
     time_step_x = range(0,x.shape[0])
-    time_step_y = range(x.shape[0], x.shape[0]+y.shape[0])
+    time_step_y = range(x.shape[0], x.shape[0]+step*y_pred.shape[0], step)
+    if y_true is not None:
+        time_step_y_true = range(0, y_true.shape[0])
 
-    DOFs = x.shape[1]
+    DOFs = x.shape[-1]
     for j in range(0, DOFs):
 
         plt.subplot(DOFs,1,j+1)
-        plt.ylim(-2, 2)
-        plt.plot(time_step_x, x[:, j], color="blue")
-        plt.plot(time_step_y, y[:, j], color="green")
+        plt.ylim(-3, 3)
+        plt.plot(time_step_x, x[:, j], "b-")
+        plt.plot(time_step_y, y_pred[:, j], "r-", alpha = 0.6)
 
-        if y_hat is not None:
-            plt.plot(time_step_y, y_hat[:, j], color="red")
-    plt.pause(0.5)
+        if y_true is not None:
+            plt.plot(time_step_y_true, y_true[:, j], color="green", alpha=0.5)
+        if goals is not None:
+            for goal in goals:
+                plt.plot(time_step_y[-1], goal[j],'ro')
+        if goal_pred is not None:
+            plt.plot(time_step_y[-1], goal_pred[j], 'g*')
 
-def plot_3d_eef(x, label):
-    colors = ['grey', 'brown','orange','olive','green','cyan',
-              'blue','purple','pink','red','black','yellow']
-    label_idx=np.where(label==1.0)
+    plt.pause(0.1)
+
+def plot_dist(dist_list):
+    plt.figure("dist")
+    plt.ion()
+    plt.clf()
+    plt.ylim(0,2)
+
+    plt.title("distance")
+    time_step= range(0,len(dist_list))
+    plt.plot(time_step, dist_list, "b-*")
+
+    plt.pause(0.1)
+
+
+
+def plot_3d_eef(x):
+    # colors = ['grey', 'brown','orange','olive','green','cyan',
+    #           'blue','purple','pink','red','black','yellow']
+
     fig3d = plt.figure(3)
     ax = fig3d.gca(projection='3d')
     ax.plot(x[:, -3], x[:, -2], x[:, -1],
-            '-+', linewidth=2, color=colors[label_idx[0][0]], label="x")
+            '-+', linewidth=2, color='grey', label="x")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
+
+
+def plot_avg_err(ratio, err_y, err_x):
+    plt.figure("dist_err")
+    plt.title("minimum distance to actually goal")
+    plt.xlabel("observed percentage")
+    plt.ylabel("distance / m^2")
+    plt.plot(ratio, err_y,'r-', label='predict distance')
+    plt.plot(ratio,err_x,'b-', label='observed distance')
+    plt.legend()
+    plt.show()

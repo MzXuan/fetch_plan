@@ -2,10 +2,10 @@
 
 ---
 ## Details need to be determinted
-* the variance of mean and var with the iteration increasing
-* different length dataset in different iteration, although 5000 trajectories were sampled in one iteration.
-* feed_one_data function in predictor.py
-* why the last trajectory can not be used.
++ change loss function (reference to huzhe's code)
++ Analysis the performance of predictor training
++ Unify the coordinate of mujoco and ros fetch simulation
++ joint training
 
 ---
 ## TODO List
@@ -48,6 +48,9 @@ cp gym_file/shared_xz.xml to $GYM_PATH/gym/envs/robotics/assets/fetch
 cd baselines
 pip install -e .
 ```
+
+6. if can not import baseline.logger:
+remove old package and reinstall baselines
 
 ---
 
@@ -100,11 +103,24 @@ For displaying performance, please set
 --point="$YOUR_CHECKPOINT_NUMBER"
 ```
 
-3. seq2seq code
+3. LSTM training code
 ``` shell
-python predictor.py
+python predictor_new.py
+
+python predictor_new.py --test
 ```
 
+---
+## How to get the observation without normalization
+``` python
+obs = env.reset()
+origin_obs = env.origin_obs
+done = False
+while not done:
+    act = actor.act(obs)
+    obs, rew, done, _ = env.step(act)
+    origin_obs = env.origin_obs
+```
 ---
 ## Change log
 1. 0.1.0

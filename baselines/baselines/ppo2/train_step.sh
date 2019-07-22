@@ -7,31 +7,27 @@ function finish() {
         exit
 }
 
+# start training
+counter=${1}
+echo $counter
+
 # preparation
 rl_model="./log/"
 pred_model="./pred/"
 
-# start from beginning
-rm -rf "./models"
-mkdir "./models"
-counter=0
-
-# # start with trained initial model
-# counter=1
-
-
-# start training
-while [ ${counter} -le ${1} ]
-do
-echo $counter
-
-# train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=6000000 --pred_weight=0.0 --iter=${counter}
-else
-    python run.py --train --load --num-timesteps=4000000 -p='last' --pred_weight=${2} --iter=${counter}
+    rm -rf "./models"
+    mkdir "./models"
 fi
+
+## train rl
+#if [ ${counter} -eq 0 ]
+#then
+#    python run.py --train --num-timesteps=6000000 --pred_weight=0.0 --iter=${counter}
+#else
+#    python run.py --train --load --num-timesteps=4000000 -p='last' --pred_weight=${2} --iter=${counter}
+#fi
 
 # run new training cycle
 sleep 1
@@ -69,8 +65,5 @@ cp -R ${pred_model} "./models/pred_${counter}"
 rm -rf "${pred_model}/test1/checkpoint_"
 rm -rf "${rl_model}/tb"
 
-
-((counter++))
-done
 
 echo All done

@@ -64,7 +64,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # predict reward: a predict reward from LSTM prediction algorithm
         # Compute distance between goal and the achieved goal.
         if info["is_success"]:
-            return 30.0
+            return 200.0
         elif info["is_collision"]:
             return -20.0
         else:

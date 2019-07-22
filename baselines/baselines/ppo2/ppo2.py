@@ -7,9 +7,11 @@ import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
+
 from predictor import Predictor
+from create_traj_set import RLDataCreator
 from tqdm import tqdm
-import flags
+import pred_flags
 
 
 class Model(object):
@@ -92,6 +94,7 @@ class Model(object):
         self.load = load
         tf.global_variables_initializer().run(session=sess) #pylint: disable=E1101
 
+
 class Runner(object):
     def __init__(self, *, env, model, 
                  nsteps, gamma, lam, load, point, 
@@ -108,24 +111,32 @@ class Runner(object):
         self.predictor_flag = predictor_flag
         self.pred_weight = pred_weight
         self.dones = [False for _ in range(nenv)]
-        sess = tf.get_default_session()
-        if (not self.predictor_flag) and pred_weight != 0.0:
-            # collect data
-            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
-        else:
-            # train and display
-            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
 
-        self.predictor.init_sess()
+
+
+        self.predictor = Predictor(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
+                                   train_flag=False, model_name=pred_flags.model_name)
+
+        self.dataset_creator = RLDataCreator(nenv)
+
+        # sess = tf.get_default_session()
+        # if (not self.predictor_flag) and pred_weight != 0.0:
+        #     # collect data
+        #     self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
+        # else:
+        #     # train and display
+        #     self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
+        # self.predictor.init_sess()
+
         self.collect_flag = False
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
-            self.predictor.load()
+            # self.predictor.load()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
         mb_weighted_ploss, mb_origin_ploss, mb_origin_rew = [],[],[]
-        mb_traj_len = []
+        # mb_traj_len = []
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
@@ -140,17 +151,23 @@ class Runner(object):
             
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
-            traj_len = np.nan
+            # traj_len = np.nan
             pred_weight = self.pred_weight
-            if self.predictor_flag and pred_weight != 0.0:
-                origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones, infos)
+
+            if self.predictor_flag and pred_weight != 0.0: #predict process
+                origin_obs = self.env.origin_obs
+                xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
+                origin_pred_loss = self.predictor.run_online_prediction(xs, goals)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
-                # print("final_reward: {}".format(rewards))`
-            elif pred_weight != 0.0:
-                self.collect_flag = self.predictor.collect(self.obs[:], self.dones, infos)
+                # print("final_reward: {}".format(rewards))
+                #---------------
+
+            elif pred_weight != 0.0 and self.collect_flag is not True: #collect process
+                origin_obs = self.env.origin_obs   # [achieved goal; true goal; joint obs states]
+                self.collect_flag =  self.dataset_creator.collect(origin_obs, self.dones, infos)
                 origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:
@@ -162,12 +179,17 @@ class Runner(object):
             mb_origin_ploss.append(np.mean(np.asarray(origin_pred_loss)))
             mb_weighted_ploss.append(np.mean(np.asarray(predict_loss)))
             
-            mb_traj_len.append(np.nanmean(np.asarray(traj_len)))
-            
+            # mb_traj_len.append(np.nanmean(np.asarray(traj_len)))
 
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
+
+
+        if self.pred_weight != 0.0 and self.collect_flag is True:
+            print("transfer raw data in to delta x, please wait....")
+            self.dataset_creator.get_mean_std()
+
 
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
@@ -191,8 +213,9 @@ class Runner(object):
             delta = mb_rewards[t] + self.gamma * nextvalues * nextnonterminal - mb_values[t]
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
         mb_returns = mb_advs + mb_values
+
         return (*map(sf01, (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs)), 
-            mb_states, mb_origin_ploss, mb_weighted_ploss, mb_origin_rew, epinfos, mb_traj_len)
+            mb_states, mb_origin_ploss, mb_weighted_ploss, mb_origin_rew, epinfos)
 # obs, returns, masks, actions, values, neglogpacs, states = runner.run()
 def sf01(arr):
     """
@@ -249,9 +272,10 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     if pred_weight!=0:
         loss = []
         rew = []
-        print("finding best pred weight... this will take 5 epochs...")
-        for _ in tqdm(range(1,5)):
-            obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos, _ = runner.run()  # pylint: disable=E0632
+        print("finding best pred weight... this will take 1 epochs...")
+        for _ in tqdm(range(1)):
+            print("start finding...")
+            obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
             loss.append(origin_ploss)
             rew.append(origin_rew)
 
@@ -281,7 +305,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
         lrnow = lr(lrnow, kl, d_targ)
         cliprangenow = cliprange(frac)
-        obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos, traj_len = runner.run() #pylint: disable=E0632
+        obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run() #pylint: disable=E0632
         epinfobuf.extend(epinfos)
         mblossvals = []
         if states is None: # nonrecurrent version
@@ -327,7 +351,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             logger.logkv('origin_pred_loss', np.mean(origin_ploss))
             logger.logkv('weighted_pred_loss', np.mean(pred_loss))
             logger.logkv('origin_rew', np.mean(origin_rew))
-            logger.logkv('len_traj_done', np.nanmean(traj_len))
+            # logger.logkv('len_traj_done', np.nanmean(traj_len))
             # logger.logkv('lr', lrnow)
             # logger.logkv('d_targ', d_targ)
             for (lossval, lossname) in zip(lossvals, model.loss_names):
@@ -404,10 +428,10 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     env.close()
 
 def display(policy, env, nsteps, nminibatches, load_path):
-    nenvs = env.num_envs
+    nenv = env.num_envs
     ob_space = env.observation_space
     ac_space = env.action_space
-    nbatch = nenvs * nsteps
+    nbatch = nenv * nsteps
     nbatch_train = nbatch // nminibatches
 
     sess = tf.get_default_session()
@@ -417,9 +441,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
         tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
         )
 
-    predictor = Predictor(sess, flags.InitParameter(), 1, 10, train_flag=False)
-    predictor.init_sess()
-    # predictor.load()
+    predictor = Predictor(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+                               train_flag=False, model_name=pred_flags.model_name)
+
+    dataset_creator = RLDataCreator(nenv)
 
     def load(load_path):
         loaded_params = joblib.load(load_path)
@@ -447,6 +472,11 @@ def display(policy, env, nsteps, nminibatches, load_path):
             act, state = agent.mean(obs, state, done)
             obs, rew, done, info = env.step(act)
             # predictor.predict(obs,done)
+
+            origin_obs = env.origin_obs
+
+            xs, goals = dataset_creator.collect_online(origin_obs, done)
+            origin_pred_loss = predictor.run_online_prediction(xs, goals)
 
 
             # #---- plot result ---

@@ -40,6 +40,7 @@ class VecNormalize(VecEnv):
         where 'news' is a boolean vector indicating whether each element is new.
         """
         obs, rews, news, infos = self.venv.step(vac)
+        self.origin_obs = obs
         obs = self._obfilt(obs)
         return obs, rews, news, infos
 
@@ -62,6 +63,7 @@ class VecNormalize(VecEnv):
         Reset all environments
         """
         obs = self.venv.reset()
+        self.origin_obs = obs
         return self._obfilt(obs)
     @property
     def action_space(self):
