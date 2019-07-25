@@ -151,7 +151,7 @@ class TrainRNN():
                 print("failed to load model, please check the checkpoint directory... use default initialization setting")
 
 
-        tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
+        tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 2,
                                  write_graph = False, write_images = True)
         saveCb = ModelCheckpoint( os.path.join(modelDir, weights_name), monitor='val_loss', verbose=0, save_best_only=False,
                                         save_weights_only=False, mode='auto', period=5)
