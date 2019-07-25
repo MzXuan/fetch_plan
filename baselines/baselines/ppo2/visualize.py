@@ -153,7 +153,6 @@ def plot_dist(dist_list):
     plt.figure("dist")
     plt.ion()
     plt.clf()
-
     plt.ylim(0,2)
 
     plt.title("distance")

@@ -147,6 +147,7 @@ class Runner(object):
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
+
             
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
@@ -157,7 +158,6 @@ class Runner(object):
                 origin_obs = self.env.origin_obs
                 xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
                 origin_pred_loss = self.predictor.run_online_prediction(xs, goals)
-
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
@@ -467,11 +467,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
         env.render()
         time.sleep(2)
-
         while not done[0]:
             env.render()
             act, state = agent.mean(obs, state, done)
-            obs, rew, done, _ = env.step(act)
+            obs, rew, done, info = env.step(act)
             # predictor.predict(obs,done)
 
             origin_obs = env.origin_obs

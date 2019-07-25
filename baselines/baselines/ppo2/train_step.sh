@@ -35,12 +35,8 @@ sleep 1
 cp -R ${rl_model} "./models/log_${counter}"
 
 # sample dataset
-if [ ${counter} -eq 0 ]
-then
-    python run.py --load -p='last'
-else
-    python run.py --load -p='last'
-fi
+python run.py --load -p='last'
+
 
 sleep 1
 
@@ -48,13 +44,13 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --epoch=20
+    python predictor.py --iter=${counter} --epoch=10
 
 elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --epoch=20
+    python predictor.py --load --iter=${counter} --epoch=10
 else
-    python predictor.py --load --iter=${counter} --epoch=20
+    python predictor.py --load --iter=${counter} --epoch=10
 fi
 
 

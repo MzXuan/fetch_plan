@@ -180,6 +180,7 @@ def main():
             d_targ=args.d_targ, load=args.load, point=args.point,
               pred_weight=args.pred_weight, ent_coef=args.ent_coef)
     else:
+        print("!!!!!go into test branch!!!!!")
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
 

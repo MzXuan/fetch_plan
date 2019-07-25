@@ -12,9 +12,13 @@ rl_model="./log/"
 pred_model="./pred/"
 
 # start from beginning
-rm -rf "./models"
-mkdir "./models"
-counter=0
+
+counter=${3}
+if [ ${counter} -eq 0 ]
+then
+    rm -rf "./models"
+    mkdir "./models"
+fi
 
 # # start with trained initial model
 # counter=1
@@ -39,12 +43,8 @@ sleep 1
 cp -R ${rl_model} "./models/log_${counter}"
 
 # sample dataset
-if [ ${counter} -eq 0 ]
-then
-    python run.py --load -p='last'
-else
-    python run.py --load -p='last'
-fi
+python run.py --load -p='last'
+
 
 sleep 1
 
