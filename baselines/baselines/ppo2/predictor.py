@@ -46,7 +46,7 @@ class Predictor(object):
         self.train_flag = train_flag
         self.epochs = epoch
         self.lr = lr
-        self.validate_ratio = 0.2
+        self.validate_ratio = 0.1
         self.num_units = NUM_UNITS
         self.num_layers = NUM_LAYERS
         self.in_dim=3
@@ -127,45 +127,6 @@ class Predictor(object):
         # print("rewards: ", rewards)
         rewards = np.asarray(rewards)
         return rewards
-
-
-        # rewards = []
-        # # preprocess batched seqs:
-        # for seq, goal in zip(batched_seqs, batched_goals):
-        #     seq = seq[:,-3:]
-        #     if seq.shape[0] < 5:
-        #         # print("seq.shape:", seq.shape)
-        #         rewards.append(0.0)
-        #         self.min_dist_list = []
-        #     else:
-        #         seq_normal = (seq - self.x_mean) / self.x_var
-        #         if seq_normal.shape[0] < self.in_timesteps_max:
-        #             seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
-        #         else:
-        #             seq_normal = seq_normal[-self.in_timesteps_max:]
-        #
-        #         #predict
-        #         seq_normal = np.expand_dims(seq_normal, axis=0)
-        #         _, y_pred = self.inference_model.predict(X=seq_normal)
-        #
-        #         # then we restore the origin x and calculate the reward
-        #         raw_y_pred = y_pred * self.x_var + self.x_mean
-        #         _, _, min_dist = utils.find_goal(raw_y_pred[0], [goal])
-        #
-        #         rewards.append(min_dist)
-        #
-        #         # ------plot predicted data-----------
-        #         if visial_flags is True:
-        #             import visualize
-        #             show_y = np.concatenate((seq, raw_y_pred[0]), axis=0)
-        #             self.min_dist_list.append(min_dist)
-        #             visualize.plot_dof_seqs(x=seq, y_pred = show_y, goals = [goal])  # plot delta result
-        #             visualize.plot_dist(self.min_dist_list)
-        #             time.sleep(0.1)
-        #
-        # # print("rewards: ", rewards)
-        # rewards = np.asarray(rewards)
-        # return rewards
 
     def run_validation(self):
         ## load dataset
@@ -299,28 +260,6 @@ class Predictor(object):
 
 
         return x, y, length, x_start, x_full
-
-    # def _feed_one_data(self, data, id_start = 0):
-    #     # X: N step; Y: N+M step
-    #     length = data.x_len
-    #     x_seq = data.x
-    #     x_full = data.x[:,-3:]
-    #
-    #     if length > id_start + self.in_timesteps_max + self.out_timesteps:
-    #         id_end = id_start + self.in_timesteps_max + self.out_timesteps
-    #     else:
-    #         id_end = length
-    #
-    #     x_start = x_seq[0, -3:]
-    #
-    #     x = x_seq[id_start:id_start+self.in_timesteps_max, -3:]
-    #     y = x_seq[id_start+self.in_timesteps_max:id_end, -3:]
-    #
-    #
-    #     x = self._padding(x, self.in_timesteps_max, 0.0)
-    #     y = self._padding(y, self.out_timesteps)
-    #
-    #     return x, y, length, x_start, x_full
 
 
     def _accumulate_data(self, delta_x, delta_y, x_start):
