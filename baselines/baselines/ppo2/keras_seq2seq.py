@@ -152,7 +152,7 @@ class TrainRNN():
 
 
         tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 2,
-                                 write_graph = False, write_images = True)
+                                 write_graph = False, write_images = False)
         saveCb = ModelCheckpoint( os.path.join(modelDir, weights_name), monitor='val_loss', verbose=0, save_best_only=False,
                                         save_weights_only=False, mode='auto', period=5)
 
