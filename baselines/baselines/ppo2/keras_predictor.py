@@ -173,7 +173,6 @@ class PredictRNN():
         build the rnn model
         :return:
         '''
-
         t = time.time()
         print('Beginning LSTM compilation')
         self.model = Sequential()
@@ -272,7 +271,6 @@ def CreateSeqs(batch_size):
 
 
 def main():
-
     batch_size=1
     in_dim = 3
     out_dim = 3

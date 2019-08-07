@@ -195,9 +195,6 @@ class TrainRNN():
             print("failed to load model, please check the checkpoint directory... use default initialization setting")
 
 
-
-
-
 class PredictRNN():
     def __init__(self, batch_size, in_dim, out_dim, in_timesteps, out_timesteps, num_units, num_layers=1, out_steps=100,
                  directories="./pred", model_name="test"):

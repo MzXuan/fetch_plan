@@ -49,6 +49,11 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.maxi_vel = 0.5
         self.last_distance = 0.0
 
+        self.last_qvel = np.zeros(7)
+        self.last_qpos = np.zeros(7)
+        self.last_two_qvel = np.zeros(7)
+        self.last_two_qpos = np.zeros(7)
+
         self.current_qvel = np.zeros(7)
         self.prev_act = np.zeros(7)
         self.goal_label = 0
@@ -189,12 +194,16 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         action = action.copy()
 
         #-----------not use actuator, only self defined kinematics--------------------
+        # if np.all(self.last_qvel==0) or np.all(self.last_qpos==0):
+
+        self.last_two_qvel = self.last_qvel
+        self.last_two_qpos = self.last_qpos
         self.last_qvel = self.current_qvel
         self.last_qpos = self.current_qpos
+
         delta_v = np.clip(action-self.last_qvel, -self.maxi_accerl, self.maxi_accerl)
         action_clip = delta_v+self.last_qvel
         action_clip = np.clip(action_clip, -self.maxi_vel, self.maxi_vel)
-
 
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = self.last_qpos+(action_clip+1e-8)*dt
@@ -203,26 +212,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
 
         return action_clip
-
-        # #-----------directly control velocity------------------------
-        # delta_v = np.clip(action - self.sim.data.qvel[6:13], -self.maxi_accerl, self.maxi_accerl)
-        # action = delta_v + self.sim.data.qvel[6:13]
-        # self.sim.data.qvel[6:13] = action
-
-        #-----------directly control position------------------------
-
-        # self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]] = action
-        # print("bias: ")
-        # print(self.sim.data.qfrc_bias)
-
-        # #-------use actuator-----------
-        # ctrlrange = self.sim.model.actuator_ctrlrange
-        # # print("ctrlrange: ")
-        # # print(ctrlrange)
-        # action = np.expand_dims(action,axis=1)
-        #
-        # # Apply action to simulation.
-        # utils.ctrl_set_action(self.sim, action)
 
     def _get_obs(self):
         # positions
@@ -255,19 +244,20 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             achieved_goal = np.squeeze(object_pos.copy())
 
         # obs = np.concatenate([
-        #     joint_angle, joint_vel
+        #     joint_angle, joint_vel, self.prev_act
         # ])
 
         obs = np.concatenate([
-            joint_angle, joint_vel, self.prev_act
+            joint_angle, joint_vel, self.last_qpos, self.last_qvel, self.last_two_qpos, self.last_two_qvel
         ])
         # ------------------------
-        #   Observation details
+        #   Observation details in ppo2 (re-formulate in openai)
+        #
         #   obs[0:3]: end-effector position
-        #   obs[3:10]: joint angle
-        #   obs[10:17]: joint velocity
+        #   obs[3:6]: goal position
+        #   obs[6:]: obs = np.concatenate....
+        #
         # ------------------------
-
         return {
             'observation': obs.copy(),
             'achieved_goal': achieved_goal.copy(),
@@ -303,6 +293,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             assert object_qpos.shape == (7,)
             object_qpos[:2] = object_xpos
             self.sim.data.set_joint_qpos('object0:joint', object_qpos)
+
+        self.last_qvel = np.zeros(7)
+        self.last_qpos = np.zeros(7)
+        self.last_two_qvel = np.zeros(7)
+        self.last_two_qpos = np.zeros(7)
+        self.current_qvel = np.zeros(7)
+        self.prev_act = np.zeros(7)
 
         self.sim.forward()
         self.last_distance = 0

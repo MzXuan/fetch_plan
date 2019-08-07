@@ -148,7 +148,6 @@ class Runner(object):
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
 
-            
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
             # traj_len = np.nan

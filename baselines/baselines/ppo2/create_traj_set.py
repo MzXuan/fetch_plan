@@ -37,7 +37,6 @@ class RLDataCreator():
         self.collect_flag = False
 
 
-
     def _create_seq(self, obs_raw, dones, infos):
         """
         create sequences from input observations;
@@ -108,7 +107,6 @@ class RLDataCreator():
         # for visualization
         if dataset_length%200 < 2 :
             print("collected dataset length:{}".format(dataset_length))
-
 
         # if dataset is large enough, stop collect new data and save
         if dataset_length > 20000:
