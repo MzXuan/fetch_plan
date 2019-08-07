@@ -26,7 +26,6 @@ NUM_UNITS = pred_flags.num_units
 NUM_LAYERS = pred_flags.num_layers
 
 
-
 class Predictor(object):
     def __init__(self, batch_size, in_max_timestep, out_timesteps, train_flag,
                  epoch=20, iter_start=0,
@@ -58,6 +57,9 @@ class Predictor(object):
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.ones(self.in_dim)
 
+        self.data_processor_long = PreProcessData()
+        self.data_processor_short = PreProcessData()
+
         self.train_model = KP.TrainRNN(self.batch_size,
                                        self.in_dim, self.out_dim, self.out_timesteps, self.num_units, 
                                        initial_epoch = self.start_iter , num_layers=self.num_layers, load=load,
@@ -86,7 +88,7 @@ class Predictor(object):
         print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
 
-        train_set = self._process_dataset(self.dataset[0:-valid_len])
+        train_set = self.data_processor_long.process_dataset(self.dataset[0:-valid_len])
 
         x_set = train_set[0]
         y_set = train_set[1]
@@ -107,7 +109,7 @@ class Predictor(object):
             seq = seq[:, -3:]
             seq_normal = (seq - self.x_mean) / self.x_var
             if seq_normal.shape[0] < self.in_timesteps_max:
-                seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+                seq_normal = self.data_processor_long.padding(seq_normal, self.in_timesteps_max, 0.0)
             else:
                 seq_normal = seq_normal[-self.in_timesteps_max:]
             batched_seqs_normal.append(seq_normal)
@@ -134,7 +136,7 @@ class Predictor(object):
 
         valid_len = int(self.validate_ratio * len(self.dataset))
 
-        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
+        valid_set = self.data_processor_long.process_dataset(self.dataset[-valid_len:-1])
 
         print("validate dataset numbers: ", len(valid_set[0]))
 
@@ -215,72 +217,6 @@ class Predictor(object):
         # visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
 
 
-
-    def _process_dataset(self, trajs):
-        xs, ys, x_lens, xs_start, xs_full = [], [], [], [], []
-        for traj in trajs:
-            for t_start in range(0, traj.x_len-self.in_timesteps_max-self.out_timesteps):
-                x, y, x_len, x_start, x_full = self._feed_one_data(traj, t_start)
-                xs.append(x)
-                ys.append(y)
-                x_lens.append(x_len)
-                xs_start.append(x_start)
-                xs_full.append(x_full)
-
-        xs=np.asarray(xs, dtype=np.float32)
-        ys=np.asarray(ys)
-        x_lens=np.asarray(x_lens, dtype=np.int32)
-        xs_start=np.asarray(xs_start)
-        return [xs, ys, x_lens, xs_start, xs_full]
-
-
-
-    def _feed_one_data(self, data, id_start = 0, step=5):
-        # X: N step; Y: N+M step
-        length = data.x_len
-        x_seq = data.x
-        x_full = data.x[:,-3:]
-
-        step = self.step
-
-
-        if length > self.in_timesteps_max:
-            id_end = id_start + self.in_timesteps_max + step*self.out_timesteps
-        else:
-            id_end = length
-
-        x_start = x_seq[0, -3:]
-
-        x = x_seq[id_start:id_start+self.in_timesteps_max, -3:]
-        y = x_seq[id_start+self.in_timesteps_max:id_end:step, -3:]
-
-
-        x = self._padding(x, self.in_timesteps_max, 0.0)
-        y = self._padding(y, self.out_timesteps)
-
-
-        return x, y, length, x_start, x_full
-
-
-    def _accumulate_data(self, delta_x, delta_y, x_start):
-        x = delta_x + x_start
-        y = delta_y + x_start
-        return x, y
-
-    def _padding(self, seq, new_length, my_value=None):
-        old_length = len(seq)
-        if old_length < new_length:
-            value = np.zeros((seq.shape[-1]))
-            if not my_value is None:
-                value.fill(my_value)
-            else:
-                value = np.copy(seq[-1, :])
-            value = np.expand_dims(value, axis=0)
-            for _ in range(old_length, new_length):
-                    seq = np.append(seq, value, axis=0)
-        return seq
-
-
     def load_dataset(self, file_name):
         ## load dataset
         try:
@@ -317,6 +253,76 @@ class Predictor(object):
             if idx%10 == 0:
                 visualize.plot_3d_eef(data.x)
         plt.show()
+
+class PreProcessData():
+    def __init__(self):
+        self.in_timesteps_max = 10
+        self.out_timesteps = 5
+        self.step = 5
+
+
+    def process_dataset(self, trajs):
+        xs, ys, x_lens, xs_start, xs_full = [], [], [], [], []
+        for traj in trajs:
+            for t_start in range(0, traj.x_len-self.in_timesteps_max-self.out_timesteps):
+                x, y, x_len, x_start, x_full = self._feed_one_data(traj, t_start)
+                xs.append(x)
+                ys.append(y)
+                x_lens.append(x_len)
+                xs_start.append(x_start)
+                xs_full.append(x_full)
+
+        xs=np.asarray(xs, dtype=np.float32)
+        ys=np.asarray(ys)
+        x_lens=np.asarray(x_lens, dtype=np.int32)
+        xs_start=np.asarray(xs_start)
+        return [xs, ys, x_lens, xs_start, xs_full]
+
+
+    def _feed_one_data(self, data, id_start = 0):
+        # X: N step; Y: N+M step
+        length = data.x_len
+        x_seq = data.x
+        x_full = data.x[:,-3:]
+
+        step = self.step
+
+        if length > self.in_timesteps_max:
+            id_end = id_start + self.in_timesteps_max + step*self.out_timesteps
+        else:
+            id_end = length
+
+        x_start = x_seq[0, -3:]
+
+        x = x_seq[id_start:id_start+self.in_timesteps_max, -3:]
+        y = x_seq[id_start+self.in_timesteps_max:id_end:step, -3:]
+
+
+        x = self.padding(x, self.in_timesteps_max, 0.0)
+        y = self.padding(y, self.out_timesteps)
+
+        return x, y, length, x_start, x_full
+
+
+    def _accumulate_data(self, delta_x, delta_y, x_start):
+        x = delta_x + x_start
+        y = delta_y + x_start
+        return x, y
+
+    def padding(self, seq, new_length, my_value=None):
+        old_length = len(seq)
+        if old_length < new_length:
+            value = np.zeros((seq.shape[-1]))
+            if not my_value is None:
+                value.fill(my_value)
+            else:
+                value = np.copy(seq[-1, :])
+            value = np.expand_dims(value, axis=0)
+            for _ in range(old_length, new_length):
+                    seq = np.append(seq, value, axis=0)
+        return seq
+
+
 
 
 if __name__ == '__main__':
