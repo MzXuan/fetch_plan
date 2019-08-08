@@ -3,7 +3,7 @@ import numpy as np
 
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.layers import Input, Dense, Masking, GRU
+from tensorflow.keras.layers import Input, Dense, Masking, GRU, TimeDistributed
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 
 
@@ -38,10 +38,12 @@ class SimpleRNN():
         self.model = Sequential()
         self.model.add(Masking(mask_value=0.0, input_shape=(None, self.in_dim)))
 
-        self.model.add(GRU(self.num_units, return_sequences=True))
-        self.model.add(GRU(self.num_units, return_sequences=False))
+        # self.model.add(GRU(self.num_units, activation='tanh', return_sequences=True))
+        # self.model.add(GRU(self.num_units, activation='tanh', return_sequences=False))
 
-        self.model.add(Dense(self.out_dim))
+
+        self.model.add(GRU(self.num_units))
+        self.model.add(Dense(self.out_dim, activation="linear"))
 
         self.model.compile(optimizer='RMSprop', loss='mean_squared_error')
 
@@ -91,6 +93,8 @@ class SimpleRNN():
 
     def predict(self, X, Y = None):
         predict_result = self.model.predict(X, batch_size=self.batch_size)
+        print("X: ")
+        print(X)
         if Y is not None:
             print("Y:")
             print(Y)
@@ -103,11 +107,10 @@ class SimpleRNN():
         # load model
         modelDir = os.path.join(self.directories, self.model_name)
         weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
-        tfDir = os.path.join(self.directories, self.model_name)
 
         try:
             filename = get_weights_file(modelDir, weights_name)
-            self.model.load_weights(filename, by_name=True)
+            self.model.load_weights(filename)
             print("load model {} successfully".format(filename))
         except:
             print("failed to load model, please check the checkpoint directory... use default initialization setting")
@@ -120,7 +123,7 @@ def CreateSeqs(batch_size):
     :return: sequences dataset
     '''
     x = np.random.random(size=(batch_size*10,3,3))
-    y = np.random.random(size=(batch_size*10,3))
+    y = np.random.random(size=(batch_size*10,1, 3))
     # print([data1][0].shape) # (1, 20)
     return x,y
 

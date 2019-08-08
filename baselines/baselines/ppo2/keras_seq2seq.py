@@ -338,16 +338,13 @@ class PredictRNN():
             if (decoded_len >= self.max_outsteps):
                 stop_condition = True
 
-        # decoded_sequence = np.asarray(decoded_sequence)
-        # decoded_sequence = decoded_sequence.reshape((self.batch_size, self.max_outsteps, self.out_dim))
-        # decoded_sequence = np.swapaxes(decoded_sequence,0,1)
 
         # print("shape of decoded sequence:", decoded_sequence.shape)
 
         full_sequence = np.concatenate((inputs, decoded_sequence), axis=1)
 
-        return full_sequence, decoded_sequence
-
+        # return full_sequence, decoded_sequence
+        return decoded_sequence
 
 def CreateSeqs(batch_size):
     '''

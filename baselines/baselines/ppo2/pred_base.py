@@ -52,12 +52,12 @@ class PredBase(object):
         self.out_dim=3
         self.load = load
         self.model_name = model_name
+        self.step = step
 
         #  prepare containers
         self.x_mean = np.zeros(self.in_dim)
         self.x_var = np.ones(self.in_dim)
 
-        self.data_processor = PreProcessData(in_max_timestep, out_timesteps, step)
         self._load_train_set()
 
 
@@ -77,7 +77,7 @@ class PredBase(object):
         print("trajectory numbers: ", len(self.dataset))
         valid_len = int(self.validate_ratio * len(self.dataset))
 
-        train_set = self.data_processor.process_dataset(self.dataset[0:-valid_len])
+        train_set = self._process_dataset(self.dataset[0:-valid_len])
 
         x_set = train_set[0]
         y_set = train_set[1]
@@ -97,13 +97,13 @@ class PredBase(object):
             seq = seq[:, -3:]
             seq_normal = (seq - self.x_mean) / self.x_var
             if seq_normal.shape[0] < self.in_timesteps_max:
-                seq_normal = self.data_processor.padding(seq_normal, self.in_timesteps_max, 0.0)
+                seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
             else:
                 seq_normal = seq_normal[-self.in_timesteps_max:]
             batched_seqs_normal.append(seq_normal)
 
         batched_seqs_normal = np.asarray(batched_seqs_normal)
-        _, ys_pred = self.inference_model.predict(X=batched_seqs_normal)
+        ys_pred = self.inference_model.predict(X=batched_seqs_normal)
 
         # then we restore the origin x and calculate the reward
         for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
@@ -124,7 +124,7 @@ class PredBase(object):
 
         valid_len = int(self.validate_ratio * len(self.dataset))
 
-        valid_set = self.data_processor.process_dataset(self.dataset[-valid_len:-1])
+        valid_set = self._process_dataset(self.dataset[-valid_len:-1])
 
         print("validate dataset numbers: ", len(valid_set[0]))
 
@@ -136,7 +136,8 @@ class PredBase(object):
         errors = []
         errors_x = []
 
-        for idx in range(start_id, len(valid_set[0]), 10):
+        # for idx in range(start_id, len(valid_set[0]), 10):
+        for idx in range(start_id, 100, 10):
             x_full = valid_set[4][idx]
 
             diff = ((x_full[:10]-last_traj[:10])**2).mean() #for detect change of new trajectory
@@ -164,7 +165,7 @@ class PredBase(object):
             x_start = valid_set[3][idx]
 
 
-            _, y_pred = self.inference_model.predict(X=x, Y=y)
+            y_pred = self.inference_model.predict(X=x, Y=y)
 
             # -------calculate minimum distance to true goal-----#
             _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
@@ -243,15 +244,7 @@ class PredBase(object):
         plt.show()
 
 
-
-class PreProcessData():
-    def __init__(self, in_max_timestep, out_timesteps, step):
-        self.in_timesteps_max = in_max_timestep
-        self.out_timesteps = out_timesteps
-        self.step = step
-
-
-    def process_dataset(self, trajs):
+    def _process_dataset(self, trajs):
         xs, ys, x_lens, xs_start, xs_full = [], [], [], [], []
         for traj in trajs:
             for t_start in range(0, traj.x_len-self.in_timesteps_max-self.out_timesteps):
@@ -288,8 +281,8 @@ class PreProcessData():
         y = x_seq[id_start+self.in_timesteps_max:id_end:step, -3:]
 
 
-        x = self.padding(x, self.in_timesteps_max, 0.0)
-        y = self.padding(y, self.out_timesteps)
+        x = self._padding(x, self.in_timesteps_max, 0.0)
+        y = self._padding(y, self.out_timesteps)
 
         return x, y, length, x_start, x_full
 
@@ -299,7 +292,7 @@ class PreProcessData():
         y = delta_y + x_start
         return x, y
 
-    def padding(self, seq, new_length, my_value=None):
+    def _padding(self, seq, new_length, my_value=None):
         old_length = len(seq)
         if old_length < new_length:
             value = np.zeros((seq.shape[-1]))
