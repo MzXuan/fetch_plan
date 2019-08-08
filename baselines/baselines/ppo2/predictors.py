@@ -40,6 +40,45 @@ class ShortPred(PredBase):
 
         self.init_model(train_model, inference_model)
 
+    def run_online_prediction(self, batched_seqs, visial_flags = False):
+        '''
+        :param batched_seqs: raw x (batch size * input shape)
+        :param batched_goals: raw goals / true goal (batch size * goal shape)
+        :return: reward of this prediction, batch size * 1
+        '''
+        rewards = []
+        batched_seqs_normal = []
+        ys = []
+        for seq in batched_seqs:
+            if seq.shape[0]>0:
+                ys.append(seq[-1, -3:]) #y
+            else:
+                ys.append(0.0)
+            seq_normal = (seq[:-1, -3:] - self.x_mean) / self.x_var #x
+
+            if seq_normal.shape[0] < self.in_timesteps_max:
+                seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+            else:
+                seq_normal = seq_normal[-self.in_timesteps_max:]
+            batched_seqs_normal.append(seq_normal)
+
+        batched_seqs_normal = np.asarray(batched_seqs_normal)
+        ys_pred = self.inference_model.predict(X=batched_seqs_normal)
+
+        # then we restore the origin x and calculate the reward
+        for seq, y_pred, y_true in zip(batched_seqs, ys_pred, ys):
+            if seq.shape[0] < 3:
+                rewards.append(0.0)
+            else:
+                #calculated mean euclidean distance
+                raw_y_pred = y_pred * self.x_var + self.x_mean
+                rewards.append(np.linalg.norm(raw_y_pred-y_true))
+
+        # print("rewards: ", rewards)
+        # print("rewards.shape: ", len(rewards))
+        rewards = np.asarray(rewards)
+        return rewards
+
     def _feed_one_data(self, data, id_start = 0):
         # X: N step; Y: N+M step
         length = data.x_len

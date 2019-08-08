@@ -91,15 +91,16 @@ class SimpleRNN():
         averageTime = (time.time() - t) / epochs
         print('Total time:', time.time() - t, ', Average time per epoch:', averageTime)
 
+
     def predict(self, X, Y = None):
         predict_result = self.model.predict(X, batch_size=self.batch_size)
-        print("X: ")
-        print(X)
-        if Y is not None:
-            print("Y:")
-            print(Y)
-        print("predict result")
-        print(predict_result)
+        # print("X: ")
+        # print(X)
+        # if Y is not None:
+        #     print("Y:")
+        #     print(Y)
+        # print("predict result")
+        # print(predict_result)
 
         return predict_result
 
@@ -113,7 +114,7 @@ class SimpleRNN():
             self.model.load_weights(filename)
             print("load model {} successfully".format(filename))
         except:
-            print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            print("failed to load model, please check the checkpoint directory {}... use default initialization setting".format(modelDir))
 
 
 # for testing
