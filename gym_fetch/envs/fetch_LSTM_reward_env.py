@@ -197,14 +197,16 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         action = action.copy()
 
         #-----------not use actuator, only self defined kinematics--------------------
-        # if np.all(self.last_qvel==0) or np.all(self.last_qpos==0):
-
-        self.qvel_3 = self.qvel_2
-        self.qpos_3 = self.qpos_2
-        self.qvel_2 = self.last_qvel
-        self.qpos_2 = self.last_qpos
-        self.last_qvel = self.current_qvel
-        self.last_qpos = self.current_qpos
+        if np.all(self.last_qvel==0) or np.all(self.last_qpos==0):
+            self.qvel_3 = self.qvel_2 = self.last_qvel = self.current_qvel
+            self.qpos_3 = self.qpos_2 = self.last_qpos = self.current_qpos
+        else:
+            self.qvel_3 = self.qvel_2
+            self.qpos_3 = self.qpos_2
+            self.qvel_2 = self.last_qvel
+            self.qpos_2 = self.last_qpos
+            self.last_qvel = self.current_qvel
+            self.last_qpos = self.current_qpos
 
         delta_v = np.clip(action-self.last_qvel, -self.maxi_accerl, self.maxi_accerl)
         action_clip = delta_v+self.last_qvel

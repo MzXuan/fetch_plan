@@ -3,7 +3,7 @@ import numpy as np
 
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.layers import Input, Dense, Masking, TimeDistributed, GRU, Bidirectional
+from tensorflow.keras.layers import Input, Dense, Masking, GRU
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 
 
@@ -16,7 +16,7 @@ def get_weights_file(checkpoint_path, file_name=None):
 
 
 class SimpleRNN():
-    def __init__(self, batch_size,  in_dim=3, out_dim=3, directories="./simpleRNN", model_name="test", load=False):
+    def __init__(self, batch_size,  in_dim=3, out_dim=3, initial_epoch=0, directories="./simpleRNN", model_name="test", load=False):
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.num_units = 16
@@ -24,6 +24,7 @@ class SimpleRNN():
         self.directories = directories
         self.model_name = model_name
         self.load = load
+        self.initial_epoch = initial_epoch
 
         self._build_model()
 
@@ -79,8 +80,11 @@ class SimpleRNN():
         # Perform batch training with epochs
         t = time.time()
 
-        self.model.fit(X, Y, batch_size=self.batch_size, epochs=epochs, validation_split=0.1,
-                       verbose=1, callbacks=[tbCb, saveCb])
+        self.model.fit(X, Y,
+                       batch_size=self.batch_size,
+                       epochs=epochs + self.initial_epoch,
+                       initial_epoch=self.initial_epoch,
+                       validation_split=0.2, verbose=1, callbacks=[tbCb, saveCb])
 
         averageTime = (time.time() - t) / epochs
         print('Total time:', time.time() - t, ', Average time per epoch:', averageTime)
@@ -94,6 +98,19 @@ class SimpleRNN():
         print(predict_result)
 
         return predict_result
+
+    def load_model(self):
+        # load model
+        modelDir = os.path.join(self.directories, self.model_name)
+        weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
+        tfDir = os.path.join(self.directories, self.model_name)
+
+        try:
+            filename = get_weights_file(modelDir, weights_name)
+            self.model.load_weights(filename, by_name=True)
+            print("load model {} successfully".format(filename))
+        except:
+            print("failed to load model, please check the checkpoint directory... use default initialization setting")
 
 
 # for testing

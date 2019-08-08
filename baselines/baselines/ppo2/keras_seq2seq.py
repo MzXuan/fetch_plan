@@ -151,10 +151,10 @@ class TrainRNN():
                 print("failed to load model, please check the checkpoint directory... use default initialization setting")
 
 
-        tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 2,
+        tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
                                  write_graph = False, write_images = False)
         saveCb = ModelCheckpoint( os.path.join(modelDir, weights_name), monitor='val_loss', verbose=0, save_best_only=False,
-                                        save_weights_only=False, mode='auto', period=5)
+                                        save_weights_only=False, mode='auto', period=2)
 
         # Perform batch training with epochs
         t=time.time()
@@ -175,8 +175,6 @@ class TrainRNN():
                        initial_epoch = self.initial_epoch,
                        validation_split=0.2,verbose=1, callbacks=[tbCb, saveCb])
 
-        # self.model.fit(X, Y, batch_size=self.batch_size, epochs=epochs, validation_split=0.1,
-        #                verbose=1, callbacks=[tbCb, saveCb])
 
         averageTime = (time.time() - t) / epochs
         print('Total time:', time.time() - t, ', Average time per epoch:', averageTime)

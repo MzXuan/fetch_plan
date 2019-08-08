@@ -8,7 +8,7 @@ from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
 
-from predictor import Predictor
+from predictors import ShortPred
 from create_traj_set import RLDataCreator
 from tqdm import tqdm
 import pred_flags
@@ -114,7 +114,7 @@ class Runner(object):
 
 
 
-        self.predictor = Predictor(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
+        self.predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
                                    train_flag=False, model_name=pred_flags.model_name)
 
         self.dataset_creator = RLDataCreator(nenv)
@@ -440,7 +440,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
         tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
         )
 
-    predictor = Predictor(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+    predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
                                train_flag=False, model_name=pred_flags.model_name)
 
     dataset_creator = RLDataCreator(nenv)
