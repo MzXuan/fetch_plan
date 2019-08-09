@@ -292,7 +292,6 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         nbatch_train = nbatch // nminibatches
         tstart = time.time()
         frac = 1.0 - (update - 1.0) / nupdates
-        # lrnow = lr(frac)
         curr_step = update*nbatch
         step_percent = float(curr_step / total_timesteps)
 
@@ -353,9 +352,6 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             logger.logkv('origin_pred_loss', np.mean(origin_ploss))
             logger.logkv('weighted_pred_loss', np.mean(pred_loss))
             logger.logkv('origin_rew', np.mean(origin_rew))
-            # logger.logkv('len_traj_done', np.nanmean(traj_len))
-            # logger.logkv('lr', lrnow)
-            # logger.logkv('d_targ', d_targ)
             for (lossval, lossname) in zip(lossvals, model.loss_names):
                 logger.logkv(lossname, lossval)
             logger.dumpkvs()

@@ -167,6 +167,10 @@ class PredBase(object):
 
             y_pred = self.inference_model.predict(X=x, Y=y)
 
+            print("x: ", x)
+            print("y: ", y)
+            print("y_pred: ", y_pred)
+
             # -------calculate minimum distance to true goal-----#
             _, _, min_dist = utils.find_goal(y_pred[0], goal_true)
             min_dist_list.append(min_dist)
