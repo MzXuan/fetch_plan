@@ -8,7 +8,7 @@ from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
 
-from predictor import Predictor
+from predictors import ShortPred
 from create_traj_set import RLDataCreator
 from tqdm import tqdm
 import pred_flags
@@ -114,8 +114,10 @@ class Runner(object):
 
 
 
-        self.predictor = Predictor(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
-                                   train_flag=False, model_name=pred_flags.model_name)
+        self.predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
+                                   train_flag=False)
+        # self.predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
+        #                            train_flag=False, model_name=pred_flags.model_name)
 
         self.dataset_creator = RLDataCreator(nenv)
 
@@ -148,7 +150,6 @@ class Runner(object):
             mb_dones.append(self.dones)            
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
 
-            
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
             # traj_len = np.nan
@@ -157,7 +158,8 @@ class Runner(object):
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
                 xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
-                origin_pred_loss = self.predictor.run_online_prediction(xs, goals)
+                origin_pred_loss = self.predictor.run_online_prediction(xs)
+                # origin_pred_loss = self.predictor.run_online_prediction(xs, goals)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
                 #---for display---
@@ -272,14 +274,14 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     if pred_weight!=0:
         loss = []
         rew = []
-        print("finding best pred weight... this will take 1 epochs...")
-        for _ in tqdm(range(1)):
+        print("finding best pred weight... this will take 2 epochs...")
+        for _ in tqdm(range(2)):
             print("start finding...")
             obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
             loss.append(origin_ploss)
             rew.append(origin_rew)
 
-        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1)
+        runner.pred_weight = np.mean(rew)/np.mean(loss) * (pred_weight)
         print("current pred weight is: ")
         print(runner.pred_weight)
 
@@ -290,7 +292,6 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         nbatch_train = nbatch // nminibatches
         tstart = time.time()
         frac = 1.0 - (update - 1.0) / nupdates
-        # lrnow = lr(frac)
         curr_step = update*nbatch
         step_percent = float(curr_step / total_timesteps)
 
@@ -351,9 +352,6 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             logger.logkv('origin_pred_loss', np.mean(origin_ploss))
             logger.logkv('weighted_pred_loss', np.mean(pred_loss))
             logger.logkv('origin_rew', np.mean(origin_rew))
-            # logger.logkv('len_traj_done', np.nanmean(traj_len))
-            # logger.logkv('lr', lrnow)
-            # logger.logkv('d_targ', d_targ)
             for (lossval, lossname) in zip(lossvals, model.loss_names):
                 logger.logkv(lossname, lossval)
             logger.dumpkvs()
@@ -441,7 +439,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
         tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
         )
 
-    predictor = Predictor(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+    predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
                                train_flag=False, model_name=pred_flags.model_name)
 
     dataset_creator = RLDataCreator(nenv)
