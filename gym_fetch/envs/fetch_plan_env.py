@@ -37,6 +37,33 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             initial_qpos=initial_qpos, reward_type=reward_type)
         utils.EzPickle.__init__(self)
 
+    def _sample_goal(self):
+        #get all the targets ids
+        body_num = self.sim.model.body_name2id('target_plane')
+        site_body_list = self.sim.model.site_bodyid
+        index = np.where(site_body_list==body_num)[0] #1~number
+
+        print("index: ", index)
+
+        # random select one as the goal
+        id = np.random.choice(a=index,size=1)
+
+        goal = self.sim.data.site_xpos[id].reshape(3,)
+
+        print("goal origin: ", goal)
+
+        # random goal y and z
+        goal[1] = np.random.uniform()*0.8*goal[1]+(0.5-0.4)*goal[1]
+        goal[2] = np.random.uniform()*goal[2]
+
+        print("goal random: ", goal)
+
+
+
+        return goal.copy()
+
+
+
 
 class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
     def __init__(self, reward_type='sparse'):
