@@ -13,4 +13,8 @@ register(
     max_episode_steps=400
 )
 
-
+register(
+    id='FetchEff-v0',
+    entry_point='gym_fetch.envs:FetchEffEnv',
+    max_episode_steps=400
+)
