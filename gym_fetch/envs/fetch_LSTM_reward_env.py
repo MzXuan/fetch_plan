@@ -266,12 +266,24 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
     def _viewer_setup(self):
         body_id = self.sim.model.body_name2id('robot0:gripper_link')
+
         lookat = self.sim.data.body_xpos[body_id]
+        print("lookat: ", lookat)
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
         self.viewer.cam.distance = 2.5
-        self.viewer.cam.azimuth = 132.
-        self.viewer.cam.elevation = -14.
+        self.viewer.cam.azimuth = 0.
+        self.viewer.cam.elevation = -90.
+        # body_id = self.sim.model.body_name2id('robot0:gripper_link')
+        #
+        # lookat = self.sim.data.body_xpos[body_id]
+
+        # for idx, value in enumerate(lookat):
+        #     self.viewer.cam.lookat[idx] = value
+        # self.viewer.cam.distance = 2.5
+        # self.viewer.cam.azimuth = 132.
+        # self.viewer.cam.elevation = -14.
+
 
     def _render_callback(self):
         # Visualize target.
