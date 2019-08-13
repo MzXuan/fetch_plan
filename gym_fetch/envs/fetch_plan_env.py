@@ -50,10 +50,8 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         site_body_list = self.sim.model.site_bodyid
         index = np.where(site_body_list==body_num)[0] #1~number
 
-
         # random select one as the goal
         id = np.random.choice(a=index,size=1)
-
         goal = self.sim.data.site_xpos[id].reshape(3,)
 
         # print("origin goal: ", goal)
@@ -76,11 +74,11 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
             'robot0:head_tilt_joint': 0.00, #range="-0.76 1.45"
             'robot0:shoulder_pan_joint': 0, #range="-1.6056 1.6056"
-            'robot0:shoulder_lift_joint': 1.0, #range="-1.221 1.518"
+            'robot0:shoulder_lift_joint': 0, #range="-1.221 1.518"
             'robot0:upperarm_roll_joint': 0, #limited="false"
-            'robot0:elbow_flex_joint': -2.0, #range="-2.251 2.251"
+            'robot0:elbow_flex_joint': 0, #range="-2.251 2.251"
             'robot0:forearm_roll_joint': 0,#limited="false"
-            'robot0:wrist_flex_joint':0.8, #range="-2.16 2.16"
+            'robot0:wrist_flex_joint':0, #range="-2.16 2.16"
             'robot0:wrist_roll_joint': 0, #limited="false"
             'robot0:r_gripper_finger_joint': 0,
             'robot0:l_gripper_finger_joint': 0
@@ -131,6 +129,16 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
 
         return obs, reward, done, info
 
+    def _viewer_setup(self):
+        body_id = self.sim.model.body_name2id('robot0:gripper_link')
+
+        lookat = self.sim.data.body_xpos[body_id]
+        print("lookat: ", lookat)
+        for idx, value in enumerate(lookat):
+            self.viewer.cam.lookat[idx] = value
+        self.viewer.cam.distance = 2.5
+        self.viewer.cam.azimuth = 180
+        self.viewer.cam.elevation = -90.
 
     def _sample_goal(self):
         #get all the targets ids; random sample goal on a plane
@@ -143,7 +151,7 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
 
         # random goal y and z
         goal[1] = np.random.uniform()*2*0.6*goal[1]+(1-0.6)*goal[1]
-        goal[2] = np.random.uniform()*2*0.6*goal[2]+(1-0.6)*goal[2]
+        goal[2] = np.random.uniform()*2*0.5*goal[2]+(1-0.5)*goal[2]
 
         return goal.copy()
 
@@ -153,14 +161,47 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         # Gimbel lock) or we may not achieve an initial condition (e.g. an object is within the hand).
         # In this case, we just keep randomizing until we eventually achieve a valid initial
         # configuration.
+
+        # q_pos = self._reset_arm()
+
+        # self.sim.forward()
+
+
         did_reset_sim = False
         while not did_reset_sim:
             did_reset_sim = self._reset_sim()
+
+        utils_rob.reset_mocap_welds(self.sim)
+        grip_pos = self.sim.data.get_site_xpos('robot0:grip')
+        gripper_rotation = np.array([1., 1., 0., 0.])
+        self.sim.data.set_mocap_pos('robot0:mocap', grip_pos)
+        self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
+        for _ in range(10):
+            self.sim.step()
+
+
         self.goal = self._sample_goal().copy()
         obs = self._get_obs()
         self.last_distance = goal_distance(
             obs['achieved_goal'], self.goal)
         return obs
+
+    def _reset_sim(self):
+        self.sim.set_state(self.initial_state)
+
+        # Randomize start position of object.
+        if self.has_object:
+            object_xpos = self.initial_gripper_xpos[:2]
+            while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
+                object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range,
+                                                                                     size=2)
+            object_qpos = self.sim.data.get_joint_qpos('object0:joint')
+            assert object_qpos.shape == (7,)
+            object_qpos[:2] = object_xpos
+            self.sim.data.set_joint_qpos('object0:joint', object_qpos)
+
+        self.sim.forward()
+        return True
 
     def _env_setup(self, initial_qpos):
         for name, value in initial_qpos.items():
@@ -170,7 +211,7 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
 
         # Move end effector into position.
         gripper_target = np.array([-0.498, 0.005, -0.431 + self.gripper_extra_height]) + self.sim.data.get_site_xpos('robot0:grip')
-        gripper_rotation = np.array([1., 0., 1., 0.])
+        gripper_rotation = np.array([1., 1., 0., 0.])
         self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
         self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
         for _ in range(10):
@@ -205,7 +246,7 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, TEST_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.03, max_accel=0.2,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
         utils.EzPickle.__init__(self)
 

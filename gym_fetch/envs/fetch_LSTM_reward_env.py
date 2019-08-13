@@ -56,7 +56,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         self.n_actions = n_actions
 
-
         self.current_qvel = np.zeros(7)
         self.prev_act = np.zeros(self.n_actions)
         self.goal_label = 0
@@ -109,6 +108,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.sim.set_state(self.initial_state)
             self.sim.forward()
             collision_flag = self._contact_dection()
+
+        return initial_qpos
 
     # RobotEnv methods
     # ----------------------------
@@ -268,21 +269,12 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         body_id = self.sim.model.body_name2id('robot0:gripper_link')
 
         lookat = self.sim.data.body_xpos[body_id]
-        print("lookat: ", lookat)
+
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
         self.viewer.cam.distance = 2.5
-        self.viewer.cam.azimuth = 0.
-        self.viewer.cam.elevation = -90.
-        # body_id = self.sim.model.body_name2id('robot0:gripper_link')
-        #
-        # lookat = self.sim.data.body_xpos[body_id]
-
-        # for idx, value in enumerate(lookat):
-        #     self.viewer.cam.lookat[idx] = value
-        # self.viewer.cam.distance = 2.5
-        # self.viewer.cam.azimuth = 132.
-        # self.viewer.cam.elevation = -14.
+        self.viewer.cam.azimuth = 132.
+        self.viewer.cam.elevation = -14.
 
 
     def _render_callback(self):
