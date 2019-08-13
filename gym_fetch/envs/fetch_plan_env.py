@@ -133,7 +133,7 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         body_id = self.sim.model.body_name2id('robot0:base_link')
 
         lookat = self.sim.data.body_xpos[body_id]
-        print("lookat: ", lookat)
+        # print("lookat: ", lookat)
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
         self.viewer.cam.distance = 4

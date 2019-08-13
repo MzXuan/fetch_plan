@@ -463,16 +463,19 @@ def display(policy, env, nsteps, nminibatches, load_path):
         obs_list = None
         obs_list_3d = None
 
+        traj = []
         env.render()
         time.sleep(2)
+
         while not done[0]:
             env.render()
             act, state = agent.mean(obs, state, done)
             obs, rew, done, info = env.step(act)
 
-            print("goal: ", obs[0][3:6])
-            print("eef position:", obs[0][0:3])
+            # print("goal: ", obs[0][3:6])
+            # print("eef position:", obs[0][0:3])
 
+            traj.append(obs[0][0:3])
             origin_obs = env.origin_obs
 
             xs, goals = dataset_creator.collect_online(origin_obs, done)
@@ -490,14 +493,18 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # #--- end plot ---#
             score += rew[0]
 
+        #if done, save trajectory
+        traj = np.asarray(traj)
         # if done, pause 2 s
         time.sleep(2)
-        return score
+        return score, traj
 
 
     for e in range(10000):
-        score = run_episode(env, act_model)
+        score, traj = run_episode(env, act_model)
         print ('episode: {} | score: {}'.format(e, score))
+        # print("episode: {} traj: {}".format(e, traj))
+        np.savetxt("./trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
 
     env.close()
 
