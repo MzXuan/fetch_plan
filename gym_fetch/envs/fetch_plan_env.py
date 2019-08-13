@@ -71,9 +71,9 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             'robot0:slide1': 0.48,
             'robot0:slide2': 0.0,
             'robot0:torso_lift_joint': 0.04,
-            'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
+            'robot0:head_pan_joint': 0, #range="-1.57 1.57"
             'robot0:head_tilt_joint': 0.00, #range="-0.76 1.45"
-            'robot0:shoulder_pan_joint': 0, #range="-1.6056 1.6056"
+            'robot0:shoulder_pan_joint': -1.0, #range="-1.6056 1.6056"
             'robot0:shoulder_lift_joint': 0, #range="-1.221 1.518"
             'robot0:upperarm_roll_joint': 0, #limited="false"
             'robot0:elbow_flex_joint': 0, #range="-2.251 2.251"
@@ -86,7 +86,7 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, EFF_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.05, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.03, max_accel=0.2,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=4)
         utils.EzPickle.__init__(self)
 
@@ -130,13 +130,13 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         return obs, reward, done, info
 
     def _viewer_setup(self):
-        body_id = self.sim.model.body_name2id('robot0:gripper_link')
+        body_id = self.sim.model.body_name2id('robot0:base_link')
 
         lookat = self.sim.data.body_xpos[body_id]
         print("lookat: ", lookat)
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 2.5
+        self.viewer.cam.distance = 4
         self.viewer.cam.azimuth = 180
         self.viewer.cam.elevation = -90.
 
@@ -216,6 +216,7 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
         for _ in range(10):
             self.sim.step()
+
 
         # Extract information for sampling goals.
         self.initial_gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()

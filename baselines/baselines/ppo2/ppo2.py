@@ -469,7 +469,9 @@ def display(policy, env, nsteps, nminibatches, load_path):
             env.render()
             act, state = agent.mean(obs, state, done)
             obs, rew, done, info = env.step(act)
-            # predictor.predict(obs,done)
+
+            print("goal: ", obs[0][3:6])
+            print("eef position:", obs[0][0:3])
 
             origin_obs = env.origin_obs
 
