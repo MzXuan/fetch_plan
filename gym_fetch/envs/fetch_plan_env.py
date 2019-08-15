@@ -90,6 +90,7 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=4)
         utils.EzPickle.__init__(self)
 
+    # todo: rewrite get obs function!!!save last several eff position in to obs!!!
 
     def _set_action(self, action):
         assert action.shape == (4,)

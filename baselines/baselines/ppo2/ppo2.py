@@ -475,8 +475,8 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # print("goal: ", obs[0][3:6])
             # print("eef position:", obs[0][0:3])
 
-            traj.append(obs[0][0:3])
             origin_obs = env.origin_obs
+            traj.append(origin_obs[0][0:3])
 
             xs, goals = dataset_creator.collect_online(origin_obs, done)
             origin_pred_loss = predictor.run_online_prediction(xs, goals)
@@ -504,7 +504,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
         score, traj = run_episode(env, act_model)
         print ('episode: {} | score: {}'.format(e, score))
         # print("episode: {} traj: {}".format(e, traj))
-        np.savetxt("./trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
+        np.savetxt("/home/xuan/Videos/trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
 
     env.close()
 
