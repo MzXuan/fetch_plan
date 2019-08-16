@@ -504,7 +504,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
         score, traj = run_episode(env, act_model)
         print ('episode: {} | score: {}'.format(e, score))
         # print("episode: {} traj: {}".format(e, traj))
-        np.savetxt("/home/xuan/Videos/trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
+        # np.savetxt("/home/xuan/Videos/trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
 
     env.close()
 

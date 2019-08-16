@@ -53,6 +53,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         self.last_qpos = np.zeros(7)
         self.qvel_2 = np.zeros(7)
         self.qpos_2 = np.zeros(7)
+        self.qpos_3 = np.zeros(7)
+        self.qvel_3 = np.zeros(7)
 
         self.n_actions = n_actions
 
@@ -244,13 +246,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     joint_angle, joint_vel, self.prev_act
         # ])
 
-        # obs = np.concatenate([
-        #     joint_angle, joint_vel, self.last_qpos, self.qpos_2, self.qpos_3, self.last_qvel, self.qvel_2, self.qvel_3
-        # ])
-
         obs = np.concatenate([
-            joint_angle, joint_vel, self.last_qpos, self.qpos_2, self.last_qvel, self.qvel_2
+            joint_angle, joint_vel, self.last_qpos, self.qpos_2, self.qpos_3, self.last_qvel, self.qvel_2, self.qvel_3
         ])
+
+        # obs = np.concatenate([
+        #     joint_angle, joint_vel, self.last_qpos, self.qpos_2, self.last_qvel, self.qvel_2
+        # ])
         # ------------------------
         #   Observation details in ppo2 (re-formulate in openai)
         #
