@@ -172,18 +172,19 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     print('dist', contact.dist)
         #     print('geom1', contact.geom1, self.sim.model.geom_id2name(contact.geom1))
         #     print('geom2', contact.geom2, self.sim.model.geom_id2name(contact.geom2))
-        #     # There's more stuff in the data structure
-        #     # See the mujoco documentation for more info!
-        #     geom2_body = self.sim.model.geom_bodyid[self.sim.data.contact[i].geom2]
-        #     print(' Contact force on geom2 body', self.sim.data.cfrc_ext[geom2_body])
-        #     print('norm', np.sqrt(np.sum(np.square(self.sim.data.cfrc_ext[geom2_body]))))
-        #     # Use internal functions to read out mj_contactForce
-        #     c_array = np.zeros(6, dtype=np.float64)
-        #     print('c_array', c_array)
-        #     mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
-        #     print('c_array', c_array)
+        #     print("exclude", contact.exclude)
+            # # There's more stuff in the data structure
+            # # See the mujoco documentation for more info!
+            # geom2_body = self.sim.model.geom_bodyid[self.sim.data.contact[i].geom2]
+            # print(' Contact force on geom2 body', self.sim.data.cfrc_ext[geom2_body])
+            # print('norm', np.sqrt(np.sum(np.square(self.sim.data.cfrc_ext[geom2_body]))))
+            # # Use internal functions to read out mj_contactForce
+            # c_array = np.zeros(6, dtype=np.float64)
+            # print('c_array', c_array)
+            # mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
+            # print('c_array', c_array)
 
-        if self.sim.data.ncon > 2:
+        if self.sim.data.ncon > 1:
             return True
         else:
             return False

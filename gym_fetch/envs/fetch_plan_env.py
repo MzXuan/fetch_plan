@@ -47,12 +47,12 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
     def _sample_goal(self):
         #get all the targets ids; random sample goal on a plane
         body_num = self.sim.model.body_name2id('target_plane')
-        site_body_list = self.sim.model.site_bodyid
-        index = np.where(site_body_list==body_num)[0] #1~number
+        geom_body_list = self.sim.model.geom_bodyid
+        index = np.where(geom_body_list==body_num)[0] #1~number
 
         # random select one as the goal
         id = np.random.choice(a=index,size=1)
-        goal = self.sim.data.site_xpos[id].reshape(3,)
+        goal = self.sim.data.geom_xpos[id].reshape(3,)
 
         # random goal y and z
         goal[1] = np.random.uniform()*2*0.6*goal[1]+(1-0.6)*goal[1]
