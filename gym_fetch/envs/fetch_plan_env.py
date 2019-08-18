@@ -58,8 +58,8 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
 
         table_pose = self.sim.data.geom_xpos[id].reshape(3,) #x,y,z
         table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
-        print("table pose: ", table_pose)
-        print("table size: ", table_size)
+        # print("table pose: ", table_pose)
+        # print("table size: ", table_size)
 
         goal = np.zeros(3)
         goal[0] = table_pose[0] + (2*np.random.uniform()-1)*table_size[0]
