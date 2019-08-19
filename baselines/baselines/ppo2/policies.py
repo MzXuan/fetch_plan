@@ -145,7 +145,7 @@ class MlpPolicy(object):
             vf = fc(h2, 'vf', 1, act=lambda x:x)[:,0]
         with tf.variable_scope("logstd", reuse=reuse):
             logstd = tf.get_variable(name="logstd", shape=[1, actdim], 
-                initializer=tf.zeros_initializer()) + 0.2
+                initializer=tf.zeros_initializer()) + 0.4
 
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
 
