@@ -146,10 +146,10 @@ class MlpPolicy(object):
         with tf.variable_scope("logstd", reuse=reuse):
             if iter == 0:
                 logstd = tf.get_variable(name="logstd", shape=[1, actdim],
-                    initializer=tf.zeros_initializer()) + 0.4
+                    initializer=tf.zeros_initializer()) + 0.6
             else:
                 logstd = tf.get_variable(name="logstd", shape=[1, actdim],
-                                         initializer=tf.zeros_initializer()) - 1.0
+                                         initializer=tf.zeros_initializer()) - 0.5
 
 
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
