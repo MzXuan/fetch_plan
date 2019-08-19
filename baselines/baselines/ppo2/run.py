@@ -6,7 +6,7 @@ import numpy as np
 from baselines import logger, bench
 
 def train(env_id, num_timesteps, seed, d_targ, load, point,
-          pred_weight=0.01, ent_coef=0.0):
+          pred_weight=0.01, ent_coef=0.0, iter=0):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalize
     from baselines.ppo2 import ppo2
@@ -67,7 +67,8 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
         point=point,
         init_targ=d_targ,
         predictor_flag=True,
-        pred_weight=pred_weight)
+        pred_weight=pred_weight,
+        iter=iter)
 
 def test(env_id, num_timesteps, seed, d_targ, load, point):
     from baselines.common import set_global_seeds
@@ -178,9 +179,9 @@ def main():
         logger.tb_start_step(args.iter * each_iter_num, 3)
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=args.load, point=args.point,
-              pred_weight=args.pred_weight, ent_coef=args.ent_coef)
+              pred_weight=args.pred_weight, ent_coef=args.ent_coef, iter=args.iter)
     else:
-        print("!!!!!go into test branch!!!!!")
+        print("test branch, collecting data....")
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
 

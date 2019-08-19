@@ -16,11 +16,11 @@ import pred_flags
 
 class Model(object):
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
-                nsteps, ent_coef, vf_coef, max_grad_norm):
+                nsteps, ent_coef, vf_coef, max_grad_norm, iter=0):
         sess = tf.get_default_session()
 
-        act_model = policy(sess, ob_space, ac_space, nbatch_act, 1, reuse=False)
-        train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True)
+        act_model = policy(sess, ob_space, ac_space, nbatch_act, 1, iter=iter, reuse=False)
+        train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps,  iter=iter, reuse=True)
 
         A = train_model.pdtype.sample_placeholder([None])
         ADV = tf.placeholder(tf.float32, [None])
@@ -120,15 +120,6 @@ class Runner(object):
         #                            train_flag=False, model_name=pred_flags.model_name)
 
         self.dataset_creator = RLDataCreator(nenv)
-
-        # sess = tf.get_default_session()
-        # if (not self.predictor_flag) and pred_weight != 0.0:
-        #     # collect data
-        #     self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
-        # else:
-        #     # train and display
-        #     self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
-        # self.predictor.init_sess()
 
         self.collect_flag = False
         if load:
@@ -235,7 +226,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
             save_interval=50, load=False, point='00100', init_targ=0.1,
-            predictor_flag=False, pred_weight=0.01):
+            predictor_flag=False, pred_weight=0.01, iter=0):
 
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
@@ -251,7 +242,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
     make_model = lambda : Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train, 
                     nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
-                    max_grad_norm=max_grad_norm)
+                    max_grad_norm=max_grad_norm, iter=iter)
     if save_interval and logger.get_dir():
         import cloudpickle
         with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
