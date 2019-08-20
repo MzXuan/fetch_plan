@@ -198,13 +198,13 @@ class PredBase(object):
 
         # ----------write average error and save result------------
 
-        errors = np.asarray(errors)
-        error_mean = np.mean(errors, axis=0)
-        err_x_mean = np.asarray(errors_x).mean(axis=0)
-        with open('./pred/errors.csv', 'a', newline='') as csvfile:
-            spamwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-            spamwriter.writerow(error_mean)
-        print("error_mean: ", error_mean)
+        # errors = np.asarray(errors)
+        # error_mean = np.mean(errors, axis=0)
+        # err_x_mean = np.asarray(errors_x).mean(axis=0)
+        # with open('./pred/errors.csv', 'a', newline='') as csvfile:
+        #     spamwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        #     spamwriter.writerow(error_mean)
+        # print("error_mean: ", error_mean)
 
         # import visualize
         # visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
@@ -217,6 +217,7 @@ class PredBase(object):
             return dataset
         except:
             print("Can not load dataset. Please first run the training stage to save dataset.")
+
 
     def _load_train_set(self):
         ## check saved data set
@@ -235,6 +236,7 @@ class PredBase(object):
                 self.dataset.extend(dataset)
                 self.x_mean = dataset[0].x_mean[-3:]
                 self.x_var = dataset[0].x_var[-3:]
+
 
     def plot_dataset(self):
         self._load_train_set()

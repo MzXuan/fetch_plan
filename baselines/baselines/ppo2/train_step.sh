@@ -44,13 +44,13 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --epoch=10
+    python predictors.py --iter=${counter} --epoch=10
 
 elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --epoch=10
+    python predictors.py --load --iter=${counter} --epoch=10
 else
-    python predictor.py --load --iter=${counter} --epoch=10
+    python predictors.py --load --iter=${counter} --epoch=10
 fi
 
 
