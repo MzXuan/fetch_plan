@@ -9,7 +9,7 @@ function finish() {
 
 # preparation
 rl_model="./log/"
-pred_model="./simpleRNN/"
+pred_model="./pred/"
 
 # start from beginning
 
