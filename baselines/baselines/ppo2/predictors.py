@@ -5,14 +5,22 @@ import pickle
 import os
 import time
 import csv
+
+import pred_flags
+
 import numpy as np
+np.random.seed(pred_flags.random_seed)
+
+
+import tensorflow as tf
+tf.set_random_seed(pred_flags.random_seed)
 
 import keras_seq2seq as KP
 import keras_simpleRNN as KS
 
 from pred_base import PredBase
 
-import pred_flags
+
 
 NUM_UNITS = pred_flags.num_units
 NUM_LAYERS = pred_flags.num_layers
@@ -145,8 +153,11 @@ if __name__ == '__main__':
     test_flag=args.test
     out_steps=pred_flags.out_steps
 
+
+
     if not os.path.isdir("./pred"):
         os.mkdir("./pred")
+
 
     # rnn_model.plot_dataset()
 

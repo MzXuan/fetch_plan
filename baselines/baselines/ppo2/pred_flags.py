@@ -23,6 +23,8 @@ display_interval = 100
 check_dir_cls = './pred/' + model_name + '/checkpoint_'
 sample_dir_cls = './pred/' + model_name + '/sample_'
 
+random_seed = 100
+
 
 
 # class InitParameter():

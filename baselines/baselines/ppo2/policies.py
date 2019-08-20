@@ -149,7 +149,7 @@ class MlpPolicy(object):
                     initializer=tf.zeros_initializer()) + 0.6
             else:
                 logstd = tf.get_variable(name="logstd", shape=[1, actdim],
-                                         initializer=tf.zeros_initializer()) - 0.5
+                                         initializer=tf.zeros_initializer()) - 0.3
 
 
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
