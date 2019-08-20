@@ -7,13 +7,16 @@ function finish() {
         exit
 }
 
+# parameter 1. start counter; 2. prediction weight;
+
+
 # start training
 counter=${1}
 echo $counter
 
 # preparation
 rl_model="./log/"
-pred_model="./pred/"
+pred_model="./simpleRNN/"
 
 if [ ${counter} -eq 0 ]
 then
@@ -44,21 +47,20 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictors.py --iter=${counter} --epoch=10
-
+    python predictors.py --iter=${counter} --epoch=20
 elif [ ${counter} -le 3 ]
 then
-    python predictors.py --load --iter=${counter} --epoch=10
+    python predictors.py --load --iter=${counter} --epoch=20
 else
-    python predictors.py --load --iter=${counter} --epoch=10
+    python predictors.py --load --iter=${counter} --epoch=20
 fi
 
 
 # copy saved file and rename
-
-
-cp -R ${pred_model} "./models/pred_${counter}"
+cp -R ${pred_model} "./models/pred_${counter}"	#rl
 rm -rf "${pred_model}/test1/checkpoint_"
+
+#rl
 rm -rf "${rl_model}/tb"
 
 
