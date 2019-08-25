@@ -487,7 +487,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
         #if done, save trajectory
         traj = np.asarray(traj)
         # if done, pause 2 s
-        time.sleep(2)
+        time.sleep(1)
         return score, traj
 
 

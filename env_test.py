@@ -3,7 +3,8 @@ import gym
 import gym_fetch
 
 # env = gym.make('FetchPlanTest-v0')
-env = gym.make('FetchPlan-v0')
+# env = gym.make('FetchPlan-v0')
+env = gym.make('FetchPlanShelf-v0')
 # env = gym.make('FetchEff-v0')
 for e in range(100):
     env.reset()

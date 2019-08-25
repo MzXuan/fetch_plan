@@ -8,9 +8,9 @@ from gym.envs.robotics import utils as utils_rob
 import random
 
 # Ensure we get the path separator correct on windows
-MODEL_XML_PATH = os.path.join('fetch','jointvel.xml')
+MODEL_XML_PATH = os.path.join('fetch','table.xml')
+SHELF_MODEL_XML_PATH = os.path.join('fetch','shelf.xml')
 EFF_MODEL_XML_PATH = os.path.join('fetch', 'eff_point.xml')
-TEST_MODEL_XML_PATH = os.path.join('fetch', 'jointvel_test.xml')
 
 def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
@@ -40,7 +40,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.05, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.2,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
         utils.EzPickle.__init__(self)
 
@@ -62,16 +62,10 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         # print("table size: ", table_size)
 
         goal = np.zeros(3)
-        goal[0] = table_pose[0] + (2*np.random.uniform()-1)*table_size[0]
+        goal[0] = table_pose[0] + (2*np.random.uniform()-1)* (table_size[0]- self.sim.model.site_size[index_site[0]].reshape(3,)[0])
         goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * table_size[1]
         goal[2] = table_pose[2] +table_size[2] + self.sim.model.site_size[index_site[0]].reshape(3,)[2] #deduce radius
 
-
-        # old sampled mathod at a vetical wall
-        # goal[0] = goal[0] - self.sim.model.site_size[index_site[0]].reshape(3,)[0] #deduce radius
-        # # random goal y and z
-        # goal[1] = np.random.uniform()*2*0.6*goal[1]+(1-0.6)*goal[1]
-        # goal[2] = np.random.uniform()*2*0.6*goal[2]+(1-0.6)*goal[2]
 
         return goal.copy()
 
@@ -236,6 +230,68 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             self.height_offset = self.sim.data.get_site_xpos('object0')[2]
 
 
+class FetchPlanShelfEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
+    def __init__(self, reward_type='sparse'):
+        initial_qpos = {
+            'robot0:slide0': 0.4049,
+            'robot0:slide1': 0.48,
+            'robot0:slide2': 0.0,
+            'robot0:torso_lift_joint': 0.04,
+            'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
+            'robot0:head_tilt_joint': 0.00, #range="-0.76 1.45"
+            'robot0:shoulder_pan_joint': 0, #range="-1.6056 1.6056"
+            'robot0:shoulder_lift_joint': 1.0, #range="-1.221 1.518"
+            'robot0:upperarm_roll_joint': 0, #limited="false"
+            'robot0:elbow_flex_joint': -2.0, #range="-2.251 2.251"
+            'robot0:forearm_roll_joint': 0,#limited="false"
+            'robot0:wrist_flex_joint':0.8, #range="-2.16 2.16"
+            'robot0:wrist_roll_joint': 0, #limited="false"
+            'robot0:r_gripper_finger_joint': 0,
+            'robot0:l_gripper_finger_joint': 0
+        }
+        fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
+            self, SHELF_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
+            gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.2,
+            initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
+        utils.EzPickle.__init__(self)
+
+    def _sample_goal(self):
+        #get all the targets ids; random sample goal on a plane
+        body_num = self.sim.model.body_name2id('target_plane')
+        geom_body_list = self.sim.model.geom_bodyid
+        index = np.where(geom_body_list==body_num)[0] #1~number
+
+        site_body_list = self.sim.model.site_bodyid
+        index_site = np.where(site_body_list == body_num)[0]  # 1~number
+
+        # random select one as the goal
+        id = np.random.choice(a=index,size=1)
+
+        table_pose = self.sim.data.geom_xpos[id].reshape(3,) #x,y,z
+        table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
+        # print("table pose: ", table_pose)
+        # print("table size: ", table_size)
+
+        goal = np.zeros(3)
+        goal[0] = table_pose[0] + (2*np.random.uniform()-1)* (table_size[0]- self.sim.model.site_size[index_site[0]].reshape(3,)[0])
+        goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * table_size[1]
+        goal[2] = table_pose[2] +table_size[2] + self.sim.model.site_size[index_site[0]].reshape(3,)[2] #deduce radius
+
+        return goal.copy()
+
+    def _viewer_setup(self):
+        body_id = self.sim.model.body_name2id('view_plane')
+
+        lookat = self.sim.data.body_xpos[body_id]
+
+        for idx, value in enumerate(lookat):
+            self.viewer.cam.lookat[idx] = value
+        self.viewer.cam.distance = 2.6
+        self.viewer.cam.azimuth = 180
+        self.viewer.cam.elevation = -5
+
+
 
 class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
     def __init__(self, reward_type='sparse'):
@@ -257,7 +313,7 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
             'robot0:l_gripper_finger_joint': 0
         }
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
-            self, TEST_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
+            self, SHELF_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
             obj_range=0.15, target_range=0.15, distance_threshold=0.05, max_accel=0.2,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
