@@ -296,13 +296,8 @@ class PredictRNN():
         :param y:
         :return:
         '''
+        inputs = X
 
-        # self.model.reset_states()
-        predict_result = self._inference_function(inputs = X, Y = Y)
-        return predict_result
-
-
-    def _inference_function(self, inputs, Y = None):
         # Encode the input as state vectors.
         states_value = self.encoder_model.predict(inputs)
 
@@ -317,6 +312,8 @@ class PredictRNN():
         decoded_sequence = np.zeros((self.batch_size, self.max_outsteps, self.out_dim))
         decoded_len = 0
 
+        print("state value (encorder result): ", states_value)
+        print("size of encoder states: ", len(states_value))
 
         while not stop_condition:
             output_result = self.decoder_model.predict(
@@ -338,9 +335,7 @@ class PredictRNN():
             if (decoded_len >= self.max_outsteps):
                 stop_condition = True
 
-
         # print("shape of decoded sequence:", decoded_sequence.shape)
-
         full_sequence = np.concatenate((inputs, decoded_sequence), axis=1)
 
         # return full_sequence, decoded_sequence

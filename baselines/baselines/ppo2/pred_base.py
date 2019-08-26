@@ -123,9 +123,7 @@ class PredBase(object):
         self._load_train_set()
 
         valid_len = int(self.validate_ratio * len(self.dataset))
-
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
-
         print("validate dataset numbers: ", len(valid_set[0]))
 
         start_id = 1
