@@ -75,7 +75,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         if info["is_success"]:
             return 200.0
         elif info["is_collision"]:
-            return -20.0
+            return -30.0
         else:
             current_distance = goal_distance(achieved_goal, goal)
             approaching_rew = 15.0 * (self.last_distance - current_distance)
