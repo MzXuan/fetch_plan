@@ -65,8 +65,6 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         goal[0] = table_pose[0] + (2*np.random.uniform()-1)* (table_size[0]- self.sim.model.site_size[index_site[0]].reshape(3,)[0])
         goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * table_size[1]
         goal[2] = table_pose[2] +table_size[2] + self.sim.model.site_size[index_site[0]].reshape(3,)[2] #deduce radius
-
-
         return goal.copy()
 
 class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):

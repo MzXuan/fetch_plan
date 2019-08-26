@@ -105,6 +105,7 @@ class Runner(object):
         nenv = env.num_envs
         self.obs = np.zeros((nenv,) + env.observation_space.shape, dtype=model.train_model.X.dtype.name)
         self.obs[:] = env.reset()
+        self.env_obs = np.copy(self.obs)
         self.gamma = gamma
         self.lam = lam
         self.nsteps = nsteps
@@ -121,7 +122,7 @@ class Runner(object):
 
         self.dataset_creator = RLDataCreator(nenv)
 
-        self.gru_latent = np.zeros(nenv, pred_flags.num_layers, pred_flags.num_units)
+        self.pred_obs = np.zeros((nenv, pred_flags.num_layers*pred_flags.num_units))
 
 
         self.collect_flag = False
@@ -135,14 +136,22 @@ class Runner(object):
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
-            print("obs here is...", self.obs)
+            #----- edit obs, make it env_obs + pred_obs
+            # print("obs shape is: ", self.obs.shape)
+            # expand obs with latent space
+            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+            # print("obs shape after edited is: ", self.obs.shape)
+
+            #--------end extend obs------
             actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
             mb_values.append(values)
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)
-            self.obs[:], rewards, self.dones, infos = self.env.step(actions)
+            self.env_obs, rewards, self.dones, infos = self.env.step(actions)
+            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+
 
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
 
@@ -153,6 +162,11 @@ class Runner(object):
                 origin_obs = self.env.origin_obs
                 xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
                 # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
+
+                #----predict and get new latent space every n steps
+                latent_space, pred_result = self.long_term_predictor.run_online_prediction(xs, goals)
+                #----calculate loss based on previous calculated result----
+
 
                 origin_pred_loss = self.long_term_predictor.run_online_prediction(xs, goals)
                 predict_loss = pred_weight * origin_pred_loss

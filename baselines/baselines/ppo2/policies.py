@@ -132,7 +132,10 @@ class CnnPolicy(object):
 class MlpPolicy(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, iter=0, reuse=False): #pylint: disable=W0613
         print(ob_space.shape)
-        ob_shape = (nbatch, ) + ob_space.shape
+        obs_shape_list = list(ob_space.shape)
+        obs_shape_list[0] = obs_shape_list[0]+32
+        ob_shape = (nbatch, ) + tuple(obs_shape_list)
+
         actdim = ac_space.shape[0]
         X = tf.placeholder(tf.float32, ob_shape, name='Ob') #obs
         with tf.variable_scope("model", reuse=reuse):
