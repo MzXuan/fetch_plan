@@ -161,14 +161,16 @@ class Runner(object):
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
                 xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
+
+                #-----short term prediction-----
                 # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
 
                 #----predict and get new latent space every n steps
-                latent_space, pred_result = self.long_term_predictor.run_online_prediction(xs, goals)
+                #---- or update latent space based on last prediction
+                pred_obs, pred_result = self.long_term_predictor.run_online_prediction(xs)
                 #----calculate loss based on previous calculated result----
+                origin_pred_loss = 0
 
-
-                origin_pred_loss = self.long_term_predictor.run_online_prediction(xs, goals)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
 

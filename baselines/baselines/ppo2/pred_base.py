@@ -85,19 +85,20 @@ class PredBase(object):
         self.train_model.training(X=x_set, Y=y_set, epochs=self.epochs)
 
 
-    def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
+    def run_online_prediction(self, batched_seqs, last_pred_obs_list, visial_flags = False):
         '''
         :param batched_seqs: raw x (batch size * input shape)
         :param batched_goals: raw goals / true goal (batch size * goal shape)
         :return: reward of this prediction, batch size * 1
         '''
-        rewards = []
+        pred_obs_list = []
+        pred_result_list = []
         batched_seqs_normal = []
         for seq in batched_seqs:
             seq = seq[:, -3:]
             seq_normal = (seq - self.x_mean) / self.x_var
             if seq_normal.shape[0] < self.in_timesteps_max:
-                seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+                pred_obs = np.zeros(self.num_units*self.num_layers)
             else:
                 seq_normal = seq_normal[-self.in_timesteps_max:]
             batched_seqs_normal.append(seq_normal)
@@ -105,18 +106,43 @@ class PredBase(object):
         batched_seqs_normal = np.asarray(batched_seqs_normal)
         ys_pred, enc_states = self.inference_model.predict(X=batched_seqs_normal)
 
-        # then we restore the origin x and calculate the reward
-        for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
-            if seq.shape[0] < 5:
-                rewards.append(0.0)
-            else:
-                raw_y_pred = y_pred * self.x_var + self.x_mean
-                _, _, min_dist = utils.find_goal(raw_y_pred, [goal])
-                rewards.append(min_dist)
 
-        # print("rewards: ", rewards)
-        rewards = np.asarray(rewards)
-        return rewards
+
+        return pred_obs_list, pred_result_list
+
+
+    # def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
+    #     '''
+    #     :param batched_seqs: raw x (batch size * input shape)
+    #     :param batched_goals: raw goals / true goal (batch size * goal shape)
+    #     :return: reward of this prediction, batch size * 1
+    #     '''
+    #     rewards = []
+    #     batched_seqs_normal = []
+    #     for seq in batched_seqs:
+    #         seq = seq[:, -3:]
+    #         seq_normal = (seq - self.x_mean) / self.x_var
+    #         if seq_normal.shape[0] < self.in_timesteps_max:
+    #             seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+    #         else:
+    #             seq_normal = seq_normal[-self.in_timesteps_max:]
+    #         batched_seqs_normal.append(seq_normal)
+    #
+    #     batched_seqs_normal = np.asarray(batched_seqs_normal)
+    #     ys_pred, enc_states = self.inference_model.predict(X=batched_seqs_normal)
+    #
+    #     # then we restore the origin x and calculate the reward
+    #     for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
+    #         if seq.shape[0] < 5:
+    #             rewards.append(0.0)
+    #         else:
+    #             raw_y_pred = y_pred * self.x_var + self.x_mean
+    #             _, _, min_dist = utils.find_goal(raw_y_pred, [goal])
+    #             rewards.append(min_dist)
+    #
+    #     # print("rewards: ", rewards)
+    #     rewards = np.asarray(rewards)
+    #     return rewards
 
     def run_validation(self):
         ## load dataset

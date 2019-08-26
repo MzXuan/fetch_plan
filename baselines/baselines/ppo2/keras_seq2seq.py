@@ -295,51 +295,55 @@ class PredictRNN():
         :param y:
         :return:
         '''
-        inputs = X
-
-        # Encode the input as state vectors.
-        states_value = self.encoder_model.predict(inputs)
-
-        # Generate empty target sequence of length 1.
-        target_seq = np.zeros((self.batch_size, 1, self.out_dim))
-        # Populate the first character of target sequence with the start character.
-        target_seq[:, 0, :] = 1.
-
-        # Sampling loop for a batch of sequences
-        # (to simplify, here we assume a batch of size 1).
         stop_condition = False
         decoded_sequence = np.zeros((self.batch_size, self.max_outsteps, self.out_dim))
         decoded_len = 0
 
-
+        # encoder step
+        target_seq, states_value = self.get_encoder_latent_state(X)
         encoder_state_value = np.copy(np.asarray(states_value))
-        print("encoder state value: ", encoder_state_value)
 
-
+        #decoder inference step
         while not stop_condition:
-            output_result = self.decoder_model.predict(
-                [target_seq] + states_value)
-
-            output_seq = output_result[0]
+            target_seq, states_value = self.inference_one_step(target_seq, states_value)
 
             # Sample a token
-            decoded_sequence[:, decoded_len, :] = np.swapaxes(output_seq,0,1)
-
-            # Update the target sequence
-            target_seq = output_seq
-
-            # # Update states
-            states_value = output_result[1:]
+            decoded_sequence[:, decoded_len, :] = np.swapaxes(target_seq, 0, 1)
 
             decoded_len += 1
             if (decoded_len >= self.max_outsteps):
                 stop_condition = True
 
         # print("shape of decoded sequence:", decoded_sequence.shape)
-        full_sequence = np.concatenate((inputs, decoded_sequence), axis=1)
-
-        # return full_sequence, decoded_sequence
+        full_sequence = np.concatenate((X, decoded_sequence), axis=1)
         return decoded_sequence, encoder_state_value
+
+    def get_encoder_latent_state(self, inputs):
+        # Encode the input as state vectors.
+        states_value = self.encoder_model.predict(inputs)
+        # Generate empty target sequence of length 1.
+        target_seq = np.zeros((self.batch_size, 1, self.out_dim))
+        # Populate the first character of target sequence with the start character.
+        target_seq[:, 0, :] = 1.
+        # print("encoder state value: ", encoder_state_value)
+        return target_seq, states_value
+
+
+
+    def inference_one_step(self, target_seq, states_value):
+        output_result = self.decoder_model.predict(
+            [target_seq] + states_value)
+
+        output_seq = output_result[0]
+
+        # Update the target sequence
+        target_seq = output_seq
+        # # Update states
+        states_value = output_result[1:]
+
+        return target_seq, states_value
+
+
 
 def CreateSeqs(batch_size):
     '''
