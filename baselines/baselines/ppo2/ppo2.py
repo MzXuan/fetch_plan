@@ -467,11 +467,15 @@ def display(policy, env, nsteps, nminibatches, load_path):
         import visualize
 
         obs = env.reset()
+        env_obs = np.copy(obs)
+        pred_obs = np.zeros((1, pred_flags.num_units * pred_flags.num_layers))
+
         score = 0
         done = [False]
         state = agent.initial_state
         obs_list = None
         obs_list_3d = None
+
 
         traj = []
         env.render()
@@ -479,8 +483,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
         while not done[0]:
             env.render()
+            obs = np.concatenate((env_obs,pred_obs), axis=1)
             act, state = agent.mean(obs, state, done)
-            obs, rew, done, info = env.step(act)
+            env_obs, rew, done, info = env.step(act)
+            obs = np.concatenate((env_obs, pred_obs), axis=1)
 
             # print("goal: ", obs[0][3:6])
             # print("eef position:", obs[0][0:3])
