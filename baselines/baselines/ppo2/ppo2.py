@@ -9,6 +9,7 @@ from collections import deque
 from baselines.common import explained_variance
 
 from predictors import ShortPred
+from predictors import LongPred
 from create_traj_set import RLDataCreator
 from tqdm import tqdm
 import pred_flags

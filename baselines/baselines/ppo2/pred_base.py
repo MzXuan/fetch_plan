@@ -137,7 +137,7 @@ class PredBase(object):
         errors_x = []
 
         # for idx in range(start_id, len(valid_set[0]), 10):
-        for idx in range(start_id, 100, 10):
+        for idx in range(start_id, 700, 10):
             x_full = valid_set[4][idx]
 
             diff = ((x_full[:10]-last_traj[:10])**2).mean() #for detect change of new trajectory
@@ -189,12 +189,12 @@ class PredBase(object):
             ratio.append(idx/x_len)
 
             # ------plot predicted data (step by step)-----------
-            # import visualize
-            # show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
-            # visualize.plot_dof_seqs(show_x, y_pred[0], step = self.step, y_true = x_full,
-            #                         goals= goals, goal_pred = goal_pred)  # plot delta result
-            # visualize.plot_dist(min_dist_list)
-            # time.sleep(1)
+            import visualize
+            show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
+            visualize.plot_dof_seqs(show_x, y_pred[0], step = self.step, y_true = x_full,
+                                    goals= goals, goal_pred = goal_pred)  # plot delta result
+            visualize.plot_dist(min_dist_list)
+            time.sleep(1)
 
         # ----------write average error and save result------------
 
@@ -245,7 +245,7 @@ class PredBase(object):
         print(len(self.dataset))
 
         for idx, data in enumerate(self.dataset):
-            if idx%10 == 0:
+            if idx%500 == 0:
                 visualize.plot_3d_eef(data.x)
         plt.show()
 
@@ -310,56 +310,4 @@ class PredBase(object):
             for _ in range(old_length, new_length):
                     seq = np.append(seq, value, axis=0)
         return seq
-
-
-
-
-
-# if __name__ == '__main__':
-#     import argparse
-#     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-#     parser.add_argument('--epoch', default=10, type=int)
-#     parser.add_argument('--lr', default=0.01, type=float)
-#     parser.add_argument('--load', action='store_true')
-#     parser.add_argument('--iter', default=0, type=int)
-#     parser.add_argument('--model_name', default='test1', type=str)
-#     parser.add_argument('--test', action='store_true')
-#     args = parser.parse_args()
-#
-#     test_flag=args.test
-#     out_steps=pred_flags.out_steps
-#
-#     if not os.path.isdir("./pred"):
-#         os.mkdir("./pred")
-#
-#     # rnn_model.plot_dataset()
-#
-#     if not test_flag:
-#
-#         rnn_model = PredBase(1024, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
-#                               train_flag=True, epoch=args.epoch,
-#                               iter_start=args.iter, lr=args.lr, load=args.load,
-#                               model_name=pred_flags.model_name)
-#
-#         rnn_model.run_training()
-#
-#         print("start testing.....")
-#         rnn_model2 = PredBase(1, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
-#                               train_flag=True, epoch=args.epoch,
-#                               iter_start=args.iter, lr=args.lr, load=args.load,
-#                               model_name=pred_flags.model_name)
-#         rnn_model2.run_validation()
-#
-#
-#     else:
-#
-#         rnn_model = PredBase(1, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
-#                               train_flag=True, epoch=args.epoch,
-#                               iter_start=args.iter, lr=args.lr, load=args.load,
-#                               model_name=pred_flags.model_name)
-#         print("start testing...")
-#         # plot all the validate data step by step
-#
-#         # rnn_model.plot_dataset()
-#         rnn_model.run_validation()
 
