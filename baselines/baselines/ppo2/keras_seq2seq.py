@@ -73,21 +73,21 @@ class TrainRNN():
         '''
         t = time.time()
         print('Beginning LSTM compilation')
-        dec_ini_states = [ [] for _ in range(2*self.num_units)]
+        dec_ini_states = [ [] for _ in range(self.num_units)]
 
         # enc
         enc_layers = []
         encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
         for i in range(0, self.num_layers):
             if i == 0:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(inputs=encoder_inputs))
-                dec_ini_states = [enc_layers[i][1], enc_layers[i][2]]
+                dec_ini_states = [enc_layers[i][1]]
             else:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(
                                 inputs = enc_layers[i - 1][0]))
-                dec_ini_states += [enc_layers[i][1], enc_layers[i][2]]
+                dec_ini_states += [enc_layers[i][1]]
 
 
 
@@ -95,7 +95,7 @@ class TrainRNN():
         # Set up the decoder, which will only process one timestep at a time.
         decoder_inputs = Input(shape=(1, self.out_dim), name = 'dec_input')
         for i in range(self.num_layers):
-            dec_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True, name="dec_"+str(i)+"lstm"))
+            dec_layers.append(GRU(self.num_units, return_sequences=True, return_state=True, name="dec_"+str(i)+"lstm"))
         decoder_dense = Dense(self.out_dim, activation=OUTPUT_ACT, name='outputs')
 
         all_outputs = []
@@ -106,14 +106,13 @@ class TrainRNN():
             for i, dec_layer in enumerate(dec_layers):
                 if i == 0:
                     dec_layers_outputs.append(dec_layer(inputs = inputs,
-                                                        initial_state = [dec_ini_states[2*i], dec_ini_states[2*i+1]]))
+                                                        initial_state = [dec_ini_states[i]]))
                 else:
                     dec_layers_outputs.append(dec_layer(inputs = dec_layers_outputs[i-1][0],
-                                                        initial_state = [dec_ini_states[2 * i], dec_ini_states[2 * i + 1]]))
+                                                        initial_state = [dec_ini_states[i]]))
 
             for i in range(self.num_layers):
-                dec_ini_states[2*i] = dec_layers_outputs[i][1]
-                dec_ini_states[2*i+1] = dec_layers_outputs[i][2]
+                dec_ini_states[i] = dec_layers_outputs[i][1]
 
             inputs = decoder_dense(dec_layers_outputs[-1][0])
             all_outputs.append(inputs)
@@ -229,14 +228,14 @@ class PredictRNN():
         encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
         for i in range(0,self.num_layers):
             if i == 0:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(inputs=encoder_inputs))
-                enc_states = [enc_layers[i][1], enc_layers[i][2]]
+                enc_states = [enc_layers[i][1]]
             else:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(
                                 inputs = enc_layers[i - 1][0]))
-                enc_states += [enc_layers[i][1], enc_layers[i][2]]
+                enc_states += [enc_layers[i][1]]
 
 
         self.encoder_model = Model(encoder_inputs, enc_states)
@@ -244,26 +243,26 @@ class PredictRNN():
         # Set up the decoder, which will only process one timestep at a time.
         dec_layers = []
         decoder_inputs = Input(shape=(1, self.out_dim), name = 'dec_input')
-        decoder_states_inputs = [Input(shape=(self.num_units,)) for _ in range(2*self.num_layers)]
+        decoder_states_inputs = [Input(shape=(self.num_units,)) for _ in range(self.num_layers)]
 
 
 
         for i in range(0,self.num_layers):
             if i == 0:
-                dec_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                dec_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="dec_"+str(i)+"lstm")(
-                                       inputs=decoder_inputs, initial_state=[decoder_states_inputs[i],decoder_states_inputs[i+1]]))
-                dec_states = [dec_layers[i][1], dec_layers[i][2]]
+                                       inputs=decoder_inputs, initial_state=[decoder_states_inputs[i]]))
+                dec_states = [dec_layers[i][1]]
             else:
-                dec_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                dec_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="dec_"+str(i)+"lstm")(
-                                       inputs = dec_layers[i - 1][0], initial_state=[decoder_states_inputs[2*i],decoder_states_inputs[2*i+1]]))
-                dec_states += [dec_layers[i][1], dec_layers[i][2]]
+                                       inputs = dec_layers[i - 1][0], initial_state=[decoder_states_inputs[i]]))
+                dec_states += [dec_layers[i][1]]
 
         decoder_dense = Dense(self.out_dim, activation=OUTPUT_ACT, name='outputs')
 
         # decorder
-        decoder_outputs, state_h, state_c = dec_layers[-1]
+        decoder_outputs, state_c = dec_layers[-1]
         decoder_outputs = decoder_dense(decoder_outputs)
         self.decoder_model = Model(
             [decoder_inputs] + decoder_states_inputs,
@@ -327,7 +326,6 @@ class PredictRNN():
             # Update the target sequence
             target_seq = output_seq
 
-
             # # Update states
             states_value = output_result[1:]
 
@@ -359,10 +357,11 @@ def main():
     out_dim = 3
     num_units = 64
     num_layers = 1
-    my_rnn = TrainRNN(batch_size, in_dim, out_dim, num_units, num_layers, 5)
+    # my_rnn = TrainRNN(batch_size, in_dim, out_dim, num_units, num_layers, 5)
+    my_rnn = PredictRNN(batch_size, in_dim, out_dim, num_units, num_layers, 5)
     x, y = CreateSeqs(batch_size)
-    my_rnn.training(x,y,10)
-    # my_rnn.run_inference(x, y)
+    # my_rnn.training(x,y,10)
+    my_rnn.predict(x, y)
     return 0
 
 if __name__ == '__main__':
