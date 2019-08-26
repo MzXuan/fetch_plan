@@ -113,15 +113,16 @@ class Runner(object):
         self.pred_weight = pred_weight
         self.dones = [False for _ in range(nenv)]
 
+        # self.short_term_predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
+        #                            train_flag=False)
 
-
-        self.short_term_predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
-                                   train_flag=False)
-
-        # self.long_term_predictor = LongPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
-        #                       train_flag=True)
+        self.long_term_predictor = LongPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+                              train_flag=True)
 
         self.dataset_creator = RLDataCreator(nenv)
+
+        self.gru_latent = np.zeros(nenv, pred_flags.num_layers, pred_flags.num_units)
+
 
         self.collect_flag = False
         if load:
@@ -131,11 +132,10 @@ class Runner(object):
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
         mb_weighted_ploss, mb_origin_ploss, mb_origin_rew = [],[],[]
-        # mb_traj_len = []
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
-
+            print("obs here is...", self.obs)
             actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
@@ -145,16 +145,16 @@ class Runner(object):
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
 
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
-            #---- predict reward
 
+
+            #---- predict reward-------
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
                 xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
-                origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
+                # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
 
-
-                # origin_pred_loss = self.predictor.run_online_prediction(xs, goals)
+                origin_pred_loss = self.long_term_predictor.run_online_prediction(xs, goals)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
 
