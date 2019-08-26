@@ -118,7 +118,7 @@ class ShortPred(PredBase):
 class LongPred(PredBase):
     def __init__(self, batch_size, in_max_timestep, out_timesteps, train_flag,
                  step=5, epoch=20, iter_start=0,
-                 lr=0.001, load=False, model_name="test"):
+                 lr=0.001, load=False, model_name="seq2seq"):
         super(LongPred, self).__init__(batch_size, in_max_timestep, out_timesteps, train_flag,
                           step, epoch, iter_start, lr, load, model_name)
 
@@ -185,7 +185,7 @@ class LongPred(PredBase):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--epoch', default=20, type=int)
+    parser.add_argument('--epoch', default=10, type=int)
     parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--iter', default=0, type=int)

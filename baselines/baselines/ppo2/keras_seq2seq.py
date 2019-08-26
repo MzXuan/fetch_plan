@@ -311,8 +311,10 @@ class PredictRNN():
         decoded_sequence = np.zeros((self.batch_size, self.max_outsteps, self.out_dim))
         decoded_len = 0
 
-        print("state value (encorder result): ", states_value)
-        print("size of encoder states: ", len(states_value))
+
+        encoder_state_value = np.copy(np.asarray(states_value))
+        print("encoder state value: ", encoder_state_value)
+
 
         while not stop_condition:
             output_result = self.decoder_model.predict(
@@ -337,7 +339,7 @@ class PredictRNN():
         full_sequence = np.concatenate((inputs, decoded_sequence), axis=1)
 
         # return full_sequence, decoded_sequence
-        return decoded_sequence
+        return decoded_sequence, encoder_state_value
 
 def CreateSeqs(batch_size):
     '''

@@ -136,11 +136,12 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # ----------------------------
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
-        self.sim.step()
-        real_act = self._set_action(action)
-        self._step_callback()
-        obs = self._get_obs()
-        done = False
+        for _ in range(3):
+            self.sim.step()
+            real_act = self._set_action(action)
+            self._step_callback()
+            obs = self._get_obs()
+            done = False
 
         # self._contact_dection()
         info = {
@@ -243,16 +244,16 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         else:
             achieved_goal = np.squeeze(object_pos.copy())
 
+        obs = np.concatenate([
+            joint_angle, joint_vel
+        ])
+
         # obs = np.concatenate([
         #     joint_angle, joint_vel, self.prev_act
         # ])
 
-        obs = np.concatenate([
-            joint_angle, joint_vel, self.last_qpos, self.qpos_2, self.qpos_3, self.last_qvel, self.qvel_2, self.qvel_3
-        ])
-
         # obs = np.concatenate([
-        #     joint_angle, joint_vel, self.last_qpos, self.qpos_2, self.last_qvel, self.qvel_2
+        #     joint_angle, joint_vel, self.last_qpos, self.qpos_2, self.qpos_3, self.last_qvel, self.qvel_2, self.qvel_3
         # ])
         # ------------------------
         #   Observation details in ppo2 (re-formulate in openai)

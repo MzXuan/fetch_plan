@@ -103,7 +103,7 @@ class PredBase(object):
             batched_seqs_normal.append(seq_normal)
 
         batched_seqs_normal = np.asarray(batched_seqs_normal)
-        ys_pred = self.inference_model.predict(X=batched_seqs_normal)
+        ys_pred, enc_states = self.inference_model.predict(X=batched_seqs_normal)
 
         # then we restore the origin x and calculate the reward
         for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
@@ -163,7 +163,7 @@ class PredBase(object):
             x_start = valid_set[3][idx]
 
 
-            y_pred = self.inference_model.predict(X=x, Y=y)
+            y_pred, enc_states = self.inference_model.predict(X=x, Y=y)
 
             print("x: ", x)
             print("y: ", y)

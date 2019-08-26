@@ -102,7 +102,7 @@ class SimpleRNN():
         # print("predict result")
         # print(predict_result)
 
-        return predict_result
+        return predict_result, np.zeros(1)
 
     def load_model(self):
         # load model

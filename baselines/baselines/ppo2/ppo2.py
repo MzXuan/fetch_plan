@@ -115,10 +115,11 @@ class Runner(object):
 
 
 
-        self.predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
+        self.short_term_predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
                                    train_flag=False)
-        # self.predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
-        #                            train_flag=False, model_name=pred_flags.model_name)
+
+        # self.long_term_predictor = LongPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+        #                       train_flag=True)
 
         self.dataset_creator = RLDataCreator(nenv)
 
@@ -134,26 +135,29 @@ class Runner(object):
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
+
             actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
             mb_values.append(values)
             mb_neglogpacs.append(neglogpacs)
-            mb_dones.append(self.dones)            
+            mb_dones.append(self.dones)
             self.obs[:], rewards, self.dones, infos = self.env.step(actions)
 
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
             #---- predict reward
-            # traj_len = np.nan
-            pred_weight = self.pred_weight
 
+            pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
                 xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
-                origin_pred_loss = self.predictor.run_online_prediction(xs)
+                origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
+
+
                 # origin_pred_loss = self.predictor.run_online_prediction(xs, goals)
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
+
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
                 # print("final_reward: {}".format(rewards))
