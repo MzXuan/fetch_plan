@@ -329,10 +329,16 @@ class PredictRNN():
 
 
     def inference_one_step(self, target_seq, states_value):
+        '''
+
+        :param target_seq: numpy array (1,1,3)
+        :param states_value: list[num of layers * numpy array(1, num_units)]
+        :return:
+        '''
+
         output_result = self.decoder_model.predict(
             [target_seq] + states_value)
 
-        # target sequence shape:(1,1,3)
         output_seq = output_result[0]
         # Update the target sequence
         target_seq = output_seq

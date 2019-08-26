@@ -123,6 +123,7 @@ class Runner(object):
         self.dataset_creator = RLDataCreator(nenv)
 
         self.pred_obs = np.zeros((nenv, pred_flags.num_layers*pred_flags.num_units))
+        self.pred_result = [np.zeros(3) for _ in range(nenv)]
 
 
         self.collect_flag = False
@@ -170,7 +171,8 @@ class Runner(object):
                 # or update latent space based on last prediction
                 # calculate loss based on previous calculated result
                 # ----------------------------------------------------------
-                pred_obs, pred_result, origin_pred_loss = self.long_term_predictor.run_online_prediction(xs)
+                self.pred_obs[:], pred_result, origin_pred_loss = \
+                    self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
 
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss

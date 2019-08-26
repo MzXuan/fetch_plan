@@ -101,7 +101,7 @@ class PredBase(object):
             if (seq_normal.shape[0]-1) < self.in_timesteps_max:
             # if sequence is toooo short to predict, set return value to 0
                 pred_result = np.zeros(3)
-                pred_obs = np.zeros(self.num_units*self.num_layers)
+                pred_state = np.zeros(self.num_units*self.num_layers)
                 pred_loss_list.append(0.0)
 
             elif (seq_normal.shape[0]-1)%self.in_timesteps_max == 0:
@@ -110,26 +110,37 @@ class PredBase(object):
                 y_true = seq[-1, :]
 
                 pred_result, pred_state = \
-                    self.inference_model.get_encoder_latent_state(X = x_true_normal)
-                # pred_result: target sequence ; pred_obs: encoder state
-                #todo: calculate reward
+                    self.inference_model.get_encoder_latent_state(inputs = np.expand_dims(x_true_normal, axis=0))
                 y_pred = (pred_result - self.x_mean) / self.x_var
-                pred_loss_list.append(np.linalg.norm(y_true, y_pred))
+
+                pred_state = np.asarray(pred_state).reshape(self.num_units*self.num_layers)
+                pred_loss_list.append(np.linalg.norm(y_true-y_pred))
 
             else:
             # sequence is long enough and we can continue our previous prediction
                 y_true = seq[-1, :]
                 target_seq = last_pred_result_list[idx]
-                states_value = last_pred_obs_list[idx]
+                last_state= last_pred_obs_list[idx]
+
+                #todo: here need tobe rewrite
+                target_seq = target_seq.reshape(1,1,3)
+                temp=last_state.reshape(pred_flags.num_layers, 1, pred_flags.num_units)
+                states_value = [temp[0], temp[1]]
+
+                # print("target_seq shape {}, ".format(target_seq.shape))
+                # print("and last state shape{}".format(states_value[0].shape))
+
                 pred_result, pred_state = \
-                    self.inference_model.inference_one_step(self, target_seq, states_value)
+                    self.inference_model.inference_one_step(target_seq, states_value)
+
                 y_pred = (pred_result - self.x_mean) / self.x_var
-                pred_loss_list.append(np.linalg.norm(y_true, y_pred))
+                pred_state = np.asarray(pred_state).reshape(self.num_units * self.num_layers)
+                pred_loss_list.append(np.linalg.norm(y_true-y_pred))
 
-        pred_obs_list.append(pred_state)
-        pred_result_list.append(pred_result)
+            pred_obs_list.append(pred_state)
+            pred_result_list.append(pred_result)
 
-        return pred_obs_list, pred_result_list, pred_loss_list
+        return np.asarray(pred_obs_list), pred_result_list, np.asarray(pred_loss_list)
 
 
     # def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
