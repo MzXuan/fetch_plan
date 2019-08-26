@@ -165,11 +165,12 @@ class Runner(object):
                 #-----short term prediction-----
                 # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
 
-                #----predict and get new latent space every n steps
-                #---- or update latent space based on last prediction
-                pred_obs, pred_result = self.long_term_predictor.run_online_prediction(xs)
-                #----calculate loss based on previous calculated result----
-                origin_pred_loss = 0
+                #-----------------------------------------------------------------
+                # predict and get new latent space every n steps
+                # or update latent space based on last prediction
+                # calculate loss based on previous calculated result
+                # ----------------------------------------------------------
+                pred_obs, pred_result, origin_pred_loss = self.long_term_predictor.run_online_prediction(xs)
 
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss

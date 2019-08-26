@@ -309,7 +309,6 @@ class PredictRNN():
 
             # Sample a token
             decoded_sequence[:, decoded_len, :] = np.swapaxes(target_seq, 0, 1)
-
             decoded_len += 1
             if (decoded_len >= self.max_outsteps):
                 stop_condition = True
@@ -329,13 +328,12 @@ class PredictRNN():
         return target_seq, states_value
 
 
-
     def inference_one_step(self, target_seq, states_value):
         output_result = self.decoder_model.predict(
             [target_seq] + states_value)
 
+        # target sequence shape:(1,1,3)
         output_seq = output_result[0]
-
         # Update the target sequence
         target_seq = output_seq
         # # Update states

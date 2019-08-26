@@ -85,7 +85,8 @@ class PredBase(object):
         self.train_model.training(X=x_set, Y=y_set, epochs=self.epochs)
 
 
-    def run_online_prediction(self, batched_seqs, last_pred_obs_list, visial_flags = False):
+    def run_online_prediction(self, batched_seqs,\
+                              last_pred_obs_list, last_pred_result_list,  visial_flags = False):
         '''
         :param batched_seqs: raw x (batch size * input shape)
         :param batched_goals: raw goals / true goal (batch size * goal shape)
@@ -93,22 +94,42 @@ class PredBase(object):
         '''
         pred_obs_list = []
         pred_result_list = []
-        batched_seqs_normal = []
-        for seq in batched_seqs:
+        pred_loss_list = []
+        for idx, seq in enumerate(batched_seqs):
             seq = seq[:, -3:]
             seq_normal = (seq - self.x_mean) / self.x_var
-            if seq_normal.shape[0] < self.in_timesteps_max:
+            if (seq_normal.shape[0]-1) < self.in_timesteps_max:
+            # if sequence is toooo short to predict, set return value to 0
+                pred_result = np.zeros(3)
                 pred_obs = np.zeros(self.num_units*self.num_layers)
+                pred_loss_list.append(0.0)
+
+            elif (seq_normal.shape[0]-1)%self.in_timesteps_max == 0:
+            # if sequence is long enough and it is good to reset a new prediction based on true data
+                x_true_normal = seq_normal[-self.in_timesteps_max-1:-1,:]
+                y_true = seq[-1, :]
+
+                pred_result, pred_state = \
+                    self.inference_model.get_encoder_latent_state(X = x_true_normal)
+                # pred_result: target sequence ; pred_obs: encoder state
+                #todo: calculate reward
+                y_pred = (pred_result - self.x_mean) / self.x_var
+                pred_loss_list.append(np.linalg.norm(y_true, y_pred))
+
             else:
-                seq_normal = seq_normal[-self.in_timesteps_max:]
-            batched_seqs_normal.append(seq_normal)
+            # sequence is long enough and we can continue our previous prediction
+                y_true = seq[-1, :]
+                target_seq = last_pred_result_list[idx]
+                states_value = last_pred_obs_list[idx]
+                pred_result, pred_state = \
+                    self.inference_model.inference_one_step(self, target_seq, states_value)
+                y_pred = (pred_result - self.x_mean) / self.x_var
+                pred_loss_list.append(np.linalg.norm(y_true, y_pred))
 
-        batched_seqs_normal = np.asarray(batched_seqs_normal)
-        ys_pred, enc_states = self.inference_model.predict(X=batched_seqs_normal)
+        pred_obs_list.append(pred_state)
+        pred_result_list.append(pred_result)
 
-
-
-        return pred_obs_list, pred_result_list
+        return pred_obs_list, pred_result_list, pred_loss_list
 
 
     # def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
