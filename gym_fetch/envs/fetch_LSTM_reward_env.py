@@ -244,8 +244,18 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         else:
             achieved_goal = np.squeeze(object_pos.copy())
 
+        #----------add site position to obs-------------
+        body_num = self.sim.model.body_name2id('target_plane')
+        site_body_list = self.sim.model.site_bodyid
+        index_site = np.where(site_body_list == body_num)[0]  # 1~number
+        goals = []
+        for site_id in index_site:
+            goals.append(self.sim.model.site_pos[site_id])
+        goals = np.asarray(goals).reshape(3*len(index_site))
+        #-------------------------------------------------
+
         obs = np.concatenate([
-            joint_angle, joint_vel
+            joint_angle, joint_vel,goals
         ])
 
         # obs = np.concatenate([
