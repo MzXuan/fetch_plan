@@ -149,7 +149,8 @@ class MlpPolicy(object):
         with tf.variable_scope("logstd", reuse=reuse):
             if iter == 0:
                 logstd = tf.get_variable(name="logstd", shape=[1, actdim],
-                    initializer=tf.zeros_initializer()) + 0.6
+                    # initializer=tf.zeros_initializer()) + 0.6
+                    initializer = tf.zeros_initializer()) + 0.4
             else:
                 logstd = tf.get_variable(name="logstd", shape=[1, actdim],
                                          initializer=tf.zeros_initializer()) - 0.3
