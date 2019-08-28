@@ -176,8 +176,10 @@ def main():
                                                                       'log',
                                                                       'csv',
                                                                       'tensorboard'])
-        iter_countings = (args.iter-1) * each_iter_num if  args.iter >=1 else 0
-        logger.tb_start_step(800 +  iter_countings , 3)
+        iter_countings = 800+ (args.iter-1) * each_iter_num if  args.iter >=1 else 0
+        logger.tb_start_step(iter_countings , 3)
+
+        print("iter countings: ", iter_countings)
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=args.load, point=args.point,
               pred_weight=args.pred_weight, ent_coef=args.ent_coef, iter=args.iter)
