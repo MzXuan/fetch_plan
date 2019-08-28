@@ -109,9 +109,14 @@ class PredBase(object):
                 x_true_normal = seq_normal[-self.in_timesteps_max-1:-1,:]
                 y_true = seq[-1, :]
 
-                pred_result, pred_state = \
+                target_seq, encoder_state_value = \
                     self.inference_model.get_encoder_latent_state(inputs = np.expand_dims(x_true_normal, axis=0))
-                y_pred = (pred_result - self.x_mean) / self.x_var
+
+                pred_result, pred_state = \
+                    self.inference_model.inference_one_step(target_seq, encoder_state_value)
+
+
+                y_pred = pred_result * self.x_var + self.x_mean
 
                 pred_state = np.asarray(pred_state).reshape(self.num_units*self.num_layers)
                 pred_loss_list.append(np.linalg.norm(y_true-y_pred))
@@ -133,9 +138,11 @@ class PredBase(object):
                 pred_result, pred_state = \
                     self.inference_model.inference_one_step(target_seq, states_value)
 
-                y_pred = (pred_result - self.x_mean) / self.x_var
+                y_pred = pred_result * self.x_var + self.x_mean
                 pred_state = np.asarray(pred_state).reshape(self.num_units * self.num_layers)
                 pred_loss_list.append(np.linalg.norm(y_true-y_pred))
+
+
 
             pred_obs_list.append(pred_state)
             pred_result_list.append(pred_result)

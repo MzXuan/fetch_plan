@@ -40,7 +40,7 @@ DROPOUT = 0.1
 class TrainRNN():
 
     def __init__(self, batch_size, in_dim, out_dim, out_timesteps, num_units, initial_epoch=0, num_layers=1,
-                 directories="./pred", model_name="test", load=False):
+                 directories="./pred", model_name="seq2seq", load=False):
         '''
         initialize my rnn model
         :param in_dim: feature dimension of input data
@@ -142,12 +142,13 @@ class TrainRNN():
         print(modelDir)
 
         if self.load:
-            try:
-                filename=get_weights_file(modelDir, weights_name)
-                self.model.load_weights(filename)
-                print("load model {} successfully".format(filename))
-            except:
-                print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            self.load_model()
+            # try:
+            #     filename=get_weights_file(modelDir, weights_name)
+            #     self.model.load_weights(filename)
+            #     print("load model {} successfully".format(filename))
+            # except:
+            #     print("failed to load model {}, please check the checkpoint directory... use default initialization setting".format(filename))
 
 
         tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
@@ -189,12 +190,12 @@ class TrainRNN():
             self.model.load_weights(filename, by_name=True)
             print("load model {} successfully".format(filename))
         except:
-            print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            print("failed to load model in Dir {}, please check the checkpoint directory... use default initialization setting".format(modelDir))
 
 
 class PredictRNN():
     def __init__(self, batch_size, in_dim, out_dim, in_timesteps, out_timesteps, num_units, num_layers=1, out_steps=100,
-                 directories="./pred", model_name="test"):
+                 directories="./pred", model_name="seq2seq"):
         '''
         initialize my rnn model
         :param in_dim: feature dimension of input data
@@ -278,13 +279,14 @@ class PredictRNN():
         weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
         tfDir = os.path.join('./pred', self.model_name)
 
+
         try:
             filename = get_weights_file(modelDir, weights_name)
             self.encoder_model.load_weights(filename, by_name=True)
             self.decoder_model.load_weights(filename, by_name=True)
             print("load model {} successfully".format(filename))
         except:
-            print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            print("failed to load model in Dir {}, please check the checkpoint directory... use default initialization setting".format(modelDir))
 
     def predict(self, X, Y = None):
         '''
@@ -299,6 +301,7 @@ class PredictRNN():
         decoded_sequence = np.zeros((self.batch_size, self.max_outsteps, self.out_dim))
         decoded_len = 0
 
+        # encoder step
         # encoder step
         target_seq, states_value = self.get_encoder_latent_state(X)
         encoder_state_value = np.copy(np.asarray(states_value))
