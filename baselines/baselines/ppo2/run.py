@@ -162,7 +162,7 @@ def main():
     parser.add_argument('--pred_weight', default=0.01, type=float)
     parser.add_argument('--ent_coef', default=0.0, type=float)
     parser.add_argument('--iter', default=0, type=int)
-    parser.add_argument('--log-file', default='log', type=str)
+    parser.add_argument('--logdir', default='log', type=str)
     args = parser.parse_args()
 
     each_iter_num = 500
@@ -170,7 +170,7 @@ def main():
     curr_path = sys.path[0]
     if args.display:
         display(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            curr_path=curr_path, log_file = args.log_file, point=args.point)
+            curr_path=curr_path, log_file = args.logdir, point=args.point)
     elif args.train:
         logger.configure(dir='{}/log'.format(curr_path), format_strs=['stdout',
                                                                       'log',

@@ -40,7 +40,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.1,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
         utils.EzPickle.__init__(self)
 
@@ -89,7 +89,7 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, EFF_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.03, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.03, max_accel=0.1,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=4)
         utils.EzPickle.__init__(self)
 
@@ -250,7 +250,7 @@ class FetchPlanShelfEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, SHELF_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.1,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
         utils.EzPickle.__init__(self)
 
@@ -313,7 +313,7 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, SHELF_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.05, max_accel=0.2,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.05, max_accel=0.1,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
         utils.EzPickle.__init__(self)
 
