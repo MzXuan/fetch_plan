@@ -175,18 +175,21 @@ class PredBase(object):
         for idx in range(0, n_envs):
             seq = batched_seqs[idx]
             if seq.shape[0] < 5:
-                rewards.append(0.0)
+                rewards.append(0.1)
                 pred_obs_list.append(np.zeros(self.num_units*self.num_layers))
             else:
                 raw_y_pred = ys_pred[idx] * self.x_var + self.x_mean
-                select_goal, goal_idx, min_dist = utils.find_goal(raw_y_pred, batch_alternative_goals[idx])
+                select_goal, goal_idx, min_dist = utils.find_goal(\
+                    raw_y_pred, batch_alternative_goals[idx].reshape((3,3)))
+
                 if np.linalg.norm(select_goal-batched_goals[idx])<1e-7:
-                    rewards.append(1.0)
+                    rewards.append(3.0)
+
                 else:
-                    rewards.append(-1.0)
+                    rewards.append(0.1)
                 pred_obs_list.append(np.concatenate([enc_states[0][idx],enc_states[1][idx]]))
 
-        print("rewards: ", rewards)
+        # print("rewards: ", rewards)
         rewards = np.asarray(rewards)
 
         return np.asarray(pred_obs_list), rewards

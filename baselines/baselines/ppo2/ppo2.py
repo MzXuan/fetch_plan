@@ -176,7 +176,7 @@ class Runner(object):
                 # maximize dissimilar goals from other goals
                 #
                 #----------------------------------------------------------------
-                batch_alternative_goals = origin_obs[:,14:]
+                batch_alternative_goals = origin_obs[:,-9:]
                 self.pred_obs[:], origin_pred_loss =\
                     self.long_term_predictor.run_online_prediction(xs, goals, batch_alternative_goals)
 

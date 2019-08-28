@@ -59,10 +59,18 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         table_pose = self.sim.data.geom_xpos[id].reshape(3,) #x,y,z
         table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
 
+        goals = []
         for site_id in index_site:
             goal = self.random_target(table_pose, table_size, site_id)
+            for g in goals:
+                while np.linalg.norm(goal-g)<0.15:
+                    print("resample")
+                    goal = self.random_target(table_pose, table_size, site_id)
+
+            goals.append(goal)
             self.sim.model.site_pos[site_id] = goal
-            self.sim.forward()
+
+        self.sim.forward()
 
         site_id = self.sim.model.site_name2id('target0')
         goal = self.sim.model.site_pos[site_id]
