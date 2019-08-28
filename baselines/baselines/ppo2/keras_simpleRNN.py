@@ -16,7 +16,7 @@ def get_weights_file(checkpoint_path, file_name=None):
 
 
 class SimpleRNN():
-    def __init__(self, batch_size,  in_dim=3, out_dim=3, initial_epoch=0, directories="./simpleRNN", model_name="test", load=False):
+    def __init__(self, batch_size,  in_dim=3, out_dim=3, initial_epoch=0, directories="./pred/simpleRNN", model_name="test", load=False):
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.num_units = 16
@@ -102,7 +102,7 @@ class SimpleRNN():
         # print("predict result")
         # print(predict_result)
 
-        return predict_result
+        return predict_result, np.zeros(1)
 
     def load_model(self):
         # load model

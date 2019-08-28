@@ -6,7 +6,7 @@ import numpy as np
 from baselines import logger, bench
 
 def train(env_id, num_timesteps, seed, d_targ, load, point,
-          pred_weight=0.01, ent_coef=0.0):
+          pred_weight=0.01, ent_coef=0.0, iter=0):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalize
     from baselines.ppo2 import ppo2
@@ -67,7 +67,8 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
         point=point,
         init_targ=d_targ,
         predictor_flag=True,
-        pred_weight=pred_weight)
+        pred_weight=pred_weight,
+        iter=iter)
 
 def test(env_id, num_timesteps, seed, d_targ, load, point):
     from baselines.common import set_global_seeds
@@ -161,7 +162,7 @@ def main():
     parser.add_argument('--pred_weight', default=0.01, type=float)
     parser.add_argument('--ent_coef', default=0.0, type=float)
     parser.add_argument('--iter', default=0, type=int)
-    parser.add_argument('--log-file', default='log', type=str)
+    parser.add_argument('--logdir', default='log', type=str)
     args = parser.parse_args()
 
     each_iter_num = 500
@@ -169,18 +170,21 @@ def main():
     curr_path = sys.path[0]
     if args.display:
         display(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            curr_path=curr_path, log_file = args.log_file, point=args.point)
+            curr_path=curr_path, log_file = args.logdir, point=args.point)
     elif args.train:
         logger.configure(dir='{}/log'.format(curr_path), format_strs=['stdout',
                                                                       'log',
                                                                       'csv',
                                                                       'tensorboard'])
-        logger.tb_start_step(args.iter * each_iter_num, 3)
+        iter_countings = 800+ (args.iter-1) * each_iter_num if  args.iter >=1 else 0
+        logger.tb_start_step(iter_countings , 3)
+
+        print("iter countings: ", iter_countings)
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=args.load, point=args.point,
-              pred_weight=args.pred_weight, ent_coef=args.ent_coef)
+              pred_weight=args.pred_weight, ent_coef=args.ent_coef, iter=args.iter)
     else:
-        print("!!!!!go into test branch!!!!!")
+        print("test branch, collecting data....")
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
 

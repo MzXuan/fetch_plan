@@ -40,7 +40,7 @@ DROPOUT = 0.1
 class TrainRNN():
 
     def __init__(self, batch_size, in_dim, out_dim, out_timesteps, num_units, initial_epoch=0, num_layers=1,
-                 directories="./pred", model_name="test", load=False):
+                 directories="./pred", model_name="seq2seq", load=False):
         '''
         initialize my rnn model
         :param in_dim: feature dimension of input data
@@ -73,21 +73,21 @@ class TrainRNN():
         '''
         t = time.time()
         print('Beginning LSTM compilation')
-        dec_ini_states = [ [] for _ in range(2*self.num_units)]
+        dec_ini_states = [ [] for _ in range(self.num_units)]
 
         # enc
         enc_layers = []
         encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
         for i in range(0, self.num_layers):
             if i == 0:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(inputs=encoder_inputs))
-                dec_ini_states = [enc_layers[i][1], enc_layers[i][2]]
+                dec_ini_states = [enc_layers[i][1]]
             else:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(
                                 inputs = enc_layers[i - 1][0]))
-                dec_ini_states += [enc_layers[i][1], enc_layers[i][2]]
+                dec_ini_states += [enc_layers[i][1]]
 
 
 
@@ -95,7 +95,7 @@ class TrainRNN():
         # Set up the decoder, which will only process one timestep at a time.
         decoder_inputs = Input(shape=(1, self.out_dim), name = 'dec_input')
         for i in range(self.num_layers):
-            dec_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True, name="dec_"+str(i)+"lstm"))
+            dec_layers.append(GRU(self.num_units, return_sequences=True, return_state=True, name="dec_"+str(i)+"lstm"))
         decoder_dense = Dense(self.out_dim, activation=OUTPUT_ACT, name='outputs')
 
         all_outputs = []
@@ -106,14 +106,13 @@ class TrainRNN():
             for i, dec_layer in enumerate(dec_layers):
                 if i == 0:
                     dec_layers_outputs.append(dec_layer(inputs = inputs,
-                                                        initial_state = [dec_ini_states[2*i], dec_ini_states[2*i+1]]))
+                                                        initial_state = [dec_ini_states[i]]))
                 else:
                     dec_layers_outputs.append(dec_layer(inputs = dec_layers_outputs[i-1][0],
-                                                        initial_state = [dec_ini_states[2 * i], dec_ini_states[2 * i + 1]]))
+                                                        initial_state = [dec_ini_states[i]]))
 
             for i in range(self.num_layers):
-                dec_ini_states[2*i] = dec_layers_outputs[i][1]
-                dec_ini_states[2*i+1] = dec_layers_outputs[i][2]
+                dec_ini_states[i] = dec_layers_outputs[i][1]
 
             inputs = decoder_dense(dec_layers_outputs[-1][0])
             all_outputs.append(inputs)
@@ -143,12 +142,13 @@ class TrainRNN():
         print(modelDir)
 
         if self.load:
-            try:
-                filename=get_weights_file(modelDir, weights_name)
-                self.model.load_weights(filename)
-                print("load model {} successfully".format(filename))
-            except:
-                print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            self.load_model()
+            # try:
+            #     filename=get_weights_file(modelDir, weights_name)
+            #     self.model.load_weights(filename)
+            #     print("load model {} successfully".format(filename))
+            # except:
+            #     print("failed to load model {}, please check the checkpoint directory... use default initialization setting".format(filename))
 
 
         tbCb = TensorBoard(log_dir=tfDir, histogram_freq = 1,
@@ -190,12 +190,12 @@ class TrainRNN():
             self.model.load_weights(filename, by_name=True)
             print("load model {} successfully".format(filename))
         except:
-            print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            print("failed to load model in Dir {}, please check the checkpoint directory... use default initialization setting".format(modelDir))
 
 
 class PredictRNN():
     def __init__(self, batch_size, in_dim, out_dim, in_timesteps, out_timesteps, num_units, num_layers=1, out_steps=100,
-                 directories="./pred", model_name="test"):
+                 directories="./pred", model_name="seq2seq"):
         '''
         initialize my rnn model
         :param in_dim: feature dimension of input data
@@ -229,14 +229,14 @@ class PredictRNN():
         encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
         for i in range(0,self.num_layers):
             if i == 0:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(inputs=encoder_inputs))
-                enc_states = [enc_layers[i][1], enc_layers[i][2]]
+                enc_states = [enc_layers[i][1]]
             else:
-                enc_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="enc_"+str(i)+"lstm")(
                                 inputs = enc_layers[i - 1][0]))
-                enc_states += [enc_layers[i][1], enc_layers[i][2]]
+                enc_states += [enc_layers[i][1]]
 
 
         self.encoder_model = Model(encoder_inputs, enc_states)
@@ -244,26 +244,26 @@ class PredictRNN():
         # Set up the decoder, which will only process one timestep at a time.
         dec_layers = []
         decoder_inputs = Input(shape=(1, self.out_dim), name = 'dec_input')
-        decoder_states_inputs = [Input(shape=(self.num_units,)) for _ in range(2*self.num_layers)]
+        decoder_states_inputs = [Input(shape=(self.num_units,)) for _ in range(self.num_layers)]
 
 
 
         for i in range(0,self.num_layers):
             if i == 0:
-                dec_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                dec_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="dec_"+str(i)+"lstm")(
-                                       inputs=decoder_inputs, initial_state=[decoder_states_inputs[i],decoder_states_inputs[i+1]]))
-                dec_states = [dec_layers[i][1], dec_layers[i][2]]
+                                       inputs=decoder_inputs, initial_state=[decoder_states_inputs[i]]))
+                dec_states = [dec_layers[i][1]]
             else:
-                dec_layers.append(LSTM(self.num_units, return_sequences=True, return_state=True,
+                dec_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
                                        name="dec_"+str(i)+"lstm")(
-                                       inputs = dec_layers[i - 1][0], initial_state=[decoder_states_inputs[2*i],decoder_states_inputs[2*i+1]]))
-                dec_states += [dec_layers[i][1], dec_layers[i][2]]
+                                       inputs = dec_layers[i - 1][0], initial_state=[decoder_states_inputs[i]]))
+                dec_states += [dec_layers[i][1]]
 
         decoder_dense = Dense(self.out_dim, activation=OUTPUT_ACT, name='outputs')
 
         # decorder
-        decoder_outputs, state_h, state_c = dec_layers[-1]
+        decoder_outputs, state_c = dec_layers[-1]
         decoder_outputs = decoder_dense(decoder_outputs)
         self.decoder_model = Model(
             [decoder_inputs] + decoder_states_inputs,
@@ -279,13 +279,14 @@ class PredictRNN():
         weights_name = "weights-{epoch:02d}-{val_loss:.2f}.hdf5"
         tfDir = os.path.join('./pred', self.model_name)
 
+
         try:
             filename = get_weights_file(modelDir, weights_name)
             self.encoder_model.load_weights(filename, by_name=True)
             self.decoder_model.load_weights(filename, by_name=True)
             print("load model {} successfully".format(filename))
         except:
-            print("failed to load model, please check the checkpoint directory... use default initialization setting")
+            print("failed to load model in Dir {}, please check the checkpoint directory... use default initialization setting".format(modelDir))
 
     def predict(self, X, Y = None):
         '''
@@ -296,55 +297,60 @@ class PredictRNN():
         :param y:
         :return:
         '''
-
-        # self.model.reset_states()
-        predict_result = self._inference_function(inputs = X, Y = Y)
-        return predict_result
-
-
-    def _inference_function(self, inputs, Y = None):
-        # Encode the input as state vectors.
-        states_value = self.encoder_model.predict(inputs)
-
-        # Generate empty target sequence of length 1.
-        target_seq = np.zeros((self.batch_size, 1, self.out_dim))
-        # Populate the first character of target sequence with the start character.
-        target_seq[:, 0, :] = 1.
-
-        # Sampling loop for a batch of sequences
-        # (to simplify, here we assume a batch of size 1).
         stop_condition = False
         decoded_sequence = np.zeros((self.batch_size, self.max_outsteps, self.out_dim))
         decoded_len = 0
 
+        # encoder step
+        # encoder step
+        target_seq, states_value = self.get_encoder_latent_state(X)
+        encoder_state_value = np.copy(np.asarray(states_value))
 
+        #decoder inference step
         while not stop_condition:
-            output_result = self.decoder_model.predict(
-                [target_seq] + states_value)
-
-            output_seq = output_result[0]
+            target_seq, states_value = self.inference_one_step(target_seq, states_value)
 
             # Sample a token
-            decoded_sequence[:, decoded_len, :] = np.swapaxes(output_seq,0,1)
-
-            # Update the target sequence
-            target_seq = output_seq
-
-
-            # # Update states
-            states_value = output_result[1:]
-
+            decoded_sequence[:, decoded_len, :] = np.swapaxes(target_seq, 0, 1)
             decoded_len += 1
             if (decoded_len >= self.max_outsteps):
                 stop_condition = True
 
-
         # print("shape of decoded sequence:", decoded_sequence.shape)
+        full_sequence = np.concatenate((X, decoded_sequence), axis=1)
+        return decoded_sequence, encoder_state_value
 
-        full_sequence = np.concatenate((inputs, decoded_sequence), axis=1)
+    def get_encoder_latent_state(self, inputs):
+        # Encode the input as state vectors.
+        states_value = self.encoder_model.predict(inputs)
+        # Generate empty target sequence of length 1.
+        target_seq = np.zeros((self.batch_size, 1, self.out_dim))
+        # Populate the first character of target sequence with the start character.
+        target_seq[:, 0, :] = 1.
+        # print("encoder state value: ", encoder_state_value)
+        return target_seq, states_value
 
-        # return full_sequence, decoded_sequence
-        return decoded_sequence
+
+    def inference_one_step(self, target_seq, states_value):
+        '''
+
+        :param target_seq: numpy array (1,1,3)
+        :param states_value: list[num of layers * numpy array(1, num_units)]
+        :return:
+        '''
+
+        output_result = self.decoder_model.predict(
+            [target_seq] + states_value)
+
+        output_seq = output_result[0]
+        # Update the target sequence
+        target_seq = output_seq
+        # # Update states
+        states_value = output_result[1:]
+
+        return target_seq, states_value
+
+
 
 def CreateSeqs(batch_size):
     '''
@@ -364,10 +370,11 @@ def main():
     out_dim = 3
     num_units = 64
     num_layers = 1
-    my_rnn = TrainRNN(batch_size, in_dim, out_dim, num_units, num_layers, 5)
+    # my_rnn = TrainRNN(batch_size, in_dim, out_dim, num_units, num_layers, 5)
+    my_rnn = PredictRNN(batch_size, in_dim, out_dim, num_units, num_layers, 5)
     x, y = CreateSeqs(batch_size)
-    my_rnn.training(x,y,10)
-    # my_rnn.run_inference(x, y)
+    # my_rnn.training(x,y,10)
+    my_rnn.predict(x, y)
     return 0
 
 if __name__ == '__main__':

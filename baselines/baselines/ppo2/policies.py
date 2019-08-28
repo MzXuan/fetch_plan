@@ -130,9 +130,12 @@ class CnnPolicy(object):
         self.value = value
 
 class MlpPolicy(object):
-    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, reuse=False): #pylint: disable=W0613
+    def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, iter=0, reuse=False): #pylint: disable=W0613
         print(ob_space.shape)
-        ob_shape = (nbatch, ) + ob_space.shape
+        obs_shape_list = list(ob_space.shape)
+        obs_shape_list[0] = obs_shape_list[0]+32
+        ob_shape = (nbatch, ) + tuple(obs_shape_list)
+
         actdim = ac_space.shape[0]
         X = tf.placeholder(tf.float32, ob_shape, name='Ob') #obs
         with tf.variable_scope("model", reuse=reuse):
@@ -144,8 +147,14 @@ class MlpPolicy(object):
             h2 = fc(h1, 'vf_fc2', nh=cell_num, init_scale=np.sqrt(2), act=tf.tanh)
             vf = fc(h2, 'vf', 1, act=lambda x:x)[:,0]
         with tf.variable_scope("logstd", reuse=reuse):
-            logstd = tf.get_variable(name="logstd", shape=[1, actdim], 
-                initializer=tf.zeros_initializer()) - 1.0
+            if iter == 0:
+                logstd = tf.get_variable(name="logstd", shape=[1, actdim],
+                    # initializer=tf.zeros_initializer()) + 0.6
+                    initializer = tf.zeros_initializer()) + 0.4
+            else:
+                logstd = tf.get_variable(name="logstd", shape=[1, actdim],
+                                         initializer=tf.zeros_initializer()) + 0.3
+
 
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
 

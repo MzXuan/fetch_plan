@@ -85,47 +85,112 @@ class PredBase(object):
         self.train_model.training(X=x_set, Y=y_set, epochs=self.epochs)
 
 
-    def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
+    def run_online_prediction(self, batched_seqs,\
+                              last_pred_obs_list, last_pred_result_list,  visial_flags = False):
         '''
         :param batched_seqs: raw x (batch size * input shape)
         :param batched_goals: raw goals / true goal (batch size * goal shape)
         :return: reward of this prediction, batch size * 1
         '''
-        rewards = []
-        batched_seqs_normal = []
-        for seq in batched_seqs:
+        pred_obs_list = []
+        pred_result_list = []
+        pred_loss_list = []
+        for idx, seq in enumerate(batched_seqs):
             seq = seq[:, -3:]
             seq_normal = (seq - self.x_mean) / self.x_var
-            if seq_normal.shape[0] < self.in_timesteps_max:
-                seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+            if (seq_normal.shape[0]-1) < self.in_timesteps_max:
+            # if sequence is toooo short to predict, set return value to 0
+                pred_result = np.zeros(3)
+                pred_state = np.zeros(self.num_units*self.num_layers)
+                pred_loss_list.append(0.0)
+
+            elif (seq_normal.shape[0]-1)%self.in_timesteps_max == 0:
+            # if sequence is long enough and it is good to reset a new prediction based on true data
+                x_true_normal = seq_normal[-self.in_timesteps_max-1:-1,:]
+                y_true = seq[-1, :]
+
+                target_seq, encoder_state_value = \
+                    self.inference_model.get_encoder_latent_state(inputs = np.expand_dims(x_true_normal, axis=0))
+
+                pred_result, pred_state = \
+                    self.inference_model.inference_one_step(target_seq, encoder_state_value)
+
+
+                y_pred = pred_result * self.x_var + self.x_mean
+
+                pred_state = np.asarray(pred_state).reshape(self.num_units*self.num_layers)
+                pred_loss_list.append(np.linalg.norm(y_true-y_pred))
+
             else:
-                seq_normal = seq_normal[-self.in_timesteps_max:]
-            batched_seqs_normal.append(seq_normal)
+            # sequence is long enough and we can continue our previous prediction
+                y_true = seq[-1, :]
+                target_seq = last_pred_result_list[idx]
+                last_state= last_pred_obs_list[idx]
 
-        batched_seqs_normal = np.asarray(batched_seqs_normal)
-        ys_pred = self.inference_model.predict(X=batched_seqs_normal)
+                #todo: here need tobe rewrite
+                target_seq = target_seq.reshape(1,1,3)
+                temp=last_state.reshape(pred_flags.num_layers, 1, pred_flags.num_units)
+                states_value = [temp[0], temp[1]]
 
-        # then we restore the origin x and calculate the reward
-        for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
-            if seq.shape[0] < 5:
-                rewards.append(0.0)
-            else:
-                raw_y_pred = y_pred * self.x_var + self.x_mean
-                _, _, min_dist = utils.find_goal(raw_y_pred, [goal])
-                rewards.append(min_dist)
+                # print("target_seq shape {}, ".format(target_seq.shape))
+                # print("and last state shape{}".format(states_value[0].shape))
 
-        # print("rewards: ", rewards)
-        rewards = np.asarray(rewards)
-        return rewards
+                pred_result, pred_state = \
+                    self.inference_model.inference_one_step(target_seq, states_value)
+
+                y_pred = pred_result * self.x_var + self.x_mean
+                pred_state = np.asarray(pred_state).reshape(self.num_units * self.num_layers)
+                pred_loss_list.append(np.linalg.norm(y_true-y_pred))
+
+
+
+            pred_obs_list.append(pred_state)
+            pred_result_list.append(pred_result)
+
+        return np.asarray(pred_obs_list), pred_result_list, np.asarray(pred_loss_list)
+
+
+    # def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
+    #     '''
+    #     :param batched_seqs: raw x (batch size * input shape)
+    #     :param batched_goals: raw goals / true goal (batch size * goal shape)
+    #     :return: reward of this prediction, batch size * 1
+    #     '''
+    #     rewards = []
+    #     batched_seqs_normal = []
+    #     for seq in batched_seqs:
+    #         seq = seq[:, -3:]
+    #         seq_normal = (seq - self.x_mean) / self.x_var
+    #         if seq_normal.shape[0] < self.in_timesteps_max:
+    #             seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+    #         else:
+    #             seq_normal = seq_normal[-self.in_timesteps_max:]
+    #         batched_seqs_normal.append(seq_normal)
+    #
+    #     batched_seqs_normal = np.asarray(batched_seqs_normal)
+    #     ys_pred, enc_states = self.inference_model.predict(X=batched_seqs_normal)
+    #
+    #     # then we restore the origin x and calculate the reward
+    #     for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
+    #         if seq.shape[0] < 5:
+    #             rewards.append(0.0)
+    #         else:
+    #             raw_y_pred = y_pred * self.x_var + self.x_mean
+    #             _, _, min_dist = utils.find_goal(raw_y_pred, [goal])
+    #             rewards.append(min_dist)
+    #
+    #     # print("rewards: ", rewards)
+    #     rewards = np.asarray(rewards)
+    #     # shape of encstates
+    #     print("enc_states", enc_states)
+    #     return enc_states, rewards
 
     def run_validation(self):
         ## load dataset
         self._load_train_set()
 
         valid_len = int(self.validate_ratio * len(self.dataset))
-
         valid_set = self._process_dataset(self.dataset[-valid_len:-1])
-
         print("validate dataset numbers: ", len(valid_set[0]))
 
         start_id = 1
@@ -137,7 +202,7 @@ class PredBase(object):
         errors_x = []
 
         # for idx in range(start_id, len(valid_set[0]), 10):
-        for idx in range(start_id, 100, 10):
+        for idx in range(start_id, 700, 10):
             x_full = valid_set[4][idx]
 
             diff = ((x_full[:10]-last_traj[:10])**2).mean() #for detect change of new trajectory
@@ -165,7 +230,7 @@ class PredBase(object):
             x_start = valid_set[3][idx]
 
 
-            y_pred = self.inference_model.predict(X=x, Y=y)
+            y_pred, enc_states = self.inference_model.predict(X=x, Y=y)
 
             print("x: ", x)
             print("y: ", y)
@@ -189,22 +254,22 @@ class PredBase(object):
             ratio.append(idx/x_len)
 
             # ------plot predicted data (step by step)-----------
-            # import visualize
-            # show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
-            # visualize.plot_dof_seqs(show_x, y_pred[0], step = self.step, y_true = x_full,
-            #                         goals= goals, goal_pred = goal_pred)  # plot delta result
-            # visualize.plot_dist(min_dist_list)
-            # time.sleep(1)
+            import visualize
+            show_x = np.concatenate((x_full[:idx], x[0]), axis=0)
+            visualize.plot_dof_seqs(show_x, y_pred[0], step = self.step, y_true = x_full,
+                                    goals= goals, goal_pred = goal_pred)  # plot delta result
+            visualize.plot_dist(min_dist_list)
+            time.sleep(1)
 
         # ----------write average error and save result------------
 
-        errors = np.asarray(errors)
-        error_mean = np.mean(errors, axis=0)
-        err_x_mean = np.asarray(errors_x).mean(axis=0)
-        with open('./pred/errors.csv', 'a', newline='') as csvfile:
-            spamwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-            spamwriter.writerow(error_mean)
-        print("error_mean: ", error_mean)
+        # errors = np.asarray(errors)
+        # error_mean = np.mean(errors, axis=0)
+        # err_x_mean = np.asarray(errors_x).mean(axis=0)
+        # with open('./pred/errors.csv', 'a', newline='') as csvfile:
+        #     spamwriter = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        #     spamwriter.writerow(error_mean)
+        # print("error_mean: ", error_mean)
 
         # import visualize
         # visualize.plot_avg_err(ratio_vals, error_mean, err_x_mean)
@@ -217,6 +282,7 @@ class PredBase(object):
             return dataset
         except:
             print("Can not load dataset. Please first run the training stage to save dataset.")
+
 
     def _load_train_set(self):
         ## check saved data set
@@ -236,6 +302,7 @@ class PredBase(object):
                 self.x_mean = dataset[0].x_mean[-3:]
                 self.x_var = dataset[0].x_var[-3:]
 
+
     def plot_dataset(self):
         self._load_train_set()
         #plot dataset
@@ -243,7 +310,7 @@ class PredBase(object):
         print(len(self.dataset))
 
         for idx, data in enumerate(self.dataset):
-            if idx%10 == 0:
+            if idx%500 == 0:
                 visualize.plot_3d_eef(data.x)
         plt.show()
 
@@ -308,56 +375,4 @@ class PredBase(object):
             for _ in range(old_length, new_length):
                     seq = np.append(seq, value, axis=0)
         return seq
-
-
-
-
-
-# if __name__ == '__main__':
-#     import argparse
-#     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-#     parser.add_argument('--epoch', default=10, type=int)
-#     parser.add_argument('--lr', default=0.01, type=float)
-#     parser.add_argument('--load', action='store_true')
-#     parser.add_argument('--iter', default=0, type=int)
-#     parser.add_argument('--model_name', default='test1', type=str)
-#     parser.add_argument('--test', action='store_true')
-#     args = parser.parse_args()
-#
-#     test_flag=args.test
-#     out_steps=pred_flags.out_steps
-#
-#     if not os.path.isdir("./pred"):
-#         os.mkdir("./pred")
-#
-#     # rnn_model.plot_dataset()
-#
-#     if not test_flag:
-#
-#         rnn_model = PredBase(1024, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
-#                               train_flag=True, epoch=args.epoch,
-#                               iter_start=args.iter, lr=args.lr, load=args.load,
-#                               model_name=pred_flags.model_name)
-#
-#         rnn_model.run_training()
-#
-#         print("start testing.....")
-#         rnn_model2 = PredBase(1, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
-#                               train_flag=True, epoch=args.epoch,
-#                               iter_start=args.iter, lr=args.lr, load=args.load,
-#                               model_name=pred_flags.model_name)
-#         rnn_model2.run_validation()
-#
-#
-#     else:
-#
-#         rnn_model = PredBase(1, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=out_steps,
-#                               train_flag=True, epoch=args.epoch,
-#                               iter_start=args.iter, lr=args.lr, load=args.load,
-#                               model_name=pred_flags.model_name)
-#         print("start testing...")
-#         # plot all the validate data step by step
-#
-#         # rnn_model.plot_dataset()
-#         rnn_model.run_validation()
 

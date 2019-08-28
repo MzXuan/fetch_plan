@@ -20,9 +20,8 @@ then
     mkdir "./models"
 fi
 
-# # start with trained initial model
-# counter=1
 
+# parameter 1. totle iterations; 2. prediction weight; 3. start counter counts
 
 # start training
 while [ ${counter} -le ${1} ]
@@ -32,41 +31,37 @@ echo $counter
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=6000000 --pred_weight=0.0 --iter=${counter}
+    python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=4000000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=10000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
 sleep 1
-
 cp -R ${rl_model} "./models/log_${counter}"
 
-# sample dataset
+# sample dataset	## sam?ed_model}/test1/checkpoint_"
 python run.py --load -p='last'
-
-
 sleep 1
 
 
-# train seq2seq
+ # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --epoch=20
-
+    python predictors.py --iter=${counter} --epoch=30
 elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --epoch=20
+    python predictors.py --load --iter=${counter} --epoch=30
 else
-    python predictor.py --load --iter=${counter} --epoch=20
+    python predictors.py --load --iter=${counter} --epoch=30
 fi
 
 
 # copy saved file and rename
-
-
-cp -R ${pred_model} "./models/pred_${counter}"
+cp -R ${pred_model} "./models/pred_${counter}"	#rl
 rm -rf "${pred_model}/test1/checkpoint_"
+
+#rl
 rm -rf "${rl_model}/tb"
 
 

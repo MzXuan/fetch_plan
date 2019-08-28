@@ -7,6 +7,9 @@ function finish() {
         exit
 }
 
+# parameter 1. start counter; 2. prediction weight;
+
+
 # start training
 counter=${1}
 echo $counter
@@ -21,13 +24,14 @@ then
     mkdir "./models"
 fi
 
-## train rl
-#if [ ${counter} -eq 0 ]
-#then
+# train rl
+if [ ${counter} -eq 0 ]
+then
+    sleep 1
 #    python run.py --train --num-timesteps=6000000 --pred_weight=0.0 --iter=${counter}
-#else
-#    python run.py --train --load --num-timesteps=4000000 -p='last' --pred_weight=${2} --iter=${counter}
-#fi
+else
+    python run.py --train --load --num-timesteps=8000000 -p='last' --pred_weight=${2} --iter=${counter}
+fi
 
 # run new training cycle
 sleep 1
@@ -44,21 +48,20 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictor.py --iter=${counter} --epoch=10
-
+    python predictors.py --iter=${counter} --epoch=30
 elif [ ${counter} -le 3 ]
 then
-    python predictor.py --load --iter=${counter} --epoch=10
+    python predictors.py --load --iter=${counter} --epoch=30
 else
-    python predictor.py --load --iter=${counter} --epoch=10
+    python predictors.py --load --iter=${counter} --epoch=30
 fi
 
 
 # copy saved file and rename
-
-
-cp -R ${pred_model} "./models/pred_${counter}"
+cp -R ${pred_model} "./models/pred_${counter}"	#rl
 rm -rf "${pred_model}/test1/checkpoint_"
+
+#rl
 rm -rf "${rl_model}/tb"
 
 

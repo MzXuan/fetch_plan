@@ -3,12 +3,13 @@ import os
 from datetime import datetime
 import tensorflow as tf
 
-num_units = 32
+num_units = 16
 num_layers = 2
 out_steps = 5
-in_timesteps_max = 20
+in_timesteps_max = 8
 
-model_name = "rl_{}_{}_{}_seq_tanh".format(num_units, num_layers, out_steps)
+# model_name = "rl_{}_{}_{}_seq_tanh".format(num_units, num_layers, out_steps)
+model_name = "seq2seq"
 
 in_dim = 10
 out_dim = 10
@@ -20,8 +21,10 @@ checkpoint_interval = 500
 sample_interval = 50
 display_interval = 100
 
-check_dir_cls = './pred/' + model_name + '/checkpoint_'
-sample_dir_cls = './pred/' + model_name + '/sample_'
+# check_dir_cls = './pred/' + model_name + '/checkpoint_'
+# sample_dir_cls = './pred/' + model_name + '/sample_'
+
+random_seed = 100
 
 
 
