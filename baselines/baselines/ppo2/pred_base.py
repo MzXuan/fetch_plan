@@ -181,7 +181,9 @@ class PredBase(object):
     #
     #     # print("rewards: ", rewards)
     #     rewards = np.asarray(rewards)
-    #     return rewards
+    #     # shape of encstates
+    #     print("enc_states", enc_states)
+    #     return enc_states, rewards
 
     def run_validation(self):
         ## load dataset

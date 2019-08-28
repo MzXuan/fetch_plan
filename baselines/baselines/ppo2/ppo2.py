@@ -166,13 +166,21 @@ class Runner(object):
                 #-----short term prediction-----
                 # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
 
-                #-----------------------------------------------------------------
+                #---------------long term prediction method 1-----------------------
                 # predict and get new latent space every n steps
                 # or update latent space based on last prediction
                 # calculate loss based on previous calculated result
                 # ----------------------------------------------------------
                 self.pred_obs[:], pred_result, origin_pred_loss = \
                     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+
+                # #---------------long term prediction method 2---------------------
+                # # maximize dissimilar goals from other goals
+                # #
+                # #
+                # #----------------------------------------------------------------
+                # self.pred_obs[:], origin_pred_loss = self.long_term_predictor.run_online_prediction(xs, goals)
+
 
                 predict_loss = pred_weight * origin_pred_loss
                 rewards -= predict_loss
@@ -454,8 +462,13 @@ def display(policy, env, nsteps, nminibatches, load_path):
         tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
         )
 
-    predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
-                               train_flag=False, model_name=pred_flags.model_name)
+    # short_term_predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+    #                            train_flag=False)
+
+
+    long_term_predictor = LongPred(nenv, in_max_timestep=pred_flags.in_timesteps_max,
+                                        out_timesteps=pred_flags.out_steps,
+                                        train_flag=True)
 
     dataset_creator = RLDataCreator(nenv)
 
@@ -473,7 +486,9 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
         obs = env.reset()
         env_obs = np.copy(obs)
-        pred_obs = np.zeros((1, pred_flags.num_units * pred_flags.num_layers))
+        # pred_obs = np.zeros((1, pred_flags.num_units * pred_flags.num_layers))
+        pred_obs = np.zeros((nenv, pred_flags.num_layers * pred_flags.num_units))
+        pred_result = [np.zeros(3) for _ in range(nenv)]
 
         score = 0
         done = [False]
@@ -499,8 +514,14 @@ def display(policy, env, nsteps, nminibatches, load_path):
             origin_obs = env.origin_obs
             traj.append(origin_obs[0][0:3])
 
+
+
             xs, goals = dataset_creator.collect_online(origin_obs, done)
-            origin_pred_loss = predictor.run_online_prediction(xs, goals)
+            pred_obs[:], pred_result, origin_pred_loss = \
+                long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
+
+
+            # origin_pred_loss = predictor.run_online_prediction(xs, goals)
 
 
             # #---- plot result ---
