@@ -63,8 +63,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         for site_id in index_site:
             goal = self.random_target(table_pose, table_size, site_id)
             for g in goals:
-                while np.linalg.norm(goal-g)<0.15:
-                    print("resample")
+                while np.linalg.norm(goal-g)<0.12:
                     goal = self.random_target(table_pose, table_size, site_id)
 
             goals.append(goal)
