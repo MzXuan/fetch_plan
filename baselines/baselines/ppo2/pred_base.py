@@ -85,105 +85,111 @@ class PredBase(object):
         self.train_model.training(X=x_set, Y=y_set, epochs=self.epochs)
 
 
-    def run_online_prediction(self, batched_seqs,\
-                              last_pred_obs_list, last_pred_result_list,  visial_flags = False):
-        '''
-        :param batched_seqs: raw x (batch size * input shape)
-        :param batched_goals: raw goals / true goal (batch size * goal shape)
-        :return: reward of this prediction, batch size * 1
-        '''
-        pred_obs_list = []
-        pred_result_list = []
-        pred_loss_list = []
-        for idx, seq in enumerate(batched_seqs):
-            seq = seq[:, -3:]
-            seq_normal = (seq - self.x_mean) / self.x_var
-            if (seq_normal.shape[0]-1) < self.in_timesteps_max:
-            # if sequence is toooo short to predict, set return value to 0
-                pred_result = np.zeros(3)
-                pred_state = np.zeros(self.num_units*self.num_layers)
-                pred_loss_list.append(0.0)
-
-            elif (seq_normal.shape[0]-1)%self.in_timesteps_max == 0:
-            # if sequence is long enough and it is good to reset a new prediction based on true data
-                x_true_normal = seq_normal[-self.in_timesteps_max-1:-1,:]
-                y_true = seq[-1, :]
-
-                target_seq, encoder_state_value = \
-                    self.inference_model.get_encoder_latent_state(inputs = np.expand_dims(x_true_normal, axis=0))
-
-                pred_result, pred_state = \
-                    self.inference_model.inference_one_step(target_seq, encoder_state_value)
-
-
-                y_pred = pred_result * self.x_var + self.x_mean
-
-                pred_state = np.asarray(pred_state).reshape(self.num_units*self.num_layers)
-                pred_loss_list.append(np.linalg.norm(y_true-y_pred))
-
-            else:
-            # sequence is long enough and we can continue our previous prediction
-                y_true = seq[-1, :]
-                target_seq = last_pred_result_list[idx]
-                last_state= last_pred_obs_list[idx]
-
-                #todo: here need tobe rewrite
-                target_seq = target_seq.reshape(1,1,3)
-                temp=last_state.reshape(pred_flags.num_layers, 1, pred_flags.num_units)
-                states_value = [temp[0], temp[1]]
-
-                # print("target_seq shape {}, ".format(target_seq.shape))
-                # print("and last state shape{}".format(states_value[0].shape))
-
-                pred_result, pred_state = \
-                    self.inference_model.inference_one_step(target_seq, states_value)
-
-                y_pred = pred_result * self.x_var + self.x_mean
-                pred_state = np.asarray(pred_state).reshape(self.num_units * self.num_layers)
-                pred_loss_list.append(np.linalg.norm(y_true-y_pred))
-
-
-
-            pred_obs_list.append(pred_state)
-            pred_result_list.append(pred_result)
-
-        return np.asarray(pred_obs_list), pred_result_list, np.asarray(pred_loss_list)
-
-
-    # def run_online_prediction(self, batched_seqs, batched_goals, visial_flags = False):
+    # def run_online_prediction(self, batched_seqs,\
+    #                           last_pred_obs_list, last_pred_result_list,  visial_flags = False):
     #     '''
     #     :param batched_seqs: raw x (batch size * input shape)
     #     :param batched_goals: raw goals / true goal (batch size * goal shape)
     #     :return: reward of this prediction, batch size * 1
     #     '''
-    #     rewards = []
-    #     batched_seqs_normal = []
-    #     for seq in batched_seqs:
+    #     pred_obs_list = []
+    #     pred_result_list = []
+    #     pred_loss_list = []
+    #     for idx, seq in enumerate(batched_seqs):
     #         seq = seq[:, -3:]
     #         seq_normal = (seq - self.x_mean) / self.x_var
-    #         if seq_normal.shape[0] < self.in_timesteps_max:
-    #             seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+    #         if (seq_normal.shape[0]-1) < self.in_timesteps_max:
+    #         # if sequence is toooo short to predict, set return value to 0
+    #             pred_result = np.zeros(3)
+    #             pred_state = np.zeros(self.num_units*self.num_layers)
+    #             pred_loss_list.append(0.0)
+    #
+    #         elif (seq_normal.shape[0]-1)%self.in_timesteps_max == 0:
+    #         # if sequence is long enough and it is good to reset a new prediction based on true data
+    #             x_true_normal = seq_normal[-self.in_timesteps_max-1:-1,:]
+    #             y_true = seq[-1, :]
+    #
+    #             target_seq, encoder_state_value = \
+    #                 self.inference_model.get_encoder_latent_state(inputs = np.expand_dims(x_true_normal, axis=0))
+    #
+    #             pred_result, pred_state = \
+    #                 self.inference_model.inference_one_step(target_seq, encoder_state_value)
+    #
+    #
+    #             y_pred = pred_result * self.x_var + self.x_mean
+    #
+    #             pred_state = np.asarray(pred_state).reshape(self.num_units*self.num_layers)
+    #             pred_loss_list.append(np.linalg.norm(y_true-y_pred))
+    #
     #         else:
-    #             seq_normal = seq_normal[-self.in_timesteps_max:]
-    #         batched_seqs_normal.append(seq_normal)
+    #         # sequence is long enough and we can continue our previous prediction
+    #             y_true = seq[-1, :]
+    #             target_seq = last_pred_result_list[idx]
+    #             last_state= last_pred_obs_list[idx]
     #
-    #     batched_seqs_normal = np.asarray(batched_seqs_normal)
-    #     ys_pred, enc_states = self.inference_model.predict(X=batched_seqs_normal)
     #
-    #     # then we restore the origin x and calculate the reward
-    #     for seq, y_pred, goal in zip(batched_seqs, ys_pred, batched_goals):
-    #         if seq.shape[0] < 5:
-    #             rewards.append(0.0)
-    #         else:
-    #             raw_y_pred = y_pred * self.x_var + self.x_mean
-    #             _, _, min_dist = utils.find_goal(raw_y_pred, [goal])
-    #             rewards.append(min_dist)
+    #             target_seq = target_seq.reshape(1,1,3)
+    #             temp=last_state.reshape(pred_flags.num_layers, 1, pred_flags.num_units)
+    #             states_value = [temp[0], temp[1]]
     #
-    #     # print("rewards: ", rewards)
-    #     rewards = np.asarray(rewards)
-    #     # shape of encstates
-    #     print("enc_states", enc_states)
-    #     return enc_states, rewards
+    #             # print("target_seq shape {}, ".format(target_seq.shape))
+    #             # print("and last state shape{}".format(states_value[0].shape))
+    #
+    #             pred_result, pred_state = \
+    #                 self.inference_model.inference_one_step(target_seq, states_value)
+    #
+    #             y_pred = pred_result * self.x_var + self.x_mean
+    #             pred_state = np.asarray(pred_state).reshape(self.num_units * self.num_layers)
+    #             pred_loss_list.append(np.linalg.norm(y_true-y_pred))
+    #
+    #         pred_obs_list.append(pred_state)
+    #         pred_result_list.append(pred_result)
+    #
+    #     return np.asarray(pred_obs_list), pred_result_list, np.asarray(pred_loss_list)
+
+
+    def run_online_prediction(self, batched_seqs, batched_goals, \
+                              batch_alternative_goals, visial_flags = False):
+        '''
+        :param batched_seqs: raw x (batch size * input shape)
+        :param batched_goals: raw goals / true goal (batch size * goal shape)
+        :return: reward of this prediction, batch size * 1
+        '''
+        rewards = []
+        batched_seqs_normal = []
+        pred_obs_list = []
+        for seq in batched_seqs:
+            seq = seq[:, -3:]
+            seq_normal = (seq - self.x_mean) / self.x_var
+            if seq_normal.shape[0] < self.in_timesteps_max:
+                seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+            else:
+                seq_normal = seq_normal[-self.in_timesteps_max:]
+            batched_seqs_normal.append(seq_normal)
+
+        batched_seqs_normal = np.asarray(batched_seqs_normal)
+        ys_pred, enc_states = self.inference_model.predict(X=batched_seqs_normal)
+
+        # then we restore the origin x and calculate the reward
+        n_envs = len(batched_seqs)
+        for idx in range(0, n_envs):
+            seq = batched_seqs[idx]
+            if seq.shape[0] < 5:
+                rewards.append(0.0)
+                pred_obs_list.append(np.zeros(self.num_units*self.num_layers))
+            else:
+                raw_y_pred = ys_pred[idx] * self.x_var + self.x_mean
+                select_goal, goal_idx, min_dist = utils.find_goal(raw_y_pred, batch_alternative_goals[idx])
+                if np.linalg.norm(select_goal-batched_goals[idx])<1e-7:
+                    rewards.append(1.0)
+                else:
+                    rewards.append(-1.0)
+                pred_obs_list.append(np.concatenate([enc_states[0][idx],enc_states[1][idx]]))
+
+        print("rewards: ", rewards)
+        rewards = np.asarray(rewards)
+
+        return np.asarray(pred_obs_list), rewards
 
     def run_validation(self):
         ## load dataset

@@ -129,7 +129,7 @@ class LongPred(PredBase):
                                        initial_epoch=self.start_iter, num_layers=self.num_layers, load=self.load,
                                        model_name=self.model_name)
 
-        inference_model = KP.PredictRNN(1,
+        inference_model = KP.PredictRNN(self.batch_size,
                                         self.in_dim, self.out_dim, self.in_timesteps_max, 1 * self.out_timesteps,
                                         self.num_units, num_layers=self.num_layers,
                                         model_name=model_name)
@@ -218,7 +218,7 @@ if __name__ == '__main__':
         #                       iter_start=args.iter, lr=args.lr, load=args.load,
         #                       model_name=pred_flags.model_name)
         # rnn_model2.run_validation()
-        #
+
 
     else:
 

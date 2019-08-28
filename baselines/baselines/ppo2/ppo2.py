@@ -153,9 +153,7 @@ class Runner(object):
             self.env_obs, rewards, self.dones, infos = self.env.step(actions)
             self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
 
-
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
-
 
             #---- predict reward-------
             pred_weight = self.pred_weight
@@ -171,15 +169,16 @@ class Runner(object):
                 # or update latent space based on last prediction
                 # calculate loss based on previous calculated result
                 # ----------------------------------------------------------
-                self.pred_obs[:], pred_result, origin_pred_loss = \
-                    self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+                # self.pred_obs[:], pred_result, origin_pred_loss = \
+                #     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
 
-                # #---------------long term prediction method 2---------------------
-                # # maximize dissimilar goals from other goals
-                # #
-                # #
-                # #----------------------------------------------------------------
-                # self.pred_obs[:], origin_pred_loss = self.long_term_predictor.run_online_prediction(xs, goals)
+                #---------------long term prediction method 2---------------------
+                # maximize dissimilar goals from other goals
+                #
+                #----------------------------------------------------------------
+                batch_alternative_goals = origin_obs[:,14:]
+                self.pred_obs[:], origin_pred_loss =\
+                    self.long_term_predictor.run_online_prediction(xs, goals, batch_alternative_goals)
 
 
                 predict_loss = pred_weight * origin_pred_loss

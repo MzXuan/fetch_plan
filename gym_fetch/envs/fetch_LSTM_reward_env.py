@@ -258,6 +258,9 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             joint_angle, joint_vel,goals
         ])
 
+        # print("obs: ",obs)
+        # print("goals: ", goals)
+
         # obs = np.concatenate([
         #     joint_angle, joint_vel, self.prev_act
         # ])
