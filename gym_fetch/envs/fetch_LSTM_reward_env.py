@@ -248,6 +248,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             joint_angle, joint_vel
         ])
 
+
         # obs = np.concatenate([
         #     joint_angle, joint_vel, self.prev_act
         # ])
@@ -278,7 +279,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             self.viewer.cam.lookat[idx] = value
         self.viewer.cam.distance = 2.6
         self.viewer.cam.azimuth = 180
-        self.viewer.cam.elevation = -15
+        self.viewer.cam.elevation = -20
 
 
     def _render_callback(self):
