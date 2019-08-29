@@ -58,14 +58,36 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
 
         table_pose = self.sim.data.geom_xpos[id].reshape(3,) #x,y,z
         table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
-        # print("table pose: ", table_pose)
-        # print("table size: ", table_size)
+        
+        goals = []
+        for site_id in index_site:
 
-        goal = np.zeros(3)
-        goal[0] = table_pose[0] + (2*np.random.uniform()-1)* (table_size[0]- self.sim.model.site_size[index_site[0]].reshape(3,)[0])
-        goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * table_size[1]
-        goal[2] = table_pose[2] +table_size[2] + self.sim.model.site_size[index_site[0]].reshape(3,)[2] #deduce radius
+            while True:
+                goal = self.random_target(table_pose, table_size, site_id)
+                dist = [np.linalg.norm(goal-g) for g in goals]
+
+                if dist == [] or all(d > 0.15 for d in dist):
+                    break
+
+            goals.append(goal)
+            self.sim.model.site_pos[site_id] = goal
+
+        self.sim.forward()
+
+        site_id = self.sim.model.site_name2id('target0')
+        goal = self.sim.model.site_pos[site_id]
+
         return goal.copy()
+
+    def random_target(self, table_pose, table_size, index_site):
+        goal = np.zeros(3)
+        goal[0] = table_pose[0] + (2 * np.random.uniform() - 1) * (
+                    table_size[0] - self.sim.model.site_size[index_site].reshape(3, )[0])
+        goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * table_size[1]
+        goal[2] = table_pose[2] + table_size[2] + self.sim.model.site_size[index_site].reshape(3, )[
+            2]  # deduce radius
+        return goal.copy()
+        
 
 class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
     def __init__(self, reward_type='sparse'):
