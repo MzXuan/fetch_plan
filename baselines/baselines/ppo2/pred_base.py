@@ -160,7 +160,7 @@ class PredBase(object):
         pred_obs_list = []
         for seq in batched_seqs:
             seq = seq[:, -3:]
-            seq_normal = (seq - self.x_mean) / self.x_var
+            seq_normal = (seq[:-1,:] - self.x_mean) / self.x_var
             if seq_normal.shape[0] < self.in_timesteps_max:
                 seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
             else:
