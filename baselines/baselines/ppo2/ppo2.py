@@ -514,18 +514,18 @@ def display(policy, env, nsteps, nminibatches, load_path):
             traj.append(origin_obs[0][0:3])
 
 
-
-
             # # #---------------long sequence reward --------#
             # xs, goals = dataset_creator.collect_online(origin_obs, done)
             # pred_obs[:], pred_result, origin_pred_loss = \
             #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
             #----------long target reward-------------------#
-            xs, goals = dataset_creator.collect_online(origin_obs, done)
+            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
             batch_alternative_goals = origin_obs[:, -9:]
-            pred_obs[:], origin_pred_loss = \
-                long_term_predictor.run_online_prediction(xs, goals, batch_alternative_goals)
+            # pred_obs[:], origin_pred_loss = \
+            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            _,_= \
+                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------
 
             # #---- plot result ---

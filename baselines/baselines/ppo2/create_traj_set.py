@@ -75,14 +75,17 @@ class RLDataCreator():
         :param infos:
         :return:
         '''
-        seqs_raw_all, goals_all = [], []
+        seqs_raw_all, x_starts, goals_all = [], [], []
+
 
         for idx, (ob, done) in enumerate(zip(obs_raw, dones)):
             x_seq = np.asarray(self.xs_raw[idx])
             if x_seq.shape[0] == 0:
                 seqs_raw_all.append(np.zeros((1,self.in_dim)))
+                x_starts.append(np.zeros(self.in_dim))
             else:
                 seqs_raw_all.append(x_seq[1:] - x_seq[0])
+                x_starts.append(x_seq[0])
             goals_all.append(ob[3:6])
 
             if done:
@@ -91,7 +94,7 @@ class RLDataCreator():
             self.xs_raw[idx].append(np.concatenate((ob[6:13],
                                                     ob[0:3])))
 
-        return seqs_raw_all, goals_all
+        return seqs_raw_all, x_starts , goals_all
 
     def _create_traj(self, trajs):
         """
@@ -164,9 +167,9 @@ class RLDataCreator():
         :return:
         '''
         # create input sequence
-        seqs_raw_all, goals_all = self._create_online_seq(obs_raw, dones)
+        seqs_raw_all, x_starts, goals_all = self._create_online_seq(obs_raw, dones)
 
-        return seqs_raw_all, goals_all
+        return seqs_raw_all, x_starts, goals_all
 
 
 

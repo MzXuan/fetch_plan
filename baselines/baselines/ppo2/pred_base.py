@@ -148,7 +148,7 @@ class PredBase(object):
     #     return np.asarray(pred_obs_list), pred_result_list, np.asarray(pred_loss_list)
 
 
-    def run_online_prediction(self, batched_seqs, batched_goals, \
+    def run_online_prediction(self, batched_seqs, x_starts, batched_goals, \
                               batch_alternative_goals, visial_flags = False):
         '''
         :param batched_seqs: raw x (batch size * input shape)
@@ -161,8 +161,10 @@ class PredBase(object):
         for seq in batched_seqs:
             seq = seq[:, -3:]
             seq_normal = (seq[:-1,:] - self.x_mean) / self.x_var
-            if seq_normal.shape[0] < self.in_timesteps_max:
+            if seq_normal.shape[0] < 5:
                 seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
+            elif seq_normal.shape[0] < self.in_timesteps_max:
+                seq_normal = self._padding(seq_normal, self.in_timesteps_max)
             else:
                 seq_normal = seq_normal[-self.in_timesteps_max:]
             batched_seqs_normal.append(seq_normal)
@@ -174,6 +176,11 @@ class PredBase(object):
         n_envs = len(batched_seqs)
         for idx in range(0, n_envs):
             seq = batched_seqs[idx]
+            true_goal = batched_goals[idx]-x_starts[idx][-3:]
+            alternative_goals = batch_alternative_goals[idx].reshape((3,3))-x_starts[idx][-3:]
+
+            # print("alternative goals: ", alternative_goals)
+
             if seq.shape[0] < 5:
                 rewards.append(0.1)
                 pred_obs_list.append(np.zeros(self.num_units*self.num_layers))
@@ -186,9 +193,9 @@ class PredBase(object):
                 #----------------------------------------
                 raw_y_pred = ys_pred[idx] * self.x_var + self.x_mean
                 select_goal, goal_idx, min_dist = utils.find_goal(\
-                    raw_y_pred, batch_alternative_goals[idx].reshape((3,3)))
+                    raw_y_pred, alternative_goals)
 
-                if np.linalg.norm(select_goal-batched_goals[idx])<1e-7:
+                if np.linalg.norm(select_goal-true_goal)<1e-7:
                     rewards.append(3.0)
 
                 else:
@@ -201,7 +208,7 @@ class PredBase(object):
                 # ---------------draw result----------------#
                 import visualize
                 visualize.plot_3d_seqs(x=seq,\
-                        y_pred=raw_y_pred, goals=batch_alternative_goals[idx].reshape((3,3)))
+                        y_pred=raw_y_pred, goals=alternative_goals)
                 # ------------------------------------------#
 
         rewards = np.asarray(rewards)
