@@ -159,7 +159,7 @@ class Runner(object):
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
-                xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
+                xs, x_starts, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
 
                 #-----short term prediction-----
                 # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
@@ -178,7 +178,7 @@ class Runner(object):
                 #----------------------------------------------------------------
                 batch_alternative_goals = origin_obs[:,-9:]
                 self.pred_obs[:], origin_pred_loss =\
-                    self.long_term_predictor.run_online_prediction(xs, goals, batch_alternative_goals)
+                    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
 
 
                 predict_loss = pred_weight * origin_pred_loss
@@ -522,10 +522,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
             #----------long target reward-------------------#
             xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
             batch_alternative_goals = origin_obs[:, -9:]
-            # pred_obs[:], origin_pred_loss = \
-            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            _,_= \
+            pred_obs[:], origin_pred_loss = \
                 long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # _,_= \
+            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------
 
             # #---- plot result ---

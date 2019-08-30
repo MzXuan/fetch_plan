@@ -211,13 +211,10 @@ class PredBase(object):
                 # #         y_pred=raw_y_pred, goals=alternative_goals)
                 #
                 # visualize.plot_dof_seqs(x=seq[:,-3:],y_pred=raw_y_pred,step=self.step,\
-                #                         goals=alternative_goals, goal_pred=select_goal)
+                #                         goals=alternative_goals, goal_pred=true_goal)
                 # # ------------------------------------------#
 
         rewards = np.asarray(rewards)
-
-
-
 
         return np.asarray(pred_obs_list), rewards
 
