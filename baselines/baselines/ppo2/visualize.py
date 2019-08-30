@@ -138,19 +138,22 @@ def plot_dof_seqs(x, y_pred, step = 1,  y_true=None, goals = None, goal_pred = N
         time_step_y_true = range(0, y_true.shape[0])
 
     DOFs = x.shape[-1]
-    print("DOF,", DOFs)
     for j in range(0, DOFs):
 
         plt.subplot(DOFs,1,j+1)
-        plt.ylim(-3, 3)
+        plt.ylim(-1, 1)
         plt.plot(time_step_x, x[:, j], "b-")
         plt.plot(time_step_y, y_pred[:, j], "r-", alpha = 0.6)
 
         if y_true is not None:
             plt.plot(time_step_y_true, y_true[:, j], color="green", alpha=0.5)
         if goals is not None:
-            for goal in goals:
-                plt.plot(time_step_y[-1], goal[j],'ro')
+            for gid, goal in enumerate(goals):
+                if gid == 0:
+                    plt.plot(time_step_y[-1], goal[j],'b*')
+                else:
+                    plt.plot(time_step_y[-1], goal[j], 'ro')
+
         if goal_pred is not None:
             plt.plot(time_step_y[-1], goal_pred[j], 'g*')
 
