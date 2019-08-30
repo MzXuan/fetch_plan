@@ -138,6 +138,7 @@ def plot_dof_seqs(x, y_pred, step = 1,  y_true=None, goals = None, goal_pred = N
         time_step_y_true = range(0, y_true.shape[0])
 
     DOFs = x.shape[-1]
+    print("DOF,", DOFs)
     for j in range(0, DOFs):
 
         plt.subplot(DOFs,1,j+1)

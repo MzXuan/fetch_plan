@@ -205,11 +205,13 @@ class PredBase(object):
                 if goal_idx != 0:
                     print("wrong guess!!! to goal", goal_idx)
 
-                # ---------------draw result----------------#
-                import visualize
-                visualize.plot_3d_seqs(x=seq,\
-                        y_pred=raw_y_pred, goals=alternative_goals)
-                # ------------------------------------------#
+                # # ---------------draw result----------------#
+                # import visualize
+                # visualize.plot_3d_seqs(x=seq,\
+                #         y_pred=raw_y_pred, goals=alternative_goals)
+                #
+                # visualize.plot_dof_seqs(x=seq[:,-3:],y_pred=raw_y_pred,step=self.step)
+                # # ------------------------------------------#
 
         rewards = np.asarray(rewards)
 
