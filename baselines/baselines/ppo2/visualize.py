@@ -84,16 +84,16 @@ def plot_3d_pred(x, goal, pred=None):
     plt.pause(0.1)
 
 
-def plot_3d_seqs(x, y_pred, y_true=None):
+def plot_3d_seqs(x, y_pred, y_true=None, goals=None):
     fig3d = plt.figure(3)
     plt.clf()
 
     ax = fig3d.gca(projection='3d')
     plt.ion()
 
-    # ax.set_xlim(-1.5, 1.5)
-    # ax.set_ylim(-1.5, 1.5)
-    # ax.set_zlim(-1.5, 1.5)
+    # ax.set_xlim(-2, 2)
+    # ax.set_ylim(-2, 2)
+    # ax.set_zlim(-2, 2)
 
     ax.plot(x[:, -3], x[:, -2], x[:, -1],
             '-+', linewidth=2, color="blue", label="x")
@@ -111,6 +111,12 @@ def plot_3d_seqs(x, y_pred, y_true=None):
     if y_true is not None:
         ax.plot(y_true[:, -3], y_true[:, -2], y_true[:, -1],
                 '-+', linewidth=2, color="green", label="y_true", alpha=0.5)
+
+    if goals is not None:
+        for g in goals:
+            ax.plot([g[-3]],[g[-2]], [g[-1]],
+                    '-+', linewidth=2, color="green", label="y_true", alpha=0.5)
+
 
 
     ax.set_xlabel("x")

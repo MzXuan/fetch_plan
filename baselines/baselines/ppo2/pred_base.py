@@ -178,6 +178,12 @@ class PredBase(object):
                 rewards.append(0.1)
                 pred_obs_list.append(np.zeros(self.num_units*self.num_layers))
             else:
+                #-------------test----------------------
+                # for iii, gg in enumerate(batch_alternative_goals[idx].reshape((3,3))):
+                #     if np.linalg.norm(gg - batched_goals[idx])<1e-7:
+                #         print("true goal id is: ", iii)
+
+                #----------------------------------------
                 raw_y_pred = ys_pred[idx] * self.x_var + self.x_mean
                 select_goal, goal_idx, min_dist = utils.find_goal(\
                     raw_y_pred, batch_alternative_goals[idx].reshape((3,3)))
@@ -189,8 +195,19 @@ class PredBase(object):
                     rewards.append(0.1)
                 pred_obs_list.append(np.concatenate([enc_states[0][idx],enc_states[1][idx]]))
 
-        # print("rewards: ", rewards)
+                if goal_idx != 0:
+                    print("wrong guess!!! to goal", goal_idx)
+
+                # ---------------draw result----------------#
+                import visualize
+                visualize.plot_3d_seqs(x=seq,\
+                        y_pred=raw_y_pred, goals=batch_alternative_goals[idx].reshape((3,3)))
+                # ------------------------------------------#
+
         rewards = np.asarray(rewards)
+
+
+
 
         return np.asarray(pred_obs_list), rewards
 

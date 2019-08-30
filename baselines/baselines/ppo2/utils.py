@@ -21,6 +21,13 @@ def find_goal(path, goals):
 			if d < dist_min:
 				dist_min = d
 				goal_idx = idx
+
+	# dis_list = []
+	# for g in goals:
+	# 	dis = np.linalg.norm((path - g), axis=1)
+	# 	dis_list.append(dis.min())
+	# print("min dist list: ", dis_list)
+
 	return goals[goal_idx], goal_idx, dist_min
 
 
