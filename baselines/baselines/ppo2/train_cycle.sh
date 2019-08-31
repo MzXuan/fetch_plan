@@ -41,7 +41,7 @@ sleep 1
 cp -R ${rl_model} "./models/log_${counter}"
 
 # sample dataset	## sam?ed_model}/test1/checkpoint_"
-python run.py --load -p='last'
+python run.py --load --seed=$((100+counter)) -p='last'
 sleep 1
 
 
