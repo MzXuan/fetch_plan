@@ -7,6 +7,7 @@ import os
 import time
 import csv
 import numpy as np
+import math
 
 import visualize
 import matplotlib.pyplot as plt
@@ -176,6 +177,7 @@ class PredBase(object):
         n_envs = len(batched_seqs)
         for idx in range(0, n_envs):
             seq = batched_seqs[idx]
+            total_length = len(seq)
             true_goal = batched_goals[idx]-x_starts[idx][-3:]
             alternative_goals = batch_alternative_goals[idx].reshape((3,3))-x_starts[idx][-3:]
 
@@ -195,11 +197,14 @@ class PredBase(object):
                 select_goal, goal_idx, min_dist = utils.find_goal(\
                     raw_y_pred, alternative_goals)
 
+                m = 3
                 if np.linalg.norm(select_goal-true_goal)<1e-7:
-                    rewards.append(3.0)
+                    rew = m*math.exp(-total_length/15)
+                    rewards.append(rew)
 
                 else:
-                    rewards.append(0.1)
+                    rew = m*(math.exp(-total_length/15)-1)
+                    rewards.append(rew)
                 pred_obs_list.append(np.concatenate([enc_states[0][idx],enc_states[1][idx]]))
 
                 if goal_idx != 0:
