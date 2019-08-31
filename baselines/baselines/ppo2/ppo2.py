@@ -182,7 +182,7 @@ class Runner(object):
 
 
                 predict_loss = pred_weight * origin_pred_loss
-                rewards -= predict_loss
+                rewards += predict_loss
 
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
@@ -490,6 +490,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
         pred_result = [np.zeros(3) for _ in range(nenv)]
 
         score = 0
+        pred_rew = 0
         done = [False]
         state = agent.initial_state
         obs_list = None
@@ -522,10 +523,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
             #----------long target reward-------------------#
             xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
             batch_alternative_goals = origin_obs[:, -9:]
-            pred_obs[:], origin_pred_loss = \
-                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            # _,_= \
+            # pred_obs[:], origin_pred_loss = \
             #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            _,origin_pred_loss= \
+                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------
 
             # #---- plot result ---
@@ -538,18 +539,23 @@ def display(policy, env, nsteps, nminibatches, load_path):
             #
             # #--- end plot ---#
             score += rew[0]
+            pred_rew += origin_pred_loss[0]
+            # print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
 
         #if done, save trajectory
         traj = np.asarray(traj)
         # if done, pause 2 s
         time.sleep(0.5)
-        return score, traj
+        return score, traj, pred_rew
 
 
     for e in range(10000):
-        score, traj = run_episode(env, act_model)
-        print ('episode: {} | score: {}'.format(e, score))
-        # print("episode: {} traj: {}".format(e, traj))
+        score, traj, pred_rew = run_episode(env, act_model)
+        print('episode: {} | score: {}; predict reward: {} | precent of pred rew: {}'.\
+              format(e, score, pred_rew, pred_rew/score))
+
+
+        # print ('episode: {} | score: {}'.format(e, score))
         # np.savetxt("/home/xuan/Videos/trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
 
     env.close()

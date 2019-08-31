@@ -51,9 +51,9 @@ then
     python predictors.py --iter=${counter} --epoch=30
 elif [ ${counter} -le 3 ]
 then
-    python predictors.py --load --iter=${counter} --epoch=30
+    python predictors.py --iter=${counter} --epoch=30
 else
-    python predictors.py --load --iter=${counter} --epoch=30
+    python predictors.py --iter=${counter} --epoch=30
 fi
 
 
