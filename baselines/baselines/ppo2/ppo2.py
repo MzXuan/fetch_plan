@@ -303,7 +303,8 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             loss.append(origin_ploss)
             rew.append(origin_rew)
 
-        runner.pred_weight = abs(np.mean(rew))/abs(np.mean(loss)) * (pred_weight)
+        # runner.pred_weight = abs(np.mean(rew))/abs(np.mean(loss)) * (pred_weight)
+        runner.pred_weight = 5
         print("current pred weight is: ")
         print(runner.pred_weight)
 
@@ -544,12 +545,12 @@ def display(policy, env, nsteps, nminibatches, load_path):
             score += rew[0]
             pred_rew += origin_pred_loss[0]
 
-            #--------for visualize result-------
-            score_list.append(rew[0])
-            pred_rew_list.append(origin_pred_loss[0])
-            print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
-            visualize.plot_reward(score_list, pred_rew_list)
-            #-------------------------------------
+            # #--------for visualize result-------
+            # score_list.append(rew[0])
+            # pred_rew_list.append(origin_pred_loss[0])
+            # print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
+            # visualize.plot_reward(score_list, pred_rew_list)
+            # #-------------------------------------
 
         #if done, save trajectory
         traj = np.asarray(traj)
