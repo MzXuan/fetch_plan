@@ -496,6 +496,9 @@ def display(policy, env, nsteps, nminibatches, load_path):
         obs_list = None
         obs_list_3d = None
 
+        score_list = []
+        pred_rew_list = []
+
 
         traj = []
         env.render()
@@ -540,7 +543,13 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # #--- end plot ---#
             score += rew[0]
             pred_rew += origin_pred_loss[0]
-            # print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
+
+            #--------for visualize result-------
+            score_list.append(rew[0])
+            pred_rew_list.append(origin_pred_loss[0])
+            print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
+            visualize.plot_reward(score_list, pred_rew_list)
+            #-------------------------------------
 
         #if done, save trajectory
         traj = np.asarray(traj)

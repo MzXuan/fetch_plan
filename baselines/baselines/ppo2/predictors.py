@@ -229,7 +229,7 @@ if __name__ == '__main__':
         print("start testing...")
         # plot all the validate data step by step
 
-        # rnn_model.plot_dataset()
-        rnn_model.run_validation()
+        rnn_model.plot_dataset()
+        # rnn_model.run_validation()
 
 

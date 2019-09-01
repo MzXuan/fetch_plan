@@ -183,8 +183,8 @@ class PredBase(object):
 
             # print("alternative goals: ", alternative_goals)
 
-            if seq.shape[0] < 5:
-                rewards.append(0.1)
+            if seq.shape[0] < 6:
+                rewards.append(0.0)
                 pred_obs_list.append(np.zeros(self.num_units*self.num_layers))
             else:
                 #-------------test----------------------
@@ -199,7 +199,10 @@ class PredBase(object):
 
                 m = 3
                 if np.linalg.norm(select_goal-true_goal)<1e-7:
-                    rew = m*math.exp(-total_length/15)
+                    if np.linalg.norm(seq[-1,-3:]-true_goal)<0.2:
+                        rew = 0.0
+                    else:
+                        rew = m*math.exp(-total_length/15)
                     rewards.append(rew)
 
                 else:

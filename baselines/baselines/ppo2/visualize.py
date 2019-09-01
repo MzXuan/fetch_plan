@@ -195,3 +195,19 @@ def plot_avg_err(ratio, err_y, err_x):
     plt.plot(ratio,err_x,'b-', label='observed distance')
     plt.legend()
     plt.show()
+
+#plot reward
+def plot_reward(task_reward, pred_reward):
+    plt.figure("reward")
+    plt.ion()
+    plt.clf()
+    # plt.ylim(-1, 1)
+    plt.plot(task_reward,"r-", label='task reward')
+    plt.plot(pred_reward,"b-", label='predict reward')
+    plt.legend()
+    plt.show()
+    plt.pause(0.1)
+
+
+
+
