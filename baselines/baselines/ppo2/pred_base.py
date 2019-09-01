@@ -210,10 +210,10 @@ class PredBase(object):
                     rewards.append(rew)
                 pred_obs_list.append(np.concatenate([enc_states[0][idx],enc_states[1][idx]]))
 
-                if goal_idx != 0:
-                    print("wrong guess!!! to goal", goal_idx)
-
+               
                 # # ---------------draw result----------------#
+                # if goal_idx != 0:
+                #     print("wrong guess!!! to goal", goal_idx)
                 # import visualize
                 # # visualize.plot_3d_seqs(x=seq,\
                 # #         y_pred=raw_y_pred, goals=alternative_goals)
