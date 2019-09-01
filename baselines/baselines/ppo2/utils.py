@@ -56,7 +56,6 @@ def reward_goal_dist(batched_seqs, x_starts, batched_goals, batch_alternative_go
 def goal_dist(point, gs,g0):
 	rew = []
 	dist = []
-	alpha = 2
 	d0 = np.linalg.norm(point - g0)
 	if d0 < 0.2: # to close to give predictable reward
 		return 0.0
@@ -67,7 +66,7 @@ def goal_dist(point, gs,g0):
 				continue
 			else:
 				d = np.linalg.norm(point - g)
-				theta = alpha if d0 < d else -alpha
+				theta = 1 if d0 < d else -1
 				rew.append(theta*math.log(abs(d0-d)/abs(d0+d)+1))
 				dist.append(d)
 
