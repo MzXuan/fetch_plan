@@ -165,7 +165,7 @@ def main():
     parser.add_argument('--logdir', default='log', type=str)
     args = parser.parse_args()
 
-    each_iter_num = 500
+    each_iter_num = 400
 
     curr_path = sys.path[0]
     if args.display:
@@ -176,7 +176,7 @@ def main():
                                                                       'log',
                                                                       'csv',
                                                                       'tensorboard'])
-        iter_countings = 800+ (args.iter-1) * each_iter_num if  args.iter >=1 else 0
+        iter_countings = 300+ (args.iter-1) * each_iter_num if  args.iter >=1 else 0
         logger.tb_start_step(iter_countings , 3)
 
         print("iter countings: ", iter_countings)
