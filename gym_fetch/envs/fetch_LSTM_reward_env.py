@@ -69,7 +69,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # GoalEnv methods
     # ----------------------------
 
-    def compute_reward(self, achieved_goal, goal, info, predict_reward=0):
+    def compute_reward(self, achieved_goal, goal, info):
         # predict reward: a predict reward from LSTM prediction algorithm
         # Compute distance between goal and the achieved goal.
         if info["is_success"]:
@@ -149,6 +149,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             'is_collision': self._contact_dection(),
             'goal_label': self.goal_label
         }
+
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         # energy_loss = 0.2 * np.linalg.norm(real_act - self.prev_act)
         # # print("approching_rew: {} | energy_loss: {}".format(reward, energy_loss))

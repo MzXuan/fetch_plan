@@ -168,17 +168,26 @@ class Runner(object):
                 # predict and get new latent space every n steps
                 # or update latent space based on last prediction
                 # calculate loss based on previous calculated result
-                # ----------------------------------------------------------
+                ##################################################
                 # self.pred_obs[:], pred_result, origin_pred_loss = \
                 #     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+                #-----------------------------------------------------------------
 
                 #---------------long term prediction method 2---------------------
                 # maximize dissimilar goals from other goals
-                #
+                # ############################################
+                # batch_alternative_goals = origin_obs[:,-9:]
+                # self.pred_obs[:], origin_pred_loss =\
+                #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
                 #----------------------------------------------------------------
-                batch_alternative_goals = origin_obs[:,-9:]
-                self.pred_obs[:], origin_pred_loss =\
-                    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+
+                #-------------predictable prediction method 3 (not using lstm)------
+                # calculate the distance between the lastest obs and all selective goals
+                ######################################################################
+                batch_alternative_goals = origin_obs[:, -9:]
+                import utils
+                origin_pred_loss = utils.reward_goal_dist(xs, x_starts, goals, batch_alternative_goals)
+                #------------------------------------------------------------------
 
 
                 predict_loss = pred_weight * origin_pred_loss
@@ -291,22 +300,24 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     kl = 0.01
 
     #test weight parameter
-    print("current pred_weight")
-    print(pred_weight)
-    if pred_weight!=0:
-        loss = []
-        rew = []
-        print("finding best pred weight... this will take 2 epochs...")
-        for _ in tqdm(range(2)):
-            print("start finding...")
-            obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
-            loss.append(origin_ploss)
-            rew.append(origin_rew)
+    runner.pred_weight = pred_weight
+    print("current pred weight is: ", runner.pred_weight)
 
-        # runner.pred_weight = abs(np.mean(rew))/abs(np.mean(loss)) * (pred_weight)
-        runner.pred_weight = 5
-        print("current pred weight is: ")
-        print(runner.pred_weight)
+    # print("setting predict weight is: ", pred_weight)
+    # if pred_weight!=0:
+    #     loss = []
+    #     rew = []
+    #     print("finding best pred weight... this will take 2 epochs...")
+    #     for _ in tqdm(range(2)):
+    #         print("start finding...")
+    #         obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
+    #         loss.append(origin_ploss)
+    #         rew.append(origin_rew)
+    #
+    #     runner.pred_weight = abs(np.mean(rew))/abs(np.mean(loss)) * (pred_weight)
+    #     runner.pred_weight = 5
+    #     print("current pred weight is: ")
+    #     print(runner.pred_weight)
 
     # learning
     nupdates = total_timesteps//nbatch
@@ -524,14 +535,21 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # pred_obs[:], pred_result, origin_pred_loss = \
             #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
-            #----------long target reward-------------------#
+            # #----------long target reward-------------------#
+            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            # batch_alternative_goals = origin_obs[:, -9:]
+            # # pred_obs[:], origin_pred_loss = \
+            # #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # _,origin_pred_loss= \
+            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # #----------------------------------------------------------
+
+            # ----------long target reward  method3-----------------#
             xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
             batch_alternative_goals = origin_obs[:, -9:]
-            # pred_obs[:], origin_pred_loss = \
-            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            _,origin_pred_loss= \
-                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            #----------------------------------------------------------
+            import utils
+            origin_pred_loss = utils.reward_goal_dist(xs, x_starts, goals, batch_alternative_goals)
+            #----------------------------------------------------------------------
 
             # #---- plot result ---
             #
@@ -546,10 +564,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
             pred_rew += origin_pred_loss[0]
 
             # #--------for visualize result-------
-            # score_list.append(rew[0])
-            # pred_rew_list.append(origin_pred_loss[0])
+            score_list.append(rew[0])
+            pred_rew_list.append(origin_pred_loss[0])
             # print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
-            # visualize.plot_reward(score_list, pred_rew_list)
+            visualize.plot_reward(score_list, pred_rew_list)
             # #-------------------------------------
 
         #if done, save trajectory

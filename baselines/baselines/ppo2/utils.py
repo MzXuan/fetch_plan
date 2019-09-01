@@ -30,6 +30,49 @@ def find_goal(path, goals):
 
 	return goals[goal_idx], goal_idx, dist_min
 
+def reward_goal_dist(batched_seqs, x_starts, batched_goals, batch_alternative_goals):
+	'''
+	:param point:
+	:param goals:
+	:return:
+	'''
+	rewards = []
+	n_envs = len(batched_seqs)
+	for idx in range(0, n_envs):
+		seq = batched_seqs[idx]
+		total_length = len(seq)
+		if total_length < 1:
+			rewards.append(0.0)
+		else:
+			true_goal = batched_goals[idx] - x_starts[idx][-3:]
+			alternative_goals = batch_alternative_goals[idx].reshape((3, 3)) - x_starts[idx][-3:]
+			point = seq[-1,-3:]
+			rew = goal_dist(point,alternative_goals,true_goal)
+			rewards.append(rew)
+
+	return np.asarray(rewards)
+
+
+def goal_dist(point, gs,g0):
+	rew = []
+	dist = []
+	alpha = 2
+	d0 = np.linalg.norm(point - g0)
+	if d0 < 0.2: # to close to give predictable reward
+		return 0.0
+	else:
+		dist.append(d0)
+		for g in gs:
+			if np.linalg.norm(g - g0) < 1e-7:
+				continue
+			else:
+				d = np.linalg.norm(point - g)
+				theta = alpha if d0 < d else -alpha
+				rew.append(theta*math.log(abs(d0-d)/abs(d0+d)+1))
+				dist.append(d)
+
+	# print("distance is {} and reward list is: {} ".format(dist, rew))
+	return (np.asarray(rew).min())
 
 def GetRandomGoal(dims):
 	goals = []
