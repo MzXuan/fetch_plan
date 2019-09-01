@@ -47,13 +47,13 @@ def reward_goal_dist(batched_seqs, x_starts, batched_goals, batch_alternative_go
 			true_goal = batched_goals[idx] - x_starts[idx][-3:]
 			alternative_goals = batch_alternative_goals[idx].reshape((3, 3)) - x_starts[idx][-3:]
 			point = seq[-1,-3:]
-			rew = goal_dist(point,alternative_goals,true_goal)
+			rew = goal_dist(point,alternative_goals,true_goal, total_length)
 			rewards.append(rew)
 
 	return np.asarray(rewards)
 
 
-def goal_dist(point, gs,g0):
+def goal_dist(point, gs,g0, t):
 	rew = []
 	dist = []
 	d0 = np.linalg.norm(point - g0)
@@ -71,7 +71,9 @@ def goal_dist(point, gs,g0):
 				dist.append(d)
 
 	# print("distance is {} and reward list is: {} ".format(dist, rew))
-	return (np.asarray(rew).min())
+	min_rew = np.asarray(rew).min()
+	time_scale = math.exp(-t/30)
+	return (time_scale*min_rew)
 
 def GetRandomGoal(dims):
 	goals = []
