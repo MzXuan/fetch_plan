@@ -70,7 +70,7 @@ def goal_dist(point, gs,g0, t):
 				rew.append(theta*math.log(abs(d0-d)/abs(d0+d)+1))
 				dist.append(d)
 
-	print("distance is {} and reward list is: {} ".format(dist, rew))
+	# print("distance is {} and reward list is: {} ".format(dist, rew))
 	min_rew = np.asarray(rew).min()
 	time_scale = math.exp(-t / 30)
 	# if t <60:

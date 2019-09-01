@@ -148,7 +148,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
             'is_collision': self._contact_dection(),
-            'goal_label': self.goal_label
+            'goal_label': self.goal_label,
+            'alternative_goals':self.alternative_goals
         }
 
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
@@ -253,11 +254,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         goals = []
         for site_id in index_site:
             goals.append(self.sim.model.site_pos[site_id])
-        goals = np.asarray(goals).reshape(3*len(index_site))
-        #-------------------------------------------------
-
+        self.alternative_goals = np.asarray(goals).reshape(3*len(index_site))
+        #---------------calculate distance-------------------
+        dist_lst = []
+        for g in goals:
+            dist_lst.append(np.linalg.norm(achieved_goal-g))
         obs = np.concatenate([
-            joint_angle, joint_vel, goals
+            joint_angle, joint_vel, np.asarray(dist_lst)
         ])
 
 

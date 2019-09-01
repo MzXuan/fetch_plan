@@ -71,6 +71,8 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
 
             goals.append(goal)
             self.sim.model.site_pos[site_id] = goal
+        self.alternative_goals = np.asarray(goals).reshape(3*len(index_site))
+        #-------------------------------------------------
 
         self.sim.forward()
 

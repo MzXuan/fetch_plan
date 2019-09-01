@@ -184,7 +184,8 @@ class Runner(object):
                 #-------------predictable prediction method 3 (not using lstm)------
                 # calculate the distance between the lastest obs and all selective goals
                 ######################################################################
-                batch_alternative_goals = origin_obs[:, -9:]
+
+                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
                 import utils
                 origin_pred_loss = utils.reward_goal_dist(xs, x_starts, goals, batch_alternative_goals)
                 #------------------------------------------------------------------
@@ -546,7 +547,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
             # ----------long target reward  method3-----------------#
             xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            batch_alternative_goals = origin_obs[:, -9:]
+            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
             import utils
             origin_pred_loss = utils.reward_goal_dist(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------------------
