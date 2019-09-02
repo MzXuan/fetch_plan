@@ -48,9 +48,9 @@ def point_goal_reward(batched_seqs, x_starts, batched_goals, batch_alternative_g
 			else:
 				for g in alternative_goals:
 					if np.linalg.norm(g - true_goal) < 1e-7:
-						continue
+						pass
 					else:
-						dis_list.append(np.linalg.norm(point - true_goal))
+						dis_list.append(np.linalg.norm(point - g))
 				rew = reward_dist(d0, dis_list, total_length)
 			rewards.append(rew)
 	return np.asarray(rewards)
