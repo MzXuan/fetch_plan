@@ -78,10 +78,11 @@ class TrainRNN():
         # enc
         enc_layers = []
         encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
+        masking = Masking(mask_value=0.0)(encoder_inputs)
         for i in range(0, self.num_layers):
             if i == 0:
                 enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
-                                       name="enc_"+str(i)+"lstm")(inputs=encoder_inputs))
+                                       name="enc_"+str(i)+"lstm")(inputs=masking))
                 dec_ini_states = [enc_layers[i][1]]
             else:
                 enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
@@ -226,11 +227,14 @@ class PredictRNN():
 
         # The first part is unchanged
         enc_layers = []
+        # encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
+        # encoder_inputs = Masking(mask_value=0.0)(Input(shape=(None, self.in_dim), name="enc_inputs"))
         encoder_inputs = Input(shape=(None, self.in_dim), name="enc_inputs")
+        masking = Masking(mask_value=0.0)(encoder_inputs)
         for i in range(0,self.num_layers):
             if i == 0:
                 enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,
-                                       name="enc_"+str(i)+"lstm")(inputs=encoder_inputs))
+                                       name="enc_"+str(i)+"lstm")(inputs=masking))
                 enc_states = [enc_layers[i][1]]
             else:
                 enc_layers.append(GRU(self.num_units, return_sequences=True, return_state=True,

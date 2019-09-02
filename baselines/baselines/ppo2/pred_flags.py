@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 import tensorflow as tf
 
-num_units = 16
+num_units = 8
 num_layers = 2
 out_steps = 8
 in_timesteps_max = 10

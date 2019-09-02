@@ -133,7 +133,8 @@ class MlpPolicy(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, iter=0, reuse=False): #pylint: disable=W0613
         print(ob_space.shape)
         obs_shape_list = list(ob_space.shape)
-        obs_shape_list[0] = obs_shape_list[0]+32
+        # obs_shape_list[0] = obs_shape_list[0]+32
+        obs_shape_list[0] = obs_shape_list[0] + 0
         ob_shape = (nbatch, ) + tuple(obs_shape_list)
 
         actdim = ac_space.shape[0]
@@ -149,7 +150,7 @@ class MlpPolicy(object):
         with tf.variable_scope("logstd", reuse=reuse):
             if iter == 0:
                 logstd = tf.get_variable(name="logstd", shape=[1, actdim],
-                    initializer=tf.zeros_initializer()) + 1
+                    initializer=tf.zeros_initializer()) + 0.2
                     # initializer = tf.zeros_initializer()) + 0.4
             else:
                 logstd = tf.get_variable(name="logstd", shape=[1, actdim],

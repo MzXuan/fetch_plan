@@ -91,9 +91,12 @@ def plot_3d_seqs(x, y_pred, y_true=None, goals=None):
     ax = fig3d.gca(projection='3d')
     plt.ion()
 
-    ax.set_xlim(-1, 1)
-    ax.set_ylim(-1, 1)
-    ax.set_zlim(-1, 1)
+    range=1
+
+    ax.set_xlim(-range, range)
+    ax.set_ylim(-range, range)
+    ax.set_zlim(-range, range)
+
 
     ax.plot(x[:, -3], x[:, -2], x[:, -1],
             '-+', linewidth=2, color="blue", label="x")
@@ -141,7 +144,7 @@ def plot_dof_seqs(x, y_pred, step = 1,  y_true=None, goals = None, goal_pred = N
     for j in range(0, DOFs):
 
         plt.subplot(DOFs,1,j+1)
-        plt.ylim(-1, 1)
+        plt.ylim(-3, 3)
         plt.plot(time_step_x, x[:, j], "b-")
         plt.plot(time_step_y, y_pred[:, j], "r-", alpha = 0.6)
 
