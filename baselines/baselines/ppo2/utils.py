@@ -41,7 +41,7 @@ def reward_goal_dist(batched_seqs, x_starts, batched_goals, batch_alternative_go
 	for idx in range(0, n_envs):
 		seq = batched_seqs[idx]
 		total_length = len(seq)
-		if total_length < 1:
+		if total_length < 5:
 			rewards.append(0.0)
 		else:
 			true_goal = batched_goals[idx] - x_starts[idx][-3:]
