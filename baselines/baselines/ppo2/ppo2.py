@@ -7,18 +7,21 @@ import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
-from predictor import Predictor
+
+from predictors import ShortPred
+from predictors import LongPred
+from create_traj_set import RLDataCreator
 from tqdm import tqdm
-import flags
+import pred_flags
 
 
 class Model(object):
     def __init__(self, *, policy, ob_space, ac_space, nbatch_act, nbatch_train,
-                nsteps, ent_coef, vf_coef, max_grad_norm):
+                nsteps, ent_coef, vf_coef, max_grad_norm, iter=0):
         sess = tf.get_default_session()
 
-        act_model = policy(sess, ob_space, ac_space, nbatch_act, 1, reuse=False)
-        train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps, reuse=True)
+        act_model = policy(sess, ob_space, ac_space, nbatch_act, 1, iter=iter, reuse=False)
+        train_model = policy(sess, ob_space, ac_space, nbatch_train, nsteps,  iter=iter, reuse=True)
 
         A = train_model.pdtype.sample_placeholder([None])
         ADV = tf.placeholder(tf.float32, [None])
@@ -92,6 +95,7 @@ class Model(object):
         self.load = load
         tf.global_variables_initializer().run(session=sess) #pylint: disable=E1101
 
+
 class Runner(object):
     def __init__(self, *, env, model, 
                  nsteps, gamma, lam, load, point, 
@@ -101,6 +105,7 @@ class Runner(object):
         nenv = env.num_envs
         self.obs = np.zeros((nenv,) + env.observation_space.shape, dtype=model.train_model.X.dtype.name)
         self.obs[:] = env.reset()
+        self.env_obs = np.copy(self.obs)
         self.gamma = gamma
         self.lam = lam
         self.nsteps = nsteps
@@ -108,48 +113,95 @@ class Runner(object):
         self.predictor_flag = predictor_flag
         self.pred_weight = pred_weight
         self.dones = [False for _ in range(nenv)]
-        sess = tf.get_default_session()
-        if (not self.predictor_flag) and pred_weight != 0.0:
-            # collect data
-            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=True)
-        else:
-            # train and display
-            self.predictor = Predictor(sess, flags.InitParameter(), nenv, 10, train_flag=predictor_flag, reset_flag=False)
 
-        self.predictor.init_sess()
+        # self.short_term_predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps = pred_flags.out_steps,
+        #                            train_flag=False)
+
+        self.long_term_predictor = LongPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+                              train_flag=True)
+
+        self.dataset_creator = RLDataCreator(nenv)
+
+        self.pred_obs = np.zeros((nenv, pred_flags.num_layers*pred_flags.num_units))
+        self.pred_result = [np.zeros(3) for _ in range(nenv)]
+
+
         self.collect_flag = False
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
-            self.predictor.load()
+            # self.predictor.load()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
         mb_weighted_ploss, mb_origin_ploss, mb_origin_rew = [],[],[]
-        mb_traj_len = []
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
+            #----- edit obs, make it env_obs + pred_obs
+            # print("obs shape is: ", self.obs.shape)
+            # expand obs with latent space
+            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+            # print("obs shape after edited is: ", self.obs.shape)
+
+            #--------end extend obs------
             actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
             mb_values.append(values)
             mb_neglogpacs.append(neglogpacs)
-            mb_dones.append(self.dones)            
-            self.obs[:], rewards, self.dones, infos = self.env.step(actions)
-            
+            mb_dones.append(self.dones)
+            self.env_obs, rewards, self.dones, infos = self.env.step(actions)
+            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
-            #---- predict reward
-            traj_len = np.nan
+
+            #---- predict reward-------
             pred_weight = self.pred_weight
-            if self.predictor_flag and pred_weight != 0.0:
-                origin_pred_loss, traj_len = self.predictor.predict(self.obs[:], self.dones)
+            if self.predictor_flag and pred_weight != 0.0: #predict process
+                origin_obs = self.env.origin_obs
+                xs, x_starts, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
+
+                #-----short term prediction-----
+                # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
+
+                #---------------long term prediction method 1-----------------------
+                # predict and get new latent space every n steps
+                # or update latent space based on last prediction
+                # calculate loss based on previous calculated result
+                ##################################################
+                # self.pred_obs[:], pred_result, origin_pred_loss = \
+                #     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+                #-----------------------------------------------------------------
+
+                #---------------long term prediction method 2---------------------
+                # maximize dissimilar goals from other goals
+                # ############################################
+                # batch_alternative_goals = origin_obs[:,-9:]
+                # self.pred_obs[:], origin_pred_loss =\
+                #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+                #----------------------------------------------------------------
+
+                #-------------predictable prediction method 3 (not using lstm)------
+                # calculate the distance between the lastest obs and all selective goals
+                ######################################################################
+
+                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                import utils
+                origin_pred_loss = utils.reward_goal_dist(xs, x_starts, goals, batch_alternative_goals)
+                #------------------------------------------------------------------
+
+
                 predict_loss = pred_weight * origin_pred_loss
-                rewards -= predict_loss
+                rewards += predict_loss
+
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
                 # print("final_reward: {}".format(rewards))
-            elif pred_weight != 0.0:
-                self.collect_flag = self.predictor.collect(self.obs[:], self.dones)
+                #---------------
+
+            elif pred_weight != 0.0 and self.collect_flag is not True: #collect process
+                origin_obs = self.env.origin_obs   # [achieved goal; true goal; joint obs states]
+                self.collect_flag =  self.dataset_creator.collect(origin_obs, self.dones, infos)
                 origin_pred_loss = 0.0
                 predict_loss = 0.0
             else:
@@ -161,12 +213,17 @@ class Runner(object):
             mb_origin_ploss.append(np.mean(np.asarray(origin_pred_loss)))
             mb_weighted_ploss.append(np.mean(np.asarray(predict_loss)))
             
-            mb_traj_len.append(np.nanmean(np.asarray(traj_len)))
-            
+            # mb_traj_len.append(np.nanmean(np.asarray(traj_len)))
 
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfos.append(maybeepinfo)
+
+
+        if self.pred_weight != 0.0 and self.collect_flag is True:
+            print("transfer raw data in to delta x, please wait....")
+            self.dataset_creator.get_mean_std()
+
 
         #batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
@@ -190,8 +247,9 @@ class Runner(object):
             delta = mb_rewards[t] + self.gamma * nextvalues * nextnonterminal - mb_values[t]
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
         mb_returns = mb_advs + mb_values
+
         return (*map(sf01, (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs)), 
-            mb_states, mb_origin_ploss, mb_weighted_ploss, mb_origin_rew, epinfos, mb_traj_len)
+            mb_states, mb_origin_ploss, mb_weighted_ploss, mb_origin_rew, epinfos)
 # obs, returns, masks, actions, values, neglogpacs, states = runner.run()
 def sf01(arr):
     """
@@ -209,7 +267,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95, 
             log_interval=10, nminibatches=4, noptepochs=4, cliprange=0.2,
             save_interval=50, load=False, point='00100', init_targ=0.1,
-            predictor_flag=False, pred_weight=0.01):
+            predictor_flag=False, pred_weight=0.01, iter=0):
 
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
@@ -225,7 +283,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
     make_model = lambda : Model(policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs, nbatch_train=nbatch_train, 
                     nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
-                    max_grad_norm=max_grad_norm)
+                    max_grad_norm=max_grad_norm, iter=iter)
     if save_interval and logger.get_dir():
         import cloudpickle
         with open(osp.join(logger.get_dir(), 'make_model.pkl'), 'wb') as fh:
@@ -243,20 +301,24 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     kl = 0.01
 
     #test weight parameter
-    print("current pred_weight")
-    print(pred_weight)
-    if pred_weight!=0:
-        loss = []
-        rew = []
-        print("finding best pred weight... this will take 5 epochs...")
-        for _ in tqdm(range(1,5)):
-            obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos, _ = runner.run()  # pylint: disable=E0632
-            loss.append(origin_ploss)
-            rew.append(origin_rew)
+    runner.pred_weight = pred_weight
+    print("current pred weight is: ", runner.pred_weight)
 
-        runner.pred_weight = np.mean(rew)/np.mean(loss) * (1/2)
-        print("current pred weight is: ")
-        print(runner.pred_weight)
+    # print("setting predict weight is: ", pred_weight)
+    # if pred_weight!=0:
+    #     loss = []
+    #     rew = []
+    #     print("finding best pred weight... this will take 2 epochs...")
+    #     for _ in tqdm(range(2)):
+    #         print("start finding...")
+    #         obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
+    #         loss.append(origin_ploss)
+    #         rew.append(origin_rew)
+    #
+    #     runner.pred_weight = abs(np.mean(rew))/abs(np.mean(loss)) * (pred_weight)
+    #     runner.pred_weight = 5
+    #     print("current pred weight is: ")
+    #     print(runner.pred_weight)
 
     # learning
     nupdates = total_timesteps//nbatch
@@ -265,7 +327,6 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
         nbatch_train = nbatch // nminibatches
         tstart = time.time()
         frac = 1.0 - (update - 1.0) / nupdates
-        # lrnow = lr(frac)
         curr_step = update*nbatch
         step_percent = float(curr_step / total_timesteps)
 
@@ -280,7 +341,7 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
 
         lrnow = lr(lrnow, kl, d_targ)
         cliprangenow = cliprange(frac)
-        obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos, traj_len = runner.run() #pylint: disable=E0632
+        obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run() #pylint: disable=E0632
         epinfobuf.extend(epinfos)
         mblossvals = []
         if states is None: # nonrecurrent version
@@ -326,9 +387,6 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
             logger.logkv('origin_pred_loss', np.mean(origin_ploss))
             logger.logkv('weighted_pred_loss', np.mean(pred_loss))
             logger.logkv('origin_rew', np.mean(origin_rew))
-            logger.logkv('len_traj_done', np.nanmean(traj_len))
-            # logger.logkv('lr', lrnow)
-            # logger.logkv('d_targ', d_targ)
             for (lossval, lossname) in zip(lossvals, model.loss_names):
                 logger.logkv(lossname, lossval)
             logger.dumpkvs()
@@ -403,10 +461,10 @@ def test(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     env.close()
 
 def display(policy, env, nsteps, nminibatches, load_path):
-    nenvs = env.num_envs
+    nenv = env.num_envs
     ob_space = env.observation_space
     ac_space = env.action_space
-    nbatch = nenvs * nsteps
+    nbatch = nenv * nsteps
     nbatch_train = nbatch // nminibatches
 
     sess = tf.get_default_session()
@@ -416,9 +474,15 @@ def display(policy, env, nsteps, nminibatches, load_path):
         tf.GraphKeys.TRAINABLE_VARIABLES, scope="model"
         )
 
-    predictor = Predictor(sess, flags.InitParameter(), 1, 10, train_flag=False)
-    predictor.init_sess()
-    # predictor.load()
+    # short_term_predictor = ShortPred(nenv, in_max_timestep=pred_flags.in_timesteps_max, out_timesteps=pred_flags.out_steps,
+    #                            train_flag=False)
+
+
+    long_term_predictor = LongPred(nenv, in_max_timestep=pred_flags.in_timesteps_max,
+                                        out_timesteps=pred_flags.out_steps,
+                                        train_flag=True)
+
+    dataset_creator = RLDataCreator(nenv)
 
     def load(load_path):
         loaded_params = joblib.load(load_path)
@@ -433,21 +497,60 @@ def display(policy, env, nsteps, nminibatches, load_path):
         import visualize
 
         obs = env.reset()
+        env_obs = np.copy(obs)
+        # pred_obs = np.zeros((1, pred_flags.num_units * pred_flags.num_layers))
+        pred_obs = np.zeros((nenv, pred_flags.num_layers * pred_flags.num_units))
+        pred_result = [np.zeros(3) for _ in range(nenv)]
+
         score = 0
+        pred_rew = 0
         done = [False]
         state = agent.initial_state
         obs_list = None
         obs_list_3d = None
 
+        score_list = []
+        pred_rew_list = []
+
+
+        traj = []
         env.render()
-        time.sleep(2)
+        time.sleep(0.5)
 
         while not done[0]:
             env.render()
+            obs = np.concatenate((env_obs,pred_obs), axis=1)
             act, state = agent.mean(obs, state, done)
-            obs, rew, done, _ = env.step(act)
-            # predictor.predict(obs,done)
+            env_obs, rew, done, info = env.step(act)
+            obs = np.concatenate((env_obs, pred_obs), axis=1)
 
+            # print("goal: ", obs[0][3:6])
+            # print("eef position:", obs[0][0:3])
+
+            origin_obs = env.origin_obs
+            traj.append(origin_obs[0][0:3])
+
+
+            # # #---------------long sequence reward --------#
+            # xs, goals = dataset_creator.collect_online(origin_obs, done)
+            # pred_obs[:], pred_result, origin_pred_loss = \
+            #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
+
+            # #----------long target reward-------------------#
+            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            # batch_alternative_goals = origin_obs[:, -9:]
+            # # pred_obs[:], origin_pred_loss = \
+            # #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # _,origin_pred_loss= \
+            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # #----------------------------------------------------------
+
+            # ----------long target reward  method3-----------------#
+            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            import utils
+            origin_pred_loss = utils.reward_goal_dist(xs, x_starts, goals, batch_alternative_goals)
+            #----------------------------------------------------------------------
 
             # #---- plot result ---
             #
@@ -459,15 +562,30 @@ def display(policy, env, nsteps, nminibatches, load_path):
             #
             # #--- end plot ---#
             score += rew[0]
+            pred_rew += origin_pred_loss[0]
 
+            # #--------for visualize result-------
+            score_list.append(rew[0])
+            pred_rew_list.append(origin_pred_loss[0])
+            # print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
+            visualize.plot_reward(score_list, pred_rew_list)
+            # #-------------------------------------
+
+        #if done, save trajectory
+        traj = np.asarray(traj)
         # if done, pause 2 s
-        time.sleep(2)
-        return score
+        time.sleep(0.5)
+        return score, traj, pred_rew
 
 
     for e in range(10000):
-        score = run_episode(env, act_model)
-        print ('episode: {} | score: {}'.format(e, score))
+        score, traj, pred_rew = run_episode(env, act_model)
+        print('episode: {} | score: {}; predict reward: {} | precent of pred rew: {}'.\
+              format(e, score, pred_rew, pred_rew/score))
+
+
+        # print ('episode: {} | score: {}'.format(e, score))
+        # np.savetxt("/home/xuan/Videos/trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
 
     env.close()
 

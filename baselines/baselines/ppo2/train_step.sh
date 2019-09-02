@@ -7,54 +7,53 @@ function finish() {
         exit
 }
 
+# parameter 1. start counter; 2. prediction weight;
+
+
+# start training
+counter=${1}
+echo $counter
+
 # preparation
 rl_model="./log/"
 pred_model="./pred/"
 
-# start from beginning
-
-counter=${3}
 if [ ${counter} -eq 0 ]
 then
     rm -rf "./models"
     mkdir "./models"
-    mkdir "./pred/"
 fi
-
-
-# parameter 1. totle iterations; 2. prediction weight; 3. start counter counts
-
-# start training
-while [ ${counter} -le ${1} ]
-do
-echo $counter
 
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
+    sleep 1
+#    python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=8000000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --load --num-timesteps=10000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
 sleep 1
+
 cp -R ${rl_model} "./models/log_${counter}"
 
-# sample dataset	## sam?ed_model}/test1/checkpoint_"
+# sample dataset
 python run.py --load --seed=$((100+counter)) -p='last'
+
+
 sleep 1
 
 
- # train seq2seq
+# train seq2seq
 if [ ${counter} -eq 0 ]
 then
     python predictors.py --iter=${counter} --epoch=30
 elif [ ${counter} -le 3 ]
 then
-    python predictors.py --iter=${counter} --epoch=30
+    python predictors.py  --iter=${counter} --epoch=30
 else
-    python predictors.py --iter=${counter} --epoch=30
+    python predictors.py  --iter=${counter} --epoch=30
 fi
 
 
@@ -65,8 +64,5 @@ rm -rf "${pred_model}/test1/checkpoint_"
 #rl
 rm -rf "${rl_model}/tb"
 
-
-((counter++))
-done
 
 echo All done

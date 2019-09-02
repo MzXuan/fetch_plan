@@ -3,10 +3,10 @@ import os, sys
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import numpy as np
-from baselines import bench, logger
+from baselines import logger, bench
 
 def train(env_id, num_timesteps, seed, d_targ, load, point,
-          pred_weight=0.01, ent_coef=0.0):
+          pred_weight=0.01, ent_coef=0.0, iter=0):
     from baselines.common import set_global_seeds
     from baselines.common.vec_env.vec_normalize import VecNormalize
     from baselines.ppo2 import ppo2
@@ -35,7 +35,7 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
                             inter_op_parallelism_threads=ncpu)
     tf.Session(config=config).__enter__()
     
-    nenvs = 16
+    nenvs = 32
     env = SubprocVecEnv([make_env(i) for i in range(nenvs)])
     if load:
         curr_path = sys.path[0]
@@ -57,7 +57,7 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
     def constant_lr(lr, kl=0.0, d_targ=0.0):
         return lr
 
-    ppo2.learn(policy=policy, env=env, nsteps=512, nminibatches=4,
+    ppo2.learn(policy=policy, env=env, nsteps=400, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
         ent_coef=ent_coef,
         lr=constant_lr,
@@ -67,7 +67,8 @@ def train(env_id, num_timesteps, seed, d_targ, load, point,
         point=point,
         init_targ=d_targ,
         predictor_flag=True,
-        pred_weight=pred_weight)
+        pred_weight=pred_weight,
+        iter=iter)
 
 def test(env_id, num_timesteps, seed, d_targ, load, point):
     from baselines.common import set_global_seeds
@@ -94,7 +95,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
         return _thunk
 
     curr_path = sys.path[0]
-    nenvs = 16
+    nenvs = 32
     env = SubprocVecEnv([make_env(i) for i in range(nenvs)])
     ob_mean = np.load('{}/log/ob_mean.npy'.format(curr_path))
     ob_var = np.load('{}/log/ob_var.npy'.format(curr_path))
@@ -106,7 +107,7 @@ def test(env_id, num_timesteps, seed, d_targ, load, point):
     def constant_lr(lr, kl=0.0, d_targ=0.0):
         return lr
 
-    ppo2.test(policy=policy, env=env, nsteps=512, nminibatches=4,
+    ppo2.test(policy=policy, env=env, nsteps=400, nminibatches=4,
         lam=0.95, gamma=0.99, noptepochs=15, log_interval=1,
         ent_coef=0.00,
         lr=constant_lr,
@@ -157,29 +158,33 @@ def main():
     parser.add_argument('--display', action='store_true')
     parser.add_argument('--load', action='store_true')
     parser.add_argument('--d_targ', type=float, default=0.012)
-    parser.add_argument('-p', '--point', type=str, default='00100')
+    parser.add_argument('-p', '--point', type=str, default='last')
     parser.add_argument('--pred_weight', default=0.01, type=float)
     parser.add_argument('--ent_coef', default=0.0, type=float)
     parser.add_argument('--iter', default=0, type=int)
-    parser.add_argument('--log-file', default='log', type=str)
+    parser.add_argument('--logdir', default='log', type=str)
     args = parser.parse_args()
 
-    each_iter_num = 100
+    each_iter_num = 400
 
     curr_path = sys.path[0]
     if args.display:
         display(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
-            curr_path=curr_path, log_file = args.log_file, point=args.point)
+            curr_path=curr_path, log_file = args.logdir, point=args.point)
     elif args.train:
         logger.configure(dir='{}/log'.format(curr_path), format_strs=['stdout',
                                                                       'log',
                                                                       'csv',
                                                                       'tensorboard'])
-        logger.tb_start_step(args.iter * each_iter_num, 3)
+        iter_countings = 300+ (args.iter-1) * each_iter_num if  args.iter >=1 else 0
+        logger.tb_start_step(iter_countings , 3)
+
+        print("iter countings: ", iter_countings)
         train(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=args.load, point=args.point,
-              pred_weight=args.pred_weight, ent_coef=args.ent_coef)
+              pred_weight=args.pred_weight, ent_coef=args.ent_coef, iter=args.iter)
     else:
+        print("test branch, collecting data....")
         test(args.env, num_timesteps=args.num_timesteps, seed=args.seed,
             d_targ=args.d_targ, load=True, point=args.point)
 
