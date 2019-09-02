@@ -42,14 +42,16 @@ def point_goal_reward(batched_seqs, x_starts, batched_goals, batch_alternative_g
 			true_goal = batched_goals[idx] - x_starts[idx][-3:]
 			alternative_goals = batch_alternative_goals[idx].reshape((3, 3)) - x_starts[idx][-3:]
 			point = seq[-1,-3:]
-			for g in alternative_goals:
-				if np.linalg.norm(g - true_goal) < 1e-7:
-					d0 = np.linalg.norm(point - true_goal)
-					if d0 < 0.2:
-						rew =0.0
-				else:
-					dis_list.append(np.linalg.norm(point - true_goal))
-					rew = reward_dist(d0, dis_list, total_length)
+			d0 = np.linalg.norm(point - true_goal)
+			if d0 < 0.2:
+				rew = 0.0
+			else:
+				for g in alternative_goals:
+					if np.linalg.norm(g - true_goal) < 1e-7:
+						continue
+					else:
+						dis_list.append(np.linalg.norm(point - true_goal))
+				rew = reward_dist(d0, dis_list, total_length)
 			rewards.append(rew)
 	return np.asarray(rewards)
 
