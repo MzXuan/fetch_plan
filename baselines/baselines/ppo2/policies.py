@@ -157,6 +157,7 @@ class MlpPolicy(object):
                                          initializer=tf.zeros_initializer())+0.2
 
 
+
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
 
         self.pdtype = make_pdtype(ac_space)

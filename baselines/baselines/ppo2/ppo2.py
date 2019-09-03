@@ -539,6 +539,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
             origin_obs = env.origin_obs
             traj.append(origin_obs[0][0:3])
 
+            # print(pred_obs)
 
             # # #---------------long sequence reward --------#
             # xs, goals = dataset_creator.collect_online(origin_obs, done)

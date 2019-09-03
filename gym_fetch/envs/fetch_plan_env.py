@@ -89,6 +89,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         goal[2] = table_pose[2] + table_size[2] + self.sim.model.site_size[index_site].reshape(3, )[
             2]  # deduce radius
         return goal.copy()
+        
 
 class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
     def __init__(self, reward_type='sparse'):
