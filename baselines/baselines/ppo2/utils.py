@@ -73,8 +73,8 @@ def reward_dist(d0, dis, t):
 	rew = []
 	for d in dis:
 		theta = 1 if d0 < d else -1
-		rew.append(theta*math.log(abs(d0-d)/abs(d0)+1))
-		# rew.append(theta*math.log(abs(d0-d)/abs(d0+d)+1))
+		# rew.append(theta*math.log(abs(d0-d)/abs(d0)+1))
+		rew.append(theta*math.log(abs(d0-d)/abs(d0+d)+1))
 	# print("distance is {} and reward list is: {} ".format(dist, rew))
 	min_rew = np.asarray(rew).min()
 	time_scale = math.exp(-t / 30)

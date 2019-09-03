@@ -530,11 +530,16 @@ def display(policy, env, nsteps, nminibatches, load_path):
         time.sleep(0.5)
 
         while not done[0]:
-            env.render()
-            obs = np.concatenate((env_obs,pred_obs), axis=1)
-            act, state = agent.mean(obs, state, done)
-            env_obs, rew, done, info = env.step(act)
+            # #----- edit obs, make it env_obs + pred_obs
+            # env.render()
+            # obs = np.concatenate((env_obs,pred_obs), axis=1)
+            # act, state = agent.mean(obs, state, done)
+            # env_obs, rew, done, info = env.step(act)
+            # # --------end extend obs------
 
+            env.render()
+            act, state = agent.mean(obs, state, done)
+            obs, rew, done, info = env.step(act)
 
             origin_obs = env.origin_obs
             traj.append(origin_obs[0][0:3])
@@ -546,20 +551,20 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # pred_obs[:], pred_result, origin_pred_loss = \
             #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
-            # # #----------long target reward-------------------#
-            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            # batch_alternative_goals = origin_obs[:, -9:]
-            # # pred_obs[:], origin_pred_loss = \
-            # #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            # _,origin_pred_loss= \
-            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            # # #----------------------------------------------------------
-
-            # ----------long target reward  method3 (baseline, no lstm)-----------------#
+            # #----------long target reward-------------------#
             xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
             batch_alternative_goals = [temp['alternative_goals'] for temp in info]
-            import utils
-            origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+            # pred_obs[:], origin_pred_loss = \
+            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            _,origin_pred_loss= \
+                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # #----------------------------------------------------------
+
+            # # ----------long target reward  method3 (baseline, no lstm)-----------------#
+            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            # import utils
+            # origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------------------
 
             # #---- plot result ---
