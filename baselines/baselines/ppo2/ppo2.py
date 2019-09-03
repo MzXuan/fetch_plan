@@ -176,24 +176,24 @@ class Runner(object):
                 #     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
                 #-----------------------------------------------------------------
 
-                #---------------long term prediction method 2 (goal prediction with lstm)---------------------
-                # maximize dissimilar goals from other goals
-                # ############################################
+                # #---------------long term prediction method 2 (goal prediction with lstm)---------------------
+                # # maximize dissimilar goals from other goals
+                # # ############################################
                 batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
                 # self.pred_obs[:], origin_pred_loss =\
                 #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
 
                 _, origin_pred_loss = \
                     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-                #----------------------------------------------------------------
+                # #----------------------------------------------------------------
 
-                # # #-------------predictable prediction method 3 (not using lstm)------
-                # # # calculate the distance between the lastest obs and all selective goals
-                # # ######################################################################
+                # #-------------predictable prediction method 3 (not using lstm)------
+                # # calculate the distance between the lastest obs and all selective goals
+                # ######################################################################
                 # batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
                 # import utils
                 # origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
-                # # #------------------------------------------------------------------
+                # #------------------------------------------------------------------
 
                 # #-------------predictable prediction method 4 (using input of encoder)------
                 ######################################################################
