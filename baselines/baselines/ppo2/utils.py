@@ -57,14 +57,15 @@ def point_goal_reward(batched_seqs, x_starts, batched_goals, batch_alternative_g
 
 def path_goal_reward(path, alternative_goals, g0, total_length):
 	dis_list = []
+	d0 = np.linalg.norm((path - g0), axis=1).min()
 	for g in alternative_goals:
-		dis = np.linalg.norm((path - g), axis=1).min()
 		if np.linalg.norm(g - g0) < 1e-7:
-			d0 = dis
+			pass
 		else:
+			dis = np.linalg.norm((path - g), axis=1).min()
 			dis_list.append(dis)
 
-	return(reward_dist(d0, dis,len(path)))
+	return(reward_dist(d0, dis_list,total_length))
 
 
 

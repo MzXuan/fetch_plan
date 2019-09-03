@@ -195,7 +195,7 @@ class PredBase(object):
                         raw_y_pred, alternative_goals,true_goal,total_length)
                 rewards.append(rew)
 
-            pred_obs_list.append(np.concatenate([enc_states[i][idx] for i in self.num_layers]))
+            pred_obs_list.append(np.concatenate([enc_states[i][idx] for i in range(self.num_layers)]))
 
             # # ---------------draw result----------------#
             # import visualize
