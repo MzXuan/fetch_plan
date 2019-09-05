@@ -22,6 +22,7 @@ if [ ${counter} -eq 0 ]
 then
     rm -rf "./models"
     mkdir "./models"
+    mkdir "./pred"
 fi
 
 # train rl
