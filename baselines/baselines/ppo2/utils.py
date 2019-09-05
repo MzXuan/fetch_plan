@@ -43,15 +43,15 @@ def point_goal_reward(batched_seqs, x_starts, batched_goals, batch_alternative_g
 			alternative_goals = batch_alternative_goals[idx].reshape((3, 3)) - x_starts[idx][-3:]
 			point = seq[-1,-3:]
 			d0 = np.linalg.norm(point - true_goal)
-			if d0 < 0.2:
-				rew = 0.0
-			else:
-				for g in alternative_goals:
-					if np.linalg.norm(g - true_goal) < 1e-7:
-						pass
-					else:
-						dis_list.append(np.linalg.norm(point - g))
-				rew = reward_dist(d0, dis_list, total_length)
+			# if d0 < 0.2:
+			# 	rew = 0.0
+			# else:
+			for g in alternative_goals:
+				if np.linalg.norm(g - true_goal) < 1e-7:
+					pass
+				else:
+					dis_list.append(np.linalg.norm(point - g))
+			rew = reward_dist(d0, dis_list, total_length)
 			rewards.append(rew)
 	return np.asarray(rewards)
 
@@ -77,7 +77,8 @@ def reward_dist(d0, dis, t):
 		# rew.append(theta*math.log(abs(d0-d)/abs(d0+d)+1))
 	# print("distance is {} and reward list is: {} ".format(dist, rew))
 	min_rew = np.asarray(rew).min()
-	time_scale = math.exp(-t / 20)
+	time_scale = math.exp(-t / 30)
+	# time_scale = 1
 	return (time_scale*min_rew)
 
 # def goal_dist(point, gs,g0, t):
