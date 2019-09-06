@@ -1,12 +1,15 @@
 import os, sys
 import time
 import joblib
+
+import csv
 import numpy as np
 import os.path as osp
 import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
+
 
 from predictors import ShortPred
 from predictors import LongPred
@@ -179,20 +182,20 @@ class Runner(object):
                 # #---------------long term prediction method 2 (goal prediction with lstm)---------------------
                 # # maximize dissimilar goals from other goals
                 # # ############################################
-                # batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
-                # # self.pred_obs[:], origin_pred_loss =\
-                # #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-                #
-                # _, origin_pred_loss = \
+                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                # self.pred_obs[:], origin_pred_loss =\
                 #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+
+                _, origin_pred_loss = \
+                    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
                 # #----------------------------------------------------------------
 
                 # #-------------predictable prediction method 3 (not using lstm)------
                 # # calculate the distance between the lastest obs and all selective goals
                 # ######################################################################
-                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
-                import utils
-                origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+                # batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                # import utils
+                # origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
                 # #------------------------------------------------------------------
 
                 # #-------------predictable prediction method 4 (using input of encoder)------
@@ -593,14 +596,20 @@ def display(policy, env, nsteps, nminibatches, load_path):
         return score, traj, pred_rew
 
 
-    for e in range(10000):
+
+    for e in range(100):
         score, traj, pred_rew = run_episode(env, act_model)
         print('episode: {} | score: {}; predict reward: {} | precent of pred rew: {}'.\
               format(e, score, pred_rew, pred_rew/score))
 
-
         # print ('episode: {} | score: {}'.format(e, score))
-        # np.savetxt("/home/xuan/Videos/trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
+        # np.savetxt("/home/xuan/Videos/trajs/pred_cost.csv", np.asarray([e, score, pred_rew]), delimiter=",", fmt="%.3e")
+
+        with open('cost.csv', 'a', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',',
+                                     quoting=csv.QUOTE_MINIMAL)
+            spamwriter.writerow([e,score,pred_rew])
+
 
     env.close()
 

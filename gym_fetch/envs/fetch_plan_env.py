@@ -40,7 +40,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
             self, MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
             gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
-            obj_range=0.15, target_range=0.15, distance_threshold=0.06, max_accel=0.1,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.07, max_accel=0.1,
             initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
         utils.EzPickle.__init__(self)
 
@@ -66,7 +66,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
                 goal = self.random_target(table_pose, table_size, site_id)
                 dist = [np.linalg.norm(goal - g) for g in goals]
 
-                if dist == [] or all(d > 0.18 for d in dist):
+                if dist == [] or all(d > 0.2 for d in dist):
                     break
 
             goals.append(goal)

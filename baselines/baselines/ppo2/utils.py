@@ -60,10 +60,14 @@ def path_goal_reward(path, alternative_goals, g0, total_length):
 	d0 = np.linalg.norm((path - g0), axis=1).min()
 	for g in alternative_goals:
 		if np.linalg.norm(g - g0) < 1e-7:
+			# norm2 = np.linalg.norm((path - g), axis=1)
+			# print("closest id is: ", np.argmin(norm2))
 			pass
 		else:
 			dis = np.linalg.norm((path - g), axis=1).min()
 			dis_list.append(dis)
+
+
 
 	return(reward_dist(d0, dis_list,total_length))
 
