@@ -140,23 +140,23 @@ class Runner(object):
         epinfos = []
         for _ in range(self.nsteps):
             # #----- edit obs, make it env_obs + pred_obs
-            # self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
-            # actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
-            # mb_obs.append(self.obs.copy())
-            # mb_actions.append(actions)
-            # mb_values.append(values)
-            # mb_neglogpacs.append(neglogpacs)
-            # mb_dones.append(self.dones)
-            # self.env_obs, rewards, self.dones, infos = self.env.step(actions)
-            # self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
-            # # --------end extend obs------
+            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
             actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
             mb_values.append(values)
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)
-            self.obs, rewards, self.dones, infos = self.env.step(actions)
+            self.env_obs, rewards, self.dones, infos = self.env.step(actions)
+            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+            # # --------end extend obs------
+            # actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
+            # mb_obs.append(self.obs.copy())
+            # mb_actions.append(actions)
+            # mb_values.append(values)
+            # mb_neglogpacs.append(neglogpacs)
+            # mb_dones.append(self.dones)
+            # self.obs, rewards, self.dones, infos = self.env.step(actions)
             #-------------origin obs code-----------
 
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
@@ -175,8 +175,8 @@ class Runner(object):
                 # or update latent space based on last prediction
                 # calculate loss based on previous calculated result
                 ##################################################
-                # self.pred_obs[:], pred_result, origin_pred_loss = \
-                #     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+                self.pred_obs[:], pred_result, origin_pred_loss = \
+                    self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
                 #-----------------------------------------------------------------
 
                 # #---------------long term prediction method 2 (goal prediction with lstm)---------------------
@@ -202,9 +202,6 @@ class Runner(object):
                 ######################################################################
 
                 #---------------------------------------------------------------------
-
-
-
 
                 predict_loss = pred_weight * origin_pred_loss
                 rewards += predict_loss
@@ -534,25 +531,26 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
         while not done[0]:
             # #----- edit obs, make it env_obs + pred_obs
-            # env.render()
-            # obs = np.concatenate((env_obs,pred_obs), axis=1)
-            # act, state = agent.mean(obs, state, done)
-            # env_obs, rew, done, info = env.step(act)
+            env.render()
+            obs = np.concatenate((env_obs,pred_obs), axis=1)
+            act, state = agent.mean(obs, state, done)
+            env_obs, rew, done, info = env.step(act)
             # # --------end extend obs------
 
-            env.render()
-            act, state = agent.mean(obs, state, done)
-            obs, rew, done, info = env.step(act)
-
+            # env.render()
+            # act, state = agent.mean(obs, state, done)
+            # obs, rew, done, info = env.step(act)
+            #
+            
             origin_obs = env.origin_obs
             traj.append(origin_obs[0][0:3])
 
             # print(pred_obs)
 
             # # #---------------long sequence reward --------#
-            # xs, goals = dataset_creator.collect_online(origin_obs, done)
-            # pred_obs[:], pred_result, origin_pred_loss = \
-            #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
+            xs, goals = dataset_creator.collect_online(origin_obs, done)
+            pred_obs[:], pred_result, origin_pred_loss = \
+                long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
             # #----------long target reward-------------------#
             # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
@@ -564,10 +562,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # #----------------------------------------------------------
 
             # # ----------long target reward  method3 (baseline, no lstm)-----------------#
-            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
-            import utils
-            origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            # import utils
+            # origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------------------
 
             # #---- plot result ---
