@@ -188,7 +188,7 @@ class PredBase(object):
             else:
                 raw_y_pred = ys_pred[idx] * self.x_var + self.x_mean
 
-                if np.linalg.norm(seq[-1,-3:]-true_goal)<0.2: #close to target
+                if np.linalg.norm(seq[-1,-3:]-true_goal)<0.15: #close to target
                     rew = 0.0
                 else:
                     rew = utils.path_goal_reward(\
@@ -198,7 +198,8 @@ class PredBase(object):
                 #     raw_y_pred, alternative_goals, true_goal, total_length)
                 rewards.append(rew)
 
-            pred_obs_list.append(np.concatenate([enc_states[i][idx] for i in range(self.num_layers)]))
+                pred_obs_list.append(np.concatenate([enc_states[i][idx] for i in range(self.num_layers)]))
+        
 
             # # ---------------draw result----------------#
             # import visualize
