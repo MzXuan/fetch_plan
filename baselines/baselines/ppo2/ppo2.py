@@ -175,16 +175,16 @@ class Runner(object):
                 # or update latent space based on last prediction
                 # calculate loss based on previous calculated result
                 ##################################################
-                self.pred_obs[:], pred_result, origin_pred_loss = \
-                    self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
-                #-----------------------------------------------------------------
+                # self.pred_obs[:], pred_result, origin_pred_loss = \
+                #     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+                # #-----------------------------------------------------------------
 
                 # #---------------long term prediction method 2 (goal prediction with lstm)---------------------
                 # # maximize dissimilar goals from other goals
                 # # ############################################
-                #batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
-                # self.pred_obs[:], origin_pred_loss =\
-                #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                self.pred_obs[:], origin_pred_loss =\
+                    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
 
                 #_, origin_pred_loss = \
                 #    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)

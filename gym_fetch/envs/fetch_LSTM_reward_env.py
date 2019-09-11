@@ -263,13 +263,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         for g in goals:
             dist_lst.append(np.linalg.norm(achieved_goal-g))
 
-        obs = np.concatenate([
-            joint_angle, np.asarray(goals).flatten()
-        ])
-
         # obs = np.concatenate([
-        #     joint_angle, np.asarray(dist_lst)
+        #     joint_angle, np.asarray(goals).flatten()
         # ])
+
+        obs = np.concatenate([
+            joint_angle, np.asarray(dist_lst)
+        ])
 
         # obs = np.concatenate([
         #     joint_angle, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
