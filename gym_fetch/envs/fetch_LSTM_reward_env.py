@@ -9,7 +9,7 @@ from gym_fetch import utils
 class L(list):
     def append(self, item):
         list.append(self, item)
-        if len(self) > 10: self[:1]=[]
+        if len(self) > 8: self[:1]=[]
 
 
 def goal_distance(goal_a, goal_b):
@@ -82,7 +82,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             return -30.0
         else:
             current_distance = goal_distance(achieved_goal, goal)
-            approaching_rew = 0.1 * (self.last_distance - current_distance)
+            approaching_rew = 20.0 * (self.last_distance - current_distance)
             self.last_distance = copy.deepcopy(current_distance)
             return approaching_rew
 
@@ -142,7 +142,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
         for _ in range(3):
-            # self.sim.step()
+            self.sim.step()
             real_act = self._set_action(action)
             self._step_callback()
             obs = self._get_obs()
@@ -254,7 +254,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #------ add last 10 steps to obs--------
         self.last_eef_pos.append(achieved_goal)
         eef_pos=self.last_eef_pos.copy()
-        while len(eef_pos) <10:
+        while len(eef_pos) <8:
             eef_pos.append(np.zeros(3,))
 
         #---------------calculate distance-------------------
@@ -262,13 +262,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         for g in goals:
             dist_lst.append(np.linalg.norm(achieved_goal-g))
 
-        # obs = np.concatenate([
-        #     joint_angle, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
-        # ])
-
         obs = np.concatenate([
-            joint_angle, joint_vel, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
+            joint_angle, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
         ])
+
+        # obs = np.concatenate([
+        #     joint_angle, joint_vel, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
+        # ])
 
         # obs = np.concatenate([
         #     joint_angle, joint_vel, self.prev_act
@@ -298,13 +298,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 2.6
-        self.viewer.cam.azimuth = 220
-        self.viewer.cam.elevation = -20
-
         # self.viewer.cam.distance = 2.6
-        # self.viewer.cam.azimuth = 180
+        # self.viewer.cam.azimuth = 220
         # self.viewer.cam.elevation = -20
+
+        self.viewer.cam.distance = 2.6
+        self.viewer.cam.azimuth = 200
+        self.viewer.cam.elevation = -35
 
     def _render_callback(self):
         # Visualize target.

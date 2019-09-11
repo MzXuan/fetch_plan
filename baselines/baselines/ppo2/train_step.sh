@@ -29,7 +29,7 @@ fi
 if [ ${counter} -eq 0 ]
 then
 #    sleep 1
-    python run.py --train --num-timesteps=10000000 --pred_weight=${2} --iter=${counter}
+    python run.py --train --num-timesteps=5000000 --pred_weight=${2} --iter=${counter}
 else
     python run.py --train --load --num-timesteps=10000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi

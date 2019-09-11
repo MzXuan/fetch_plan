@@ -66,7 +66,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
                 goal = self.random_target(table_pose, table_size, site_id)
                 dist = [np.linalg.norm(goal - g) for g in goals]
 
-                if dist == [] or all(d > 0.2 for d in dist):
+                if dist == [] or all(d > 0.3 for d in dist):
                     break
 
             goals.append(goal)

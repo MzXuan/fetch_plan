@@ -182,12 +182,12 @@ class Runner(object):
                 # #---------------long term prediction method 2 (goal prediction with lstm)---------------------
                 # # maximize dissimilar goals from other goals
                 # # ############################################
-                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                #batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
                 # self.pred_obs[:], origin_pred_loss =\
                 #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
 
-                _, origin_pred_loss = \
-                    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+                #_, origin_pred_loss = \
+                #    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
                 # #----------------------------------------------------------------
 
                 # #-------------predictable prediction method 3 (not using lstm)------
@@ -555,19 +555,19 @@ def display(policy, env, nsteps, nminibatches, load_path):
             #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
             # #----------long target reward-------------------#
-            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
-            # pred_obs[:], origin_pred_loss = \
+            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            # # pred_obs[:], origin_pred_loss = \
+            # #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # _,origin_pred_loss= \
             #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            _,origin_pred_loss= \
-                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             # #----------------------------------------------------------
 
             # # ----------long target reward  method3 (baseline, no lstm)-----------------#
-            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
-            # import utils
-            # origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            import utils
+            origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------------------
 
             # #---- plot result ---
