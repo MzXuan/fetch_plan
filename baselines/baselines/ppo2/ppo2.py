@@ -541,22 +541,22 @@ def display(policy, env, nsteps, nminibatches, load_path):
             # act, state = agent.mean(obs, state, done)
             # obs, rew, done, info = env.step(act)
             #
-            
+
             origin_obs = env.origin_obs
             traj.append(origin_obs[0][0:3])
 
             # print(pred_obs)
 
             # # #---------------long sequence reward --------#
-            xs, goals = dataset_creator.collect_online(origin_obs, done)
-            pred_obs[:], pred_result, origin_pred_loss = \
-                long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
+            # xs, goals = dataset_creator.collect_online(origin_obs, done)
+            # pred_obs[:], pred_result, origin_pred_loss = \
+            #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
             # #----------long target reward-------------------#
-            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
-            # # pred_obs[:], origin_pred_loss = \
-            # #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            pred_obs[:], origin_pred_loss = \
+                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             # _,origin_pred_loss= \
             #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             # #----------------------------------------------------------

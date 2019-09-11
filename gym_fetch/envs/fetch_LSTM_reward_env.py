@@ -82,8 +82,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             return -30.0
         else:
             current_distance = goal_distance(achieved_goal, goal)
-            approaching_rew = 20.0 * (self.last_distance - current_distance)
             # approaching_rew = 20.0 * (self.last_distance - current_distance)
+            approaching_rew = 0.0 * (self.last_distance - current_distance)
             self.last_distance = copy.deepcopy(current_distance)
             return approaching_rew
 
@@ -263,10 +263,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         for g in goals:
             dist_lst.append(np.linalg.norm(achieved_goal-g))
 
-
         obs = np.concatenate([
-            joint_angle, np.asarray(dist_lst)
+            joint_angle, np.asarray(goals).flatten()
         ])
+
+        # obs = np.concatenate([
+        #     joint_angle, np.asarray(dist_lst)
+        # ])
 
         # obs = np.concatenate([
         #     joint_angle, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
