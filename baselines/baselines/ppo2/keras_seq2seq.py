@@ -31,8 +31,8 @@ def mean_absolute_error_custome(y_true, y_pred):
 LSTM_ACT = 'tanh'
 REC_ACT = 'hard_sigmoid'
 OUTPUT_ACT = 'linear'
-# LOSS_MODE = 'mean_squared_error'
-LOSS_MODE = mean_absolute_error_custome
+LOSS_MODE = 'mean_squared_error'
+# LOSS_MODE = mean_absolute_error_custome
 BIAS_REG = 'random_uniform'
 
 DROPOUT = 0.1
@@ -286,6 +286,7 @@ class PredictRNN():
 
         try:
             filename = get_weights_file(modelDir, weights_name)
+            print("file name is: ", filename)
             self.encoder_model.load_weights(filename, by_name=True)
             self.decoder_model.load_weights(filename, by_name=True)
             print("load model {} successfully".format(filename))

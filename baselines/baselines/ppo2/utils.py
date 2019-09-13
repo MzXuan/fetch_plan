@@ -79,7 +79,7 @@ def path_goal_reward(path, alternative_goals, g0, total_length):
 			idx_i = np.linalg.norm((path - g), axis=1).argmin()
 			idx_list.append((idx_i))
 	idx_min = np.asarray(idx_list).argmin()  # find closest point in predlicted trajectory
-	print("the id list is {} abd the minimum idx is: {} ".format(idx_list, idx_min))
+	# print("the id list is {} abd the minimum idx is: {} ".format(idx_list, idx_min))
 
 	point = path[idx_min]
 	d0 = np.linalg.norm(point - g0)
@@ -87,7 +87,7 @@ def path_goal_reward(path, alternative_goals, g0, total_length):
 		if np.linalg.norm(g - g0) < 1e-7:
 			pass
 		else:
-			dis_list.append(np.linalg.norm(point - g0))
+			dis_list.append(np.linalg.norm(point - g))
 
 	return(reward_dist(d0, dis_list,total_length))
 

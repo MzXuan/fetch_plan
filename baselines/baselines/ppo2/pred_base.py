@@ -202,16 +202,15 @@ class PredBase(object):
         
 
             # # ---------------draw result----------------#
-            import visualize
-            try:
-                raw_y_pred
-                visualize.plot_3d_seqs(x=seq,\
-                        y_pred=raw_y_pred, goals=alternative_goals)
-            except:
-                pass
-
-            # visualize.plot_dof_seqs(x=seq[:,-3:],y_pred=raw_y_pred,step=self.step,\
-            #                         goals=alternative_goals, goal_pred=select_goal)
+            # import visualize
+            # try:
+            #     raw_y_pred
+            #     visualize.plot_3d_seqs(x=seq,\
+            #             y_pred=raw_y_pred, goals=alternative_goals)
+            #     # visualize.plot_dof_seqs(x=seq[:, -3:], y_pred=raw_y_pred, step=self.step, \
+            #     #                         goals=alternative_goals)
+            # except:
+            #     pass
             # # ------------------------------------------#
 
         rewards = np.asarray(rewards)
