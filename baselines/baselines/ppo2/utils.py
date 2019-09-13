@@ -55,19 +55,39 @@ def point_goal_reward(batched_seqs, x_starts, batched_goals, batch_alternative_g
 			rewards.append(rew)
 	return np.asarray(rewards)
 
+# def path_goal_reward(path, alternative_goals, g0, total_length):
+# 	dis_list = []
+# 	d0 = np.linalg.norm((path - g0), axis=1).min()
+# 	for g in alternative_goals:
+# 		if np.linalg.norm(g - g0) < 1e-7:
+# 			pass
+# 		else:
+# 			dis = np.linalg.norm((path - g), axis=1).min()
+# 			dis_list.append(dis)
+#
+# 	return(reward_dist(d0, dis_list,total_length))
+
 def path_goal_reward(path, alternative_goals, g0, total_length):
 	dis_list = []
-	d0 = np.linalg.norm((path - g0), axis=1).min()
+	idx_list =[]
+	idx_0 = np.linalg.norm((path - g0), axis=1).argmin()
+	idx_list.append(idx_0)
 	for g in alternative_goals:
 		if np.linalg.norm(g - g0) < 1e-7:
-			# norm2 = np.linalg.norm((path - g), axis=1)
-			# print("closest id is: ", np.argmin(norm2))
 			pass
 		else:
-			dis = np.linalg.norm((path - g), axis=1).min()
-			dis_list.append(dis)
+			idx_i = np.linalg.norm((path - g), axis=1).argmin()
+			idx_list.append((idx_i))
+	idx_min = np.asarray(idx_list).argmin()  # find closest point in predlicted trajectory
+	print("the id list is {} abd the minimum idx is: {} ".format(idx_list, idx_min))
 
-
+	point = path[idx_min]
+	d0 = np.linalg.norm(point - g0)
+	for g in alternative_goals:
+		if np.linalg.norm(g - g0) < 1e-7:
+			pass
+		else:
+			dis_list.append(np.linalg.norm(point - g0))
 
 	return(reward_dist(d0, dis_list,total_length))
 
