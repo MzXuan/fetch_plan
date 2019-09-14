@@ -319,6 +319,7 @@ class PredBase(object):
         ## check saved data set
         filelist = [f for f in os.listdir("./pred/") if f.endswith("rl.pkl")]
         num_sets = len(filelist)
+        print("num_sets",num_sets)
 
         # NOTICE: we can only use one dataset here because of mean and var problem
         self.dataset = []
