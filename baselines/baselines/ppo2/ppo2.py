@@ -140,23 +140,23 @@ class Runner(object):
         epinfos = []
         for _ in range(self.nsteps):
             # #----- edit obs, make it env_obs + pred_obs
-            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
-            actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
-            mb_obs.append(self.obs.copy())
-            mb_actions.append(actions)
-            mb_values.append(values)
-            mb_neglogpacs.append(neglogpacs)
-            mb_dones.append(self.dones)
-            self.env_obs, rewards, self.dones, infos = self.env.step(actions)
-            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
-            # # --------end extend obs------
+            # self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
             # actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
             # mb_obs.append(self.obs.copy())
             # mb_actions.append(actions)
             # mb_values.append(values)
             # mb_neglogpacs.append(neglogpacs)
             # mb_dones.append(self.dones)
-            # self.obs, rewards, self.dones, infos = self.env.step(actions)
+            # self.env_obs, rewards, self.dones, infos = self.env.step(actions)
+            # self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+            # # --------end extend obs------
+            actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
+            mb_obs.append(self.obs.copy())
+            mb_actions.append(actions)
+            mb_values.append(values)
+            mb_neglogpacs.append(neglogpacs)
+            mb_dones.append(self.dones)
+            self.obs, rewards, self.dones, infos = self.env.step(actions)
             #-------------origin obs code-----------
 
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
@@ -182,20 +182,20 @@ class Runner(object):
                 # #---------------long term prediction method 2 (goal prediction with lstm)---------------------
                 # # maximize dissimilar goals from other goals
                 # # ############################################
-                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
-                self.pred_obs[:], origin_pred_loss =\
-                    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-
-                #_, origin_pred_loss = \
-                #    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+                # batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                # self.pred_obs[:], origin_pred_loss =\
+                #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+                #
+                # #_, origin_pred_loss = \
+                # #    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
                 # #----------------------------------------------------------------
 
                 # #-------------predictable prediction method 3 (not using lstm)------
                 # # calculate the distance between the lastest obs and all selective goals
                 # ######################################################################
-                # batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
-                # import utils
-                # origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                import utils
+                origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
                 # #------------------------------------------------------------------
 
                 # #-------------predictable prediction method 4 (using input of encoder)------
@@ -531,16 +531,17 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
         while not done[0]:
             # #----- edit obs, make it env_obs + pred_obs
-            env.render()
-            obs = np.concatenate((env_obs,pred_obs), axis=1)
-            act, state = agent.mean(obs, state, done)
-            env_obs, rew, done, info = env.step(act)
+            # env.render()
+            # obs = np.concatenate((env_obs,pred_obs), axis=1)
+            # act, state = agent.mean(obs, state, done)
+            # env_obs, rew, done, info = env.step(act)
             # # --------end extend obs------
 
-            # env.render()
-            # act, state = agent.mean(obs, state, done)
-            # obs, rew, done, info = env.step(act)
-            #
+            env.render()
+            act, state = agent.mean(obs, state, done)
+            obs, rew, done, info = env.step(act)
+
+            #-------------------------------------------
 
             origin_obs = env.origin_obs
             traj.append(origin_obs[0][0:3])
@@ -553,19 +554,19 @@ def display(policy, env, nsteps, nminibatches, load_path):
             #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
             # #----------long target reward-------------------#
-            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
-            pred_obs[:], origin_pred_loss = \
-               long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
-            # _,origin_pred_loss= \
-            #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            # pred_obs[:], origin_pred_loss = \
+            #    long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # # _,origin_pred_loss= \
+            # #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             # #----------------------------------------------------------
 
             # # ----------long target reward  method3 (baseline, no lstm)-----------------#
-            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
-            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
-            # import utils
-            # origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            import utils
+            origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------------------
 
             # #---- plot result ---

@@ -133,14 +133,14 @@ class MlpPolicy(object):
     def __init__(self, sess, ob_space, ac_space, nbatch, nsteps, iter=0, reuse=False): #pylint: disable=W0613
         print(ob_space.shape)
         obs_shape_list = list(ob_space.shape)
-        obs_shape_list[0] = obs_shape_list[0]+16
-        # obs_shape_list[0] = obs_shape_list[0] + 0
+        # obs_shape_list[0] = obs_shape_list[0]+16
+        obs_shape_list[0] = obs_shape_list[0] + 0
         ob_shape = (nbatch, ) + tuple(obs_shape_list)
 
         actdim = ac_space.shape[0]
         X = tf.placeholder(tf.float32, ob_shape, name='Ob') #obs
         with tf.variable_scope("model", reuse=reuse):
-            cell_num1 = 128
+            cell_num1 = 64
             cell_num2 = 64
 
             h1 = fc(X, 'pi_fc1', nh=cell_num1, init_scale=np.sqrt(2), act=tf.tanh)
