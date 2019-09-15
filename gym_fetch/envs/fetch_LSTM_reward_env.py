@@ -311,7 +311,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # self.viewer.cam.azimuth = 220
         # self.viewer.cam.elevation = -20
 
-        self.viewer.cam.distance = 2.6
+        self.viewer.cam.distance = 3.0
         self.viewer.cam.azimuth = 200
         self.viewer.cam.elevation = -35
 

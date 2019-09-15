@@ -556,7 +556,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
             xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
             batch_alternative_goals = [temp['alternative_goals'] for temp in info]
             pred_obs[:], origin_pred_loss = \
-                long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+               long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             # _,origin_pred_loss= \
             #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
             # #----------------------------------------------------------
@@ -595,7 +595,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
 
 
-    for e in range(100):
+    for e in range(150):
         score, traj, pred_rew = run_episode(env, act_model)
         print('episode: {} | score: {}; predict reward: {} | precent of pred rew: {}'.\
               format(e, score, pred_rew, pred_rew/score))

@@ -341,6 +341,33 @@ class PredBase(object):
         print("dataset length is: ")
         print(len(self.dataset))
 
+
+        #------- for statistic-------------#
+        # traj_len_list = []
+        # d0_list =[]
+        # ratio_list =[]
+        # for d in self.dataset:
+        #     d0 = np.linalg.norm(d.x[0,-3:] - d.x[-1,-3:])
+        #     diff = np.linalg.norm(np.diff(d.x[:,-3:], axis=0),axis=1)
+        #     accu = np.add.accumulate(diff,axis=0)
+        #     traj_len = accu[-1]
+        #
+        #     traj_len_list.append(traj_len)
+        #     d0_list.append(d0)
+        #     ratio_list.append(traj_len/d0)
+        #
+        # traj_len_avg=np.mean(np.asarray(traj_len_list))
+        # d0_avg = np.mean(np.asarray(d0_list))
+        # ratio_avg = np.mean(np.asarray(ratio_list))
+        # ratio_std =np.std(np.asarray(ratio_list))
+        #
+        # print("traj_len {}, dist {}, traj/dist {}, ratio std {}".format(traj_len_avg, d0_avg, ratio_avg, ratio_std ))
+        # len_mean = np.mean(np.asarray(len_list))
+
+        # print("average of this dataset is: {}".format(len_mean))
+
+        #------- end statistic-------------#
+
         for idx, data in enumerate(self.dataset):
             if idx%500 == 0:
                 visualize.plot_3d_eef(data.x)
