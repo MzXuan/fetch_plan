@@ -59,27 +59,53 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         table_pose = self.sim.data.geom_xpos[id].reshape(3,) #x,y,z
         table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
 
-        goals = []
-        for site_id in index_site:
 
-            while True:
-                goal = self.random_target(table_pose, table_size, site_id)
-                dist = [np.linalg.norm(goal - g) for g in goals]
+        #--for test---#
+        # goals = [[1.52120711,0.62961346,0.4], [1.5170129,  1.01101826,  0.4], [1.3555902,  0.36234604,   0.4]]
 
-                if dist == [] or all(d > 0.3 for d in dist):
-                    break
+        # goals = [[1.3030774,0.69094981,0.4,],[1.47522236,1.06549276,0.4],[1.41999071,0.41410622,0.4]]
 
-            goals.append(goal)
-            self.sim.model.site_pos[site_id] = goal
-        self.alternative_goals = np.asarray(goals).reshape(3*len(index_site))
-        #-------------------------------------------------
+        # goals = [[1.31373232,0.61425887,0.4],[1.31783223,0.27902688,0.4], [1.36100991,1.20543795,0.4] ] #41
 
-        self.sim.forward()
+        # goals = [[1.29437527,1.21898819,0.4],[1.29878951,0.46258858,0.4], [1.3129817, 0.77010741,0.4]]
+
+        goals = [[1.23942516, 0.45117259, 0.4], [1.53030042, 0.61513345, 0.4], [1.33999153, 0.95702258, 0.4]]  # 85
+
+        for iii, site_id in enumerate(index_site):
+            self.sim.model.site_pos[site_id] = goals[iii]
 
         site_id = self.sim.model.site_name2id('target0')
+        self.sim.model.site_pos[site_id] = goals[0]
         goal = self.sim.model.site_pos[site_id]
-
+        self.alternative_goals = np.asarray(goals).reshape(3 * len(index_site))
         return goal.copy()
+
+
+        # # ---------------------------------------------------------
+        #
+        # goals = []
+        # for site_id in index_site:
+        #
+        #     while True:
+        #         goal = self.random_target(table_pose, table_size, site_id)
+        #         dist = [np.linalg.norm(goal - g) for g in goals]
+        #
+        #         if dist == [] or all(d > 0.3 for d in dist):
+        #             break
+        #
+        #     goals.append(goal)
+        #     self.sim.model.site_pos[site_id] = goal
+        #
+        #
+        # self.alternative_goals = np.asarray(goals).reshape(3*len(index_site))
+        # #-------------------------------------------------
+        #
+        # self.sim.forward()
+        #
+        # site_id = self.sim.model.site_name2id('target0')
+        # goal = self.sim.model.site_pos[site_id]
+        #
+        # return goal.copy()
 
     def random_target(self, table_pose, table_size, index_site):
         goal = np.zeros(3)
@@ -90,6 +116,58 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         goal[2] = table_pose[2] + table_size[2] + self.sim.model.site_size[index_site].reshape(3, )[
             2]  # deduce radius
         return goal.copy()
+
+    def _reset_arm(self): # for test
+        collision_flag = True
+        while collision_flag:
+            initial_qpos = {
+            'robot0:slide0': 0.4049,
+                'robot0:slide1': 0.48,
+                'robot0:slide2': 0.0,
+                'robot0:torso_lift_joint': 0.0,
+                'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
+                'robot0:head_tilt_joint': 0.0, #range="-0.76 1.45"
+                'robot0:shoulder_pan_joint': 0.68576794, #range="-1.6056 1.6056"
+                'robot0:shoulder_lift_joint': 0.24587981, #range="-1.221 1.518"
+                'robot0:upperarm_roll_joint':1.78819406, #limited="false"
+                'robot0:elbow_flex_joint': 0.66454047, #range="-2.251 2.251"
+                'robot0:forearm_roll_joint':-0.5195758, #limited="false"
+                'robot0:wrist_flex_joint': 1.23865145, #range="-2.16 2.16"
+                'robot0:wrist_roll_joint': -0.27449409, #limited="false"
+                'robot0:r_gripper_finger_joint': 0,
+                'robot0:l_gripper_finger_joint': 0
+            }
+
+
+
+            # initial_qpos = { #41
+            # 'robot0:slide0': 0.4049,
+            #     'robot0:slide1': 0.48,
+            #     'robot0:slide2': 0.0,
+            #     'robot0:torso_lift_joint': 0.0,
+            #     'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
+            #     'robot0:head_tilt_joint': 0.0, #range="-0.76 1.45"
+            #     'robot0:shoulder_pan_joint': 0.10036931, #range="-1.6056 1.6056"
+            #     'robot0:shoulder_lift_joint': 0.25061595, #range="-1.221 1.518"
+            #     'robot0:upperarm_roll_joint': 2.75578588, #limited="false"
+            #     'robot0:elbow_flex_joint': 0.27529874, #range="-2.251 2.251"
+            #     'robot0:forearm_roll_joint':-0.94146841, #limited="false"
+            #     'robot0:wrist_flex_joint': 0.80922382, #range="-2.16 2.16"
+            #     'robot0:wrist_roll_joint': -2.28830636, #limited="false"
+            #     'robot0:r_gripper_finger_joint': 0,
+            #     'robot0:l_gripper_finger_joint': 0
+            # }
+
+
+            for name, value in initial_qpos.items():
+                self.sim.data.set_joint_qpos(name, value)
+            self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]
+            self.initial_state = self.sim.get_state()
+            self.sim.set_state(self.initial_state)
+            self.sim.forward()
+            collision_flag = self._contact_dection()
+
+        return initial_qpos
         
 
 class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
