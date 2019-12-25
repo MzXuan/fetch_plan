@@ -308,13 +308,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        # self.viewer.cam.distance = 2.6
-        # self.viewer.cam.azimuth = 220
-        # self.viewer.cam.elevation = -20
-
-        self.viewer.cam.distance = 3.8
+        self.viewer.cam.distance = 3.6
         self.viewer.cam.azimuth = 180
-        self.viewer.cam.elevation = -20
+        self.viewer.cam.elevation = 0
+        
+        # self.viewer.cam.distance = 3.8
+        # self.viewer.cam.azimuth = 180
+        # self.viewer.cam.elevation = -20
 
     def _render_callback(self):
         # Visualize target.

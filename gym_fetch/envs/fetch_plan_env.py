@@ -162,8 +162,8 @@ class FetchPlanBoardEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle
 
     def random_target(self, table_pose, table_size, index_site):
         goal = np.zeros(3)
-        goal[0] = table_pose[0] + table_size[0] + self.sim.model.site_size[index_site].reshape(3, )[
-            0]  # deduce radius 
+        goal[0] = table_pose[0] + table_size[0] - self.sim.model.site_size[index_site].reshape(3, )[
+            0]-0.05  # deduce radius 
         goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * (
                     table_size[1]- self.sim.model.site_size[index_site].reshape(3, )[1])      
         goal[2] = table_pose[2] + (2 * np.random.uniform() - 1) * (
