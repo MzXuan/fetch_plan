@@ -2,6 +2,9 @@ import os, sys
 import time
 import joblib
 
+from datetime import datetime
+import socket
+
 import csv
 import numpy as np
 import os.path as osp
@@ -496,6 +499,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
     dataset_creator = RLDataCreator(nenv)
 
+    port = 8001                             # 端口和上面一致
+    host = "localhost"                      # 服务器IP，这里服务器和客户端IP同一个
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     def load(load_path):
         loaded_params = joblib.load(load_path)
         restores = []
@@ -550,6 +557,17 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
             # print(pred_obs)
 
+            #---socket send data---#
+            eef_pos = origin_obs[0][0:3]
+            delta_dist = origin_obs[0][-3:]
+            alter_goals = info[0]['alternative_goals']
+
+            now = datetime.now()
+            msg_time = str(now.minute)+str(now.second)+"."+str(now.microsecond)
+            data_send = np.array2string(np.concatenate([eef_pos,delta_dist,alter_goals]), precision=3, separator=',', suppress_small=True)
+            # print("data_send", data_send)
+            sock.sendto((data_send+"t:"+str(msg_time)).encode(),(host, port))
+
             # # #---------------long sequence reward --------#
             # xs, goals = dataset_creator.collect_online(origin_obs, done)
             # pred_obs[:], pred_result, origin_pred_loss = \
@@ -570,6 +588,8 @@ def display(policy, env, nsteps, nminibatches, load_path):
             import utils
             origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
             #----------------------------------------------------------------------
+
+            
 
             # #---- plot result ---
             #
