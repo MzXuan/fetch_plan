@@ -83,7 +83,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         else:
             current_distance = goal_distance(achieved_goal, goal)
             #approaching_rew = 20.0 * (self.last_distance - current_distance)
-            approaching_rew = 0.0 * (self.last_distance - current_distance)
+            approaching_rew = 20.0 * (self.last_distance - current_distance)
             self.last_distance = copy.deepcopy(current_distance)
             return approaching_rew
 
@@ -193,7 +193,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             # mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
             # print('c_array', c_array)
 
-        if self.sim.data.ncon > 1:
+        if self.sim.data.ncon > 2:
             return True
         else:
             return False
@@ -267,13 +267,14 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         #     joint_angle, np.asarray(goals).flatten()
         # ])
 
-        # obs = np.concatenate([
-        #     joint_angle, np.asarray(dist_lst)
-        # ])
-
         obs = np.concatenate([
-            joint_angle, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
+            joint_angle, joint_vel, np.asarray(dist_lst)
         ])
+
+
+        # obs = np.concatenate([
+        #     joint_angle, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
+        # ])
 
         # obs = np.concatenate([
         #     joint_angle, joint_vel, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
@@ -311,9 +312,9 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # self.viewer.cam.azimuth = 220
         # self.viewer.cam.elevation = -20
 
-        self.viewer.cam.distance = 3.0
-        self.viewer.cam.azimuth = 200
-        self.viewer.cam.elevation = -35
+        self.viewer.cam.distance = 3.8
+        self.viewer.cam.azimuth = 180
+        self.viewer.cam.elevation = -20
 
     def _render_callback(self):
         # Visualize target.

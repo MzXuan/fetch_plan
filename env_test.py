@@ -3,7 +3,8 @@ import gym
 import gym_fetch
 
 # env = gym.make('FetchPlanTest-v0')
-env = gym.make('FetchPlan-v0')
+# env = gym.make('FetchPlan-v0')
+env = gym.make('FetchPlanBoard-v0')
 # env = gym.make('FetchPlanShelf-v0')
 # env = gym.make('FetchEff-v0')
 for e in range(100):
@@ -17,6 +18,10 @@ for e in range(100):
         env.render()
         # time.sleep(0.1)
         # print("rew: ", rew)
+
+        #todo: add sending data!!!
+        # todo: add sending data in ppo2
+
         total_rew += rew
     print("episode {} rewards: {} ".format(
         e, total_rew

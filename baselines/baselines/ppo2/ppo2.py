@@ -529,6 +529,8 @@ def display(policy, env, nsteps, nminibatches, load_path):
         env.render()
         time.sleep(0.5)
 
+        # todo: add sending data
+
         while not done[0]:
             # #----- edit obs, make it env_obs + pred_obs
             # env.render()
