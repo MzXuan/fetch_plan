@@ -26,8 +26,6 @@ for e in range(100):
         env.render()
         # time.sleep(0.1)
         # print("rew: ", rew)
-
-        # todo: add sending data in ppo2
         eef_pos = obs['achieved_goal']
         delta_dist = obs['desired_goal'][-3:]
         alter_goals = info['alternative_goals']

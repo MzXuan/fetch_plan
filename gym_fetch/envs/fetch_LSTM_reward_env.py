@@ -82,8 +82,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             return -30.0
         else:
             current_distance = goal_distance(achieved_goal, goal)
-            #approaching_rew = 20.0 * (self.last_distance - current_distance)
-            approaching_rew = 20.0 * (self.last_distance - current_distance)
+            approaching_rew = 0.0 * (self.last_distance - current_distance)
+            # approaching_rew = 20.0 * (self.last_distance - current_distance)
             self.last_distance = copy.deepcopy(current_distance)
             return approaching_rew
 
@@ -308,9 +308,9 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 3.6
+        self.viewer.cam.distance = 0
         self.viewer.cam.azimuth = 180
-        self.viewer.cam.elevation = 0
+        self.viewer.cam.elevation = -10
         
         # self.viewer.cam.distance = 3.8
         # self.viewer.cam.azimuth = 180
