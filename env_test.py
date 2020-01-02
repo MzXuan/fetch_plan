@@ -32,7 +32,7 @@ for e in range(100):
         end_flag = np.array([1]) if info['is_success'] or info['is_collision'] else np.array([0])
 
         now = datetime.now()
-        msg_time = str(now.minute)+str(now.second)+"."+str(now.microsecond*10e6)
+        msg_time =  str(now.minute*100+now.second+now.microsecond*1e-6)
         # data_send = np.concatenate([eef_pos,delta_dist,alter_goals])
         
         data_send = np.array2string(np.concatenate([eef_pos,delta_dist,alter_goals,end_flag]), precision=3, separator=',', suppress_small=True)
