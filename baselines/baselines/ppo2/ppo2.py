@@ -561,7 +561,7 @@ def display(policy, env, nsteps, nminibatches, load_path):
             end_flag = np.array([1]) if info[0]['is_success'] or info[0]['is_collision'] else np.array([0])
 
             now = datetime.now()
-            msg_time = str(now.minute)+str(now.second)+"."+str(now.microsecond)
+            msg_time = str(now.minute)+str(now.second)+"."+str(now.microsecond*10e6)
             data_send = np.array2string(np.concatenate([eef_pos,delta_dist,alter_goals, end_flag]), precision=3, separator=',', suppress_small=True)
             # print("data_send", data_send)
             sock.sendto((data_send+"t:"+str(msg_time)).encode(),(host, port))
