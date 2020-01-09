@@ -27,15 +27,18 @@ for e in range(100):
         # time.sleep(0.1)
         # print("rew: ", rew)
         eef_pos = obs['achieved_goal']
+        elbow_pos = info['elbow_pos']
+        shoulder_pos = info['shoulder_pos']
         delta_dist = obs['observation'][-3:]
         alter_goals = info['alternative_goals']
         end_flag = np.array([1]) if info['is_success'] or info['is_collision'] else np.array([0])
+
 
         now = datetime.now()
         msg_time =  str(now.minute*100+now.second+now.microsecond*1e-6)
         # data_send = np.concatenate([eef_pos,delta_dist,alter_goals])
         
-        data_send = np.array2string(np.concatenate([eef_pos,delta_dist,alter_goals,end_flag]), precision=3, separator=',', suppress_small=True)
+        data_send = np.array2string(np.concatenate([eef_pos,elbow_pos, shoulder_pos,delta_dist,alter_goals,end_flag]), precision=3, separator=',', suppress_small=True)
 
         # print("data_send", data_send)
         sock.sendto((data_send+"t:"+str(msg_time)).encode(),(host, port))

@@ -556,13 +556,15 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
             #---socket send data---#
             eef_pos = origin_obs[0][0:3]
+            elbow_pos = info[0]['elbow_pos']
+            shoulder_pos = info[0]['shoulder_pos']
             delta_dist = origin_obs[0][-3:]
             alter_goals = info[0]['alternative_goals']
             end_flag = np.array([1]) if info[0]['is_success'] or info[0]['is_collision'] else np.array([0])
 
             now = datetime.now()
             msg_time = str(now.minute*100+now.second+now.microsecond*1e-6)
-            data_send = np.array2string(np.concatenate([eef_pos,delta_dist,alter_goals, end_flag]), precision=3, separator=',', suppress_small=True)
+            data_send = np.array2string(np.concatenate([eef_pos, elbow_pos, shoulder_pos,delta_dist,alter_goals, end_flag]), precision=3, separator=',', suppress_small=True)
             # print("data_send", data_send)
             sock.sendto((data_send+"t:"+str(msg_time)).encode(),(host, port))
 

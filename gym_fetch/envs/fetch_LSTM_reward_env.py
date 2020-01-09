@@ -150,11 +150,16 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             done = False
 
         # self._contact_dection()
+        elbow_pos = self.sim.data.get_geom_xpos('robot0:elbow_flex_link')
+        shoulder_pos = self.sim.data.get_geom_xpos('robot0:shoulder_pan_link')
+
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
             'is_collision': self._contact_dection(),
             'goal_label': self.goal_label,
-            'alternative_goals':self.alternative_goals
+            'alternative_goals':self.alternative_goals,
+            'elbow_pos':elbow_pos,
+            'shoulder_pos':shoulder_pos
         }
 
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
@@ -327,8 +332,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # Randomize start position of object.
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
-            # print("initial gripper xpos:")
-            # print(self.initial_gripper_xpos)
+            print("initial gripper xpos:")
+            print(self.initial_gripper_xpos)
 
             while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 4.0:
                 object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)

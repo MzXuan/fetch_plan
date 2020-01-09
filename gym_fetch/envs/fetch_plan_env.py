@@ -28,7 +28,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             'robot0:torso_lift_joint': 0.04,
             'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
             'robot0:head_tilt_joint': 0.00, #range="-0.76 1.45"
-            'robot0:shoulder_pan_joint': 0, #range="-1.6056 1.6056"
+            'robot0:shoulder_ an_joint': 0, #range="-1.6056 1.6056"
             'robot0:shoulder_lift_joint': 1.0, #range="-1.221 1.518"
             'robot0:upperarm_roll_joint': 0, #limited="false"
             'robot0:elbow_flex_joint': -2.0, #range="-2.251 2.251"
@@ -61,6 +61,8 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
 
 
+
+        
         goals = []
         for site_id in index_site:
 
@@ -138,13 +140,18 @@ class FetchPlanBoardEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle
 
 
         goals = []
+        grip_pos = self.sim.data.get_site_xpos('robot0:grip')
+
         for site_id in index_site:
 
             while True:
                 goal = self.random_target(table_pose, table_size, site_id)
                 dist = [np.linalg.norm(goal - g) for g in goals]
-
-                if dist == [] or all(d > 0.3 for d in dist):
+                # dist_gripper = np.linalg.norm(grip_pos - goal)
+                dist_gripper_y = np.linalg.norm(grip_pos[1] - goal[1])
+                # print("grip pos {}, goal {}, dist_gripper_x {}".format(grip_pos,goal,dist_gripper_y))
+                
+                if dist == [] or all(d > 0.3 for d in dist) and dist_gripper_y>0.3:
                     break
 
             goals.append(goal)
