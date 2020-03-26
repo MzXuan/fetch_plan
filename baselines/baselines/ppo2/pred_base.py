@@ -93,6 +93,7 @@ class PredBase(object):
     #     :param batched_goals: raw goals / true goal (batch size * goal shape)
     #     :return: reward of this prediction, batch size * 1
     #     '''
+    #     #legacy, need to update encoder state (with regard to layers and units)
     #     pred_obs_list = []
     #     pred_result_list = []
     #     pred_loss_list = []
@@ -159,13 +160,13 @@ class PredBase(object):
         rewards = []
         batched_seqs_normal = []
         pred_obs_list = []
+
+        #first predict
         for seq in batched_seqs:
             seq = seq[:, -3:]
             seq_normal = (seq[:-1,:] - self.x_mean) / self.x_var
-            if seq_normal.shape[0] < 5:
+            if seq_normal.shape[0] < self.in_timesteps_max:
                 seq_normal = self._padding(seq_normal, self.in_timesteps_max, 0.0)
-            elif seq_normal.shape[0] < self.in_timesteps_max:
-                seq_normal = self._padding(seq_normal, self.in_timesteps_max)
             else:
                 seq_normal = seq_normal[-self.in_timesteps_max:]
             batched_seqs_normal.append(seq_normal)
@@ -181,49 +182,38 @@ class PredBase(object):
             true_goal = batched_goals[idx]-x_starts[idx][-3:]
             alternative_goals = batch_alternative_goals[idx].reshape((3,3))-x_starts[idx][-3:]
 
-            # print("alternative goals: ", alternative_goals)
-
             if seq.shape[0] < 6:
                 rewards.append(0.0)
                 pred_obs_list.append(np.zeros(self.num_units*self.num_layers))
             else:
-                #-------------test----------------------
-                # for iii, gg in enumerate(batch_alternative_goals[idx].reshape((3,3))):
-                #     if np.linalg.norm(gg - batched_goals[idx])<1e-7:
-                #         print("true goal id is: ", iii)
-
-                #----------------------------------------
                 raw_y_pred = ys_pred[idx] * self.x_var + self.x_mean
-                select_goal, goal_idx, min_dist = utils.find_goal(\
-                    raw_y_pred, alternative_goals)
 
-                m = 3
-                if np.linalg.norm(select_goal-true_goal)<1e-7:
-                    if np.linalg.norm(seq[-1,-3:]-true_goal)<0.2:
-                        rew = 0.0
-                    else:
-                        rew = m*math.exp(-total_length/15)
-                    rewards.append(rew)
-
+                if np.linalg.norm(seq[-1,-3:]-true_goal)<0.15: #close to target
+                    rew = 0.0
                 else:
-                    rew = m*(math.exp(-total_length/15)-1)
-                    rewards.append(rew)
-                pred_obs_list.append(np.concatenate([enc_states[0][idx],enc_states[1][idx]]))
+                    rew = utils.path_goal_reward(\
+                        raw_y_pred, alternative_goals,true_goal,total_length)
 
+                # rew = utils.path_goal_reward( \
+                #     raw_y_pred, alternative_goals, true_goal, total_length)
+                rewards.append(rew)
 
-                # # ---------------draw result----------------#
-                # if goal_idx != 0:
-                #     print("wrong guess!!! to goal", goal_idx)
-                # import visualize
-                # # visualize.plot_3d_seqs(x=seq,\
-                # #         y_pred=raw_y_pred, goals=alternative_goals)
-                #
-                # visualize.plot_dof_seqs(x=seq[:,-3:],y_pred=raw_y_pred,step=self.step,\
-                #                         goals=alternative_goals, goal_pred=select_goal)
-                # # ------------------------------------------#
+                pred_obs_list.append(np.concatenate([enc_states[i][idx] for i in range(self.num_layers)]))
+        
+
+            # # ---------------draw result----------------#
+            # import visualize
+            # try:
+            #     raw_y_pred
+            #     visualize.plot_3d_seqs(x=seq,\
+            #             y_pred=raw_y_pred, goals=alternative_goals)
+            #     # visualize.plot_dof_seqs(x=seq[:, -3:], y_pred=raw_y_pred, step=self.step, \
+            #     #                         goals=alternative_goals)
+            # except:
+            #     pass
+            # # ------------------------------------------#
 
         rewards = np.asarray(rewards)
-
         return np.asarray(pred_obs_list), rewards
 
     def run_validation(self):
@@ -329,6 +319,7 @@ class PredBase(object):
         ## check saved data set
         filelist = [f for f in os.listdir("./pred/") if f.endswith("rl.pkl")]
         num_sets = len(filelist)
+        print("num_sets",num_sets)
 
         # NOTICE: we can only use one dataset here because of mean and var problem
         self.dataset = []
@@ -349,6 +340,31 @@ class PredBase(object):
         #plot dataset
         print("dataset length is: ")
         print(len(self.dataset))
+
+
+        #------- for statistic-------------#
+        traj_len_list = []
+        d0_list =[]
+        ratio_list =[]
+        for d in self.dataset:
+            d0 = np.linalg.norm(d.x[0,-3:] - d.x[-1,-3:])
+            diff = np.linalg.norm(np.diff(d.x[:,-3:], axis=0),axis=1)
+            accu = np.add.accumulate(diff,axis=0)
+            traj_len = accu[-1]
+
+            traj_len_list.append(traj_len)
+            d0_list.append(d0)
+            ratio_list.append(traj_len/d0)
+
+        traj_len_avg=np.mean(np.asarray(traj_len_list))
+        d0_avg = np.mean(np.asarray(d0_list))
+        ratio_avg = np.mean(np.asarray(ratio_list))
+        ratio_std =np.std(np.asarray(ratio_list))
+
+        print("traj_len {}, dist {}, traj/dist {}, ratio std {}".format(traj_len_avg, d0_avg, ratio_avg, ratio_std ))
+
+
+        #------- end statistic-------------#
 
         for idx, data in enumerate(self.dataset):
             if idx%500 == 0:

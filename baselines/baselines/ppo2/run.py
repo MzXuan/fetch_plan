@@ -151,7 +151,7 @@ def display(env_id, num_timesteps, seed, curr_path, log_file, point):
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--env', help='environment ID', default='FetchPlan-v0')
+    parser.add_argument('--env', help='environment ID', default='FetchPlanBoard-v0')
     parser.add_argument('--seed', help='RNG seed', type=int, default=100)
     parser.add_argument('--num-timesteps', type=int, default=int(1.8e6))
     parser.add_argument('--train', action='store_true')
@@ -165,7 +165,7 @@ def main():
     parser.add_argument('--logdir', default='log', type=str)
     args = parser.parse_args()
 
-    each_iter_num = 400
+    each_iter_num = 750
 
     curr_path = sys.path[0]
     if args.display:
@@ -176,7 +176,7 @@ def main():
                                                                       'log',
                                                                       'csv',
                                                                       'tensorboard'])
-        iter_countings = 300+ (args.iter-1) * each_iter_num if  args.iter >=1 else 0
+        iter_countings = 800+ (args.iter-1) * each_iter_num if  args.iter >=1 else 0
         logger.tb_start_step(iter_countings , 3)
 
         print("iter countings: ", iter_countings)

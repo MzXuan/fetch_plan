@@ -34,7 +34,8 @@ if [ ${counter} -eq 0 ]
 then
     python run.py --train --num-timesteps=10000000 --pred_weight=0.0 --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=8000000 -p='last' --pred_weight=${2} --iter=${counter}
+    #python run.py --train --num-timesteps=1000000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --num-timesteps=10000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -49,12 +50,12 @@ sleep 1
  # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictors.py --iter=${counter} --epoch=30
+    python predictors.py --load --iter=${counter} --epoch=30
 elif [ ${counter} -le 3 ]
 then
-    python predictors.py --iter=${counter} --epoch=30
+    python predictors.py --load --iter=${counter} --epoch=30
 else
-    python predictors.py --iter=${counter} --epoch=30
+    python predictors.py --load --iter=${counter} --epoch=30
 fi
 
 

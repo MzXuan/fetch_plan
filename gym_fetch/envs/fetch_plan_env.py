@@ -9,6 +9,7 @@ import random
 
 # Ensure we get the path separator correct on windows
 MODEL_XML_PATH = os.path.join('fetch','table.xml')
+BOARD_MODEL_XML_PATH = os.path.join('fetch','board.xml')
 SHELF_MODEL_XML_PATH = os.path.join('fetch','shelf.xml')
 EFF_MODEL_XML_PATH = os.path.join('fetch', 'eff_point.xml')
 
@@ -27,7 +28,7 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
             'robot0:torso_lift_joint': 0.04,
             'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
             'robot0:head_tilt_joint': 0.00, #range="-0.76 1.45"
-            'robot0:shoulder_pan_joint': 0, #range="-1.6056 1.6056"
+            'robot0:shoulder_ an_joint': 0, #range="-1.6056 1.6056"
             'robot0:shoulder_lift_joint': 1.0, #range="-1.221 1.518"
             'robot0:upperarm_roll_joint': 0, #limited="false"
             'robot0:elbow_flex_joint': -2.0, #range="-2.251 2.251"
@@ -59,6 +60,9 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         table_pose = self.sim.data.geom_xpos[id].reshape(3,) #x,y,z
         table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
 
+
+
+        
         goals = []
         for site_id in index_site:
 
@@ -66,11 +70,13 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
                 goal = self.random_target(table_pose, table_size, site_id)
                 dist = [np.linalg.norm(goal - g) for g in goals]
 
-                if dist == [] or all(d > 0.18 for d in dist):
+                if dist == [] or all(d > 0.3 for d in dist):
                     break
 
             goals.append(goal)
             self.sim.model.site_pos[site_id] = goal
+
+
         self.alternative_goals = np.asarray(goals).reshape(3*len(index_site))
         #-------------------------------------------------
 
@@ -78,17 +84,100 @@ class FetchPlanEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
 
         site_id = self.sim.model.site_name2id('target0')
         goal = self.sim.model.site_pos[site_id]
-
         return goal.copy()
 
     def random_target(self, table_pose, table_size, index_site):
         goal = np.zeros(3)
         goal[0] = table_pose[0] + (2 * np.random.uniform() - 1) * (
                     table_size[0] - self.sim.model.site_size[index_site].reshape(3, )[0])
-        goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * table_size[1]
+        goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * (
+                    table_size[1]- self.sim.model.site_size[index_site].reshape(3, )[1])
         goal[2] = table_pose[2] + table_size[2] + self.sim.model.site_size[index_site].reshape(3, )[
             2]  # deduce radius
         return goal.copy()
+
+
+class FetchPlanBoardEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
+    def __init__(self, reward_type='sparse'):
+        initial_qpos = {
+            'robot0:slide0': 0.4049,
+            'robot0:slide1': 0.48,
+            'robot0:slide2': 0.0,
+            'robot0:torso_lift_joint': 0.04,
+            'robot0:head_pan_joint': 0.0, #range="-1.57 1.57"
+            'robot0:head_tilt_joint': 0.00, #range="-0.76 1.45"
+            'robot0:shoulder_pan_joint': 0, #range="-1.6056 1.6056"
+            'robot0:shoulder_lift_joint': 1.0, #range="-1.221 1.518"
+            'robot0:upperarm_roll_joint': 0, #limited="false"
+            'robot0:elbow_flex_joint': -2.0, #range="-2.251 2.251"
+            'robot0:forearm_roll_joint': 0,#limited="false"
+            'robot0:wrist_flex_joint':0.8, #range="-2.16 2.16"
+            'robot0:wrist_roll_joint': 0, #limited="false"
+            'robot0:r_gripper_finger_joint': 0,
+            'robot0:l_gripper_finger_joint': 0
+        }
+        fetch_LSTM_reward_env.FetchLSTMRewardEnv.__init__(
+            self, BOARD_MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
+            gripper_extra_height=0.2, target_in_the_air=True, target_offset=0.0,
+            obj_range=0.15, target_range=0.15, distance_threshold=0.05, max_accel=0.1,
+            initial_qpos=initial_qpos, reward_type=reward_type, n_actions=7)
+        utils.EzPickle.__init__(self)
+
+    def _sample_goal(self):
+        #get all the targets ids; random sample goal on a plane
+        body_num = self.sim.model.body_name2id('target_plane')
+        geom_body_list = self.sim.model.geom_bodyid
+        index = np.where(geom_body_list==body_num)[0] #1~number
+
+        site_body_list = self.sim.model.site_bodyid
+        index_site = np.where(site_body_list == body_num)[0]  # 1~number
+
+        # random select one as the goal
+        id = np.random.choice(a=index,size=1)
+
+        table_pose = self.sim.data.geom_xpos[id].reshape(3,) #x,y,z
+        table_size = self.sim.model.geom_size[id].reshape(3,) #x,y,z
+
+
+        goals = []
+        grip_pos = self.sim.data.get_site_xpos('robot0:grip')
+
+        for site_id in index_site:
+
+            while True:
+                goal = self.random_target(table_pose, table_size, site_id)
+                dist = [np.linalg.norm(goal - g) for g in goals]
+                # dist_gripper = np.linalg.norm(grip_pos - goal)
+                dist_gripper_y = np.linalg.norm(grip_pos[1] - goal[1])
+                # print("grip pos {}, goal {}, dist_gripper_x {}".format(grip_pos,goal,dist_gripper_y))
+                
+                if dist == [] or all(d > 0.3 for d in dist) and dist_gripper_y>0.3:
+                    break
+
+            goals.append(goal)
+            self.sim.model.site_pos[site_id] = goal
+
+
+        self.alternative_goals = np.asarray(goals).reshape(3*len(index_site))
+        #-------------------------------------------------
+
+        self.sim.forward()
+
+        site_id = self.sim.model.site_name2id('target0')
+        goal = self.sim.model.site_pos[site_id]
+        return goal.copy()
+
+    def random_target(self, table_pose, table_size, index_site):
+        goal = np.zeros(3)
+        goal[0] = table_pose[0] + table_size[0] - self.sim.model.site_size[index_site].reshape(3, )[
+            0]-0.05  # deduce radius 
+        goal[1] = table_pose[1] + (2 * np.random.uniform() - 1) * (
+                    table_size[1]- self.sim.model.site_size[index_site].reshape(3, )[1])      
+        goal[2] = table_pose[2] + (2 * np.random.uniform() - 1) * (
+                    table_size[2] - self.sim.model.site_size[index_site].reshape(3, )[2])
+        return goal.copy()
+
+        
 
 class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
     def __init__(self, reward_type='sparse'):
@@ -161,9 +250,9 @@ class FetchEffEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle):
         # print("lookat: ", lookat)
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 4
+        self.viewer.cam.distance = 3.8
         self.viewer.cam.azimuth = 180
-        self.viewer.cam.elevation = -90.
+        self.viewer.cam.elevation = -20.
 
     def _sample_goal(self):
         #get all the targets ids; random sample goal on a plane
@@ -371,44 +460,7 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
         collision_flag = True
         d = 0.1
         while collision_flag:
-            # # random
-            # initial_qpos = {
-            #     'robot0:slide0': 0.4049,
-            #     'robot0:slide1': 0.48,
-            #     'robot0:slide2': 0.0,
-            #     'robot0:torso_lift_joint': 0.0,
-            #     'robot0:head_pan_joint': 0.0,  # range="-1.57 1.57"
-            #     'robot0:head_tilt_joint': 0.0,  # range="-0.76 1.45"
-            #     'robot0:shoulder_pan_joint': 2 * 1.6056 * np.random.random() - 1.6056,  # range="-1.6056 1.6056"
-            #     'robot0:shoulder_lift_joint': (1.221 + 1.518) * np.random.random() - 1.221,  # range="-1.221 1.518"
-            #     'robot0:upperarm_roll_joint': 2 * np.pi * np.random.random() - np.pi,  # limited="false"
-            #     'robot0:elbow_flex_joint': 2.251 * 2 * np.random.random() - 2.251,  # range="-2.251 2.251"
-            #     'robot0:forearm_roll_joint': 2 * np.pi * np.random.random() - np.pi,  # limited="false"
-            #     'robot0:wrist_flex_joint': 2.16 * 2 * np.random.random() - 2.16,  # range="-2.16 2.16"
-            #     'robot0:wrist_roll_joint': 2 * np.pi * np.random.random() - np.pi,  # limited="false"
-            #     'robot0:r_gripper_finger_joint': 0,
-            #     'robot0:l_gripper_finger_joint': 0
-            # }
-            #middle + random
-            # initial_qpos = {
-            #     'robot0:slide0': 0.4049,
-            #     'robot0:slide1': 0.48,
-            #     'robot0:slide2': 0.0,
-            #     'robot0:torso_lift_joint': 0.0,
-            #     'robot0:head_pan_joint': 0.0,  # range="-1.57 1.57"
-            #     'robot0:head_tilt_joint': 0.0,  # range="-0.76 1.45"
-            #     'robot0:shoulder_pan_joint': 0.0,  # range="-1.6056 1.6056"
-            #     'robot0:shoulder_lift_joint': 0.8+d-2*d*np.random.random(), #range="-1.221 1.518"
-            #     'robot0:upperarm_roll_joint': 0, #limited="false"
-            #     'robot0:elbow_flex_joint': -1.9+d-2*d*np.random.random(), #range="-2.251 2.251"
-            #     'robot0:forearm_roll_joint': 0,#limited="false"
-            #     'robot0:wrist_flex_joint':1.5+d-2*d*np.random.random(), #range="-2.16 2.16"
-            #     'robot0:wrist_roll_joint': 0, #limited="false"
-            #     'robot0:r_gripper_finger_joint': 0,
-            #     'robot0:l_gripper_finger_joint': 0
-            # }
-
-            #middle
+            # random
             initial_qpos = {
                 'robot0:slide0': 0.4049,
                 'robot0:slide1': 0.48,
@@ -416,36 +468,16 @@ class FetchPlanTestEnv(fetch_LSTM_reward_env.FetchLSTMRewardEnv, utils.EzPickle)
                 'robot0:torso_lift_joint': 0.0,
                 'robot0:head_pan_joint': 0.0,  # range="-1.57 1.57"
                 'robot0:head_tilt_joint': 0.0,  # range="-0.76 1.45"
-                'robot0:shoulder_pan_joint': 0.0,  # range="-1.6056 1.6056"
-                'robot0:shoulder_lift_joint': 0.8, #range="-1.221 1.518"
-                'robot0:upperarm_roll_joint': 0, #limited="false"
-                'robot0:elbow_flex_joint': -1.9, #range="-2.251 2.251"
-                'robot0:forearm_roll_joint': 0,#limited="false"
-                'robot0:wrist_flex_joint':1.5, #range="-2.16 2.16"
-                'robot0:wrist_roll_joint': 0, #limited="false"
+                'robot0:shoulder_pan_joint': 2 * 1.6056 * np.random.random() - 1.6056,  # range="-1.6056 1.6056"
+                'robot0:shoulder_lift_joint': (1.221 + 1.518) * np.random.random() - 1.221,  # range="-1.221 1.518"
+                'robot0:upperarm_roll_joint': 2 * np.pi * np.random.random() - np.pi,  # limited="false"
+                'robot0:elbow_flex_joint': 2.251 * 2 * np.random.random() - 2.251,  # range="-2.251 2.251"
+                'robot0:forearm_roll_joint': 2 * np.pi * np.random.random() - np.pi,  # limited="false"
+                'robot0:wrist_flex_joint': 2.16 * 2 * np.random.random() - 2.16,  # range="-2.16 2.16"
+                'robot0:wrist_roll_joint': 2 * np.pi * np.random.random() - np.pi,  # limited="false"
                 'robot0:r_gripper_finger_joint': 0,
                 'robot0:l_gripper_finger_joint': 0
             }
-
-            # # left
-            # initial_qpos = {
-            #     'robot0:slide0': 0.4049,
-            #     'robot0:slide1': 0.48,
-            #     'robot0:slide2': 0.0,
-            #     'robot0:torso_lift_joint': 0.0,
-            #     'robot0:head_pan_joint': 0.0,  # range="-1.57 1.57"
-            #     'robot0:head_tilt_joint': 0.0,  # range="-0.76 1.45"
-            #     'robot0:shoulder_pan_joint':0.5,  # range="-1.6056 1.6056"
-            #     'robot0:shoulder_lift_joint': 0,  # range="-1.221 1.518"
-            #     'robot0:upperarm_roll_joint': -1.0,  # limited="false"
-            #     'robot0:elbow_flex_joint': 1.5,  # range="-2.251 2.251"
-            #     'robot0:forearm_roll_joint': 0,  # limited="false"
-            #     'robot0:wrist_flex_joint':1.0,  # range="-2.16 2.16"
-            #     'robot0:wrist_roll_joint': 0,  # limited="false"
-            #     'robot0:r_gripper_finger_joint': 0,
-            #     'robot0:l_gripper_finger_joint': 0
-            # }
-
             for name, value in initial_qpos.items():
                 self.sim.data.set_joint_qpos(name, value)
             self.current_qpos = self.sim.data.qpos[self.sim.model.jnt_qposadr[6:13]]

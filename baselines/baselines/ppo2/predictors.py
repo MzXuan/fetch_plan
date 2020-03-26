@@ -119,7 +119,7 @@ class ShortPred(PredBase):
 
 class LongPred(PredBase):
     def __init__(self, batch_size, in_max_timestep, out_timesteps, train_flag,
-                 step=3, epoch=20, iter_start=0,
+                 step=2, epoch=20, iter_start=0,
                  lr=0.001, load=False, model_name="seq2seq"):
         super(LongPred, self).__init__(batch_size, in_max_timestep, out_timesteps, train_flag,
                           step, epoch, iter_start, lr, load, model_name)
@@ -130,7 +130,7 @@ class LongPred(PredBase):
                                        model_name=self.model_name)
 
         inference_model = KP.PredictRNN(self.batch_size,
-                                        self.in_dim, self.out_dim, self.in_timesteps_max, 2 * self.out_timesteps,
+                                        self.in_dim, self.out_dim, self.in_timesteps_max, 1 * self.out_timesteps,
                                         self.num_units, num_layers=self.num_layers,
                                         model_name=model_name)
         if self.load:

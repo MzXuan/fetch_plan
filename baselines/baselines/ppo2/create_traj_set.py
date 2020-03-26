@@ -56,8 +56,9 @@ class RLDataCreator():
                     # create a container saving reseted sequences for future usage
                     seqs_done.append(DatasetStru(x_seq[1:] - x_seq[0], self.x_lens[idx],
                                                  self.x_mean, self.x_var, x_seq[0]))
-                else:
-                    print("in collision")
+                # else:
+                #     # print("in collision")
+                #     continue
                 self.xs_raw[idx] = []
                 self.x_lens[idx] = 0
 
@@ -112,7 +113,7 @@ class RLDataCreator():
             print("collected dataset length:{}".format(dataset_length))
 
         # if dataset is large enough, stop collect new data and save
-        if dataset_length > 8000:
+        if dataset_length > 10000:
             print("Enough data collected, stop getting new data...")
             self.collect_flag = True
 
