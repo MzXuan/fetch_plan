@@ -2,7 +2,7 @@
 
 ---
 ## Details need to be determinted
-+ change loss function (reference to huzhe's code)
++ change loss function
 + Analysis the performance of predictor training
 + Unify the coordinate of mujoco and ros fetch simulation
 + joint training
