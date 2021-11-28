@@ -22,15 +22,16 @@ if [ ${counter} -eq 0 ]
 then
     rm -rf "./models"
     mkdir "./models"
+    mkdir "./pred"
 fi
 
 # train rl
 if [ ${counter} -eq 0 ]
 then
-    sleep 1
-#    python run.py --train --num-timesteps=6000000 --pred_weight=0.0 --iter=${counter}
+#    sleep 1
+    python run.py --train --num-timesteps=10000000 --pred_weight=${2} --iter=${counter}
 else
-    python run.py --train --load --num-timesteps=8000000 -p='last' --pred_weight=${2} --iter=${counter}
+    python run.py --train --num-timesteps=10000000 -p='last' --pred_weight=${2} --iter=${counter}
 fi
 
 # run new training cycle
@@ -39,7 +40,7 @@ sleep 1
 cp -R ${rl_model} "./models/log_${counter}"
 
 # sample dataset
-python run.py --load -p='last'
+python run.py --load --seed=$((100+counter)) -p='last'
 
 
 sleep 1
@@ -48,10 +49,10 @@ sleep 1
 # train seq2seq
 if [ ${counter} -eq 0 ]
 then
-    python predictors.py --iter=${counter} --epoch=30
+    python predictors.py  --load --iter=${counter} --epoch=30
 elif [ ${counter} -le 3 ]
 then
-    python predictors.py --load --iter=${counter} --epoch=30
+    python predictors.py  --load --iter=${counter} --epoch=30
 else
     python predictors.py --load --iter=${counter} --epoch=30
 fi

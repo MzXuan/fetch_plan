@@ -84,16 +84,19 @@ def plot_3d_pred(x, goal, pred=None):
     plt.pause(0.1)
 
 
-def plot_3d_seqs(x, y_pred, y_true=None):
+def plot_3d_seqs(x, y_pred, y_true=None, goals=None):
     fig3d = plt.figure(3)
     plt.clf()
 
     ax = fig3d.gca(projection='3d')
     plt.ion()
 
-    # ax.set_xlim(-1.5, 1.5)
-    # ax.set_ylim(-1.5, 1.5)
-    # ax.set_zlim(-1.5, 1.5)
+    range=1
+
+    ax.set_xlim(-range, range)
+    ax.set_ylim(-range, range)
+    ax.set_zlim(-range, range)
+
 
     ax.plot(x[:, -3], x[:, -2], x[:, -1],
             '-+', linewidth=2, color="blue", label="x")
@@ -104,13 +107,19 @@ def plot_3d_seqs(x, y_pred, y_true=None):
     ax.plot([y_pred[0, -3]], [y_pred[0, -2]], [y_pred[0, -1]],
             '*', color="red")
 
-    ax.plot([y_pred[0, -3]], [y_pred[0, -2]], [y_pred[0, -1]],
-            'o', color="red")
+    # ax.plot([y_pred[0, -3]], [y_pred[0, -2]], [y_pred[0, -1]],
+    #         'o', color="red")
 
 
     if y_true is not None:
         ax.plot(y_true[:, -3], y_true[:, -2], y_true[:, -1],
                 '-+', linewidth=2, color="green", label="y_true", alpha=0.5)
+
+    if goals is not None:
+        for g in goals:
+            ax.plot([g[-3]],[g[-2]], [g[-1]],
+                    '-+', linewidth=2, color="green", label="y_true", alpha=0.5)
+
 
 
     ax.set_xlabel("x")
@@ -142,8 +151,12 @@ def plot_dof_seqs(x, y_pred, step = 1,  y_true=None, goals = None, goal_pred = N
         if y_true is not None:
             plt.plot(time_step_y_true, y_true[:, j], color="green", alpha=0.5)
         if goals is not None:
-            for goal in goals:
-                plt.plot(time_step_y[-1], goal[j],'ro')
+            for gid, goal in enumerate(goals):
+                if gid == 0:
+                    plt.plot(time_step_y[-1], goal[j],'b*')
+                else:
+                    plt.plot(time_step_y[-1], goal[j], 'ro')
+
         if goal_pred is not None:
             plt.plot(time_step_y[-1], goal_pred[j], 'g*')
 
@@ -185,3 +198,19 @@ def plot_avg_err(ratio, err_y, err_x):
     plt.plot(ratio,err_x,'b-', label='observed distance')
     plt.legend()
     plt.show()
+
+#plot reward
+def plot_reward(task_reward, pred_reward):
+    plt.figure("reward")
+    plt.ion()
+    plt.clf()
+    # plt.ylim(-1, 1)
+    plt.plot(task_reward,"r-", label='task reward')
+    plt.plot(pred_reward,"b-", label='predict reward')
+    plt.legend()
+    plt.show()
+    plt.pause(0.1)
+
+
+
+

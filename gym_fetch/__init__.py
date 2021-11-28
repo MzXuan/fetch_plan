@@ -14,6 +14,12 @@ register(
 )
 
 register(
+    id='FetchPlanBoard-v0',
+    entry_point='gym_fetch.envs:FetchPlanBoardEnv',
+    max_episode_steps=400
+)
+
+register(
     id='FetchPlanTest-v0',
     entry_point='gym_fetch.envs:FetchPlanTestEnv',
     max_episode_steps=400

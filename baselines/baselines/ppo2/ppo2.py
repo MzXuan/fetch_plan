@@ -1,12 +1,18 @@
 import os, sys
 import time
 import joblib
+
+from datetime import datetime
+import socket
+
+import csv
 import numpy as np
 import os.path as osp
 import tensorflow as tf
 from baselines import logger
 from collections import deque
 from baselines.common import explained_variance
+
 
 from predictors import ShortPred
 from predictors import LongPred
@@ -129,7 +135,6 @@ class Runner(object):
         self.collect_flag = False
         if load:
             self.model.load("{}/checkpoints/{}".format(logger.get_dir(), point))
-            # self.predictor.load()
 
     def run(self):
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_neglogpacs = [],[],[],[],[],[]
@@ -137,53 +142,72 @@ class Runner(object):
         mb_states = self.states
         epinfos = []
         for _ in range(self.nsteps):
-            #----- edit obs, make it env_obs + pred_obs
-            # print("obs shape is: ", self.obs.shape)
-            # expand obs with latent space
-            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
-            # print("obs shape after edited is: ", self.obs.shape)
-
-            #--------end extend obs------
+            # #----- edit obs, make it env_obs + pred_obs
+            # self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+            # actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
+            # mb_obs.append(self.obs.copy())
+            # mb_actions.append(actions)
+            # mb_values.append(values)
+            # mb_neglogpacs.append(neglogpacs)
+            # mb_dones.append(self.dones)
+            # self.env_obs, rewards, self.dones, infos = self.env.step(actions)
+            # self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
+            # # --------end extend obs------
             actions, values, self.states, neglogpacs = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(self.obs.copy())
             mb_actions.append(actions)
             mb_values.append(values)
             mb_neglogpacs.append(neglogpacs)
             mb_dones.append(self.dones)
-            self.env_obs, rewards, self.dones, infos = self.env.step(actions)
-            self.obs = np.concatenate((self.env_obs, self.pred_obs), axis=1)
-
+            self.obs, rewards, self.dones, infos = self.env.step(actions)
+            #-------------origin obs code-----------
 
             mb_origin_rew.append(np.mean(np.asarray(rewards)))
-
 
             #---- predict reward-------
             pred_weight = self.pred_weight
             if self.predictor_flag and pred_weight != 0.0: #predict process
                 origin_obs = self.env.origin_obs
-                xs, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
+                xs, x_starts, goals = self.dataset_creator.collect_online(origin_obs, self.dones)
 
                 #-----short term prediction-----
                 # origin_pred_loss = self.short_term_predictor.run_online_prediction(xs)
 
-                #---------------long term prediction method 1-----------------------
+                #---------------long term prediction method 1 (next several steps)-----------------------
                 # predict and get new latent space every n steps
                 # or update latent space based on last prediction
                 # calculate loss based on previous calculated result
-                # ----------------------------------------------------------
-                self.pred_obs[:], pred_result, origin_pred_loss = \
-                    self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+                ##################################################
+                # self.pred_obs[:], pred_result, origin_pred_loss = \
+                #     self.long_term_predictor.run_online_prediction(xs, self.pred_obs, self.pred_result)
+                # #-----------------------------------------------------------------
 
-                # #---------------long term prediction method 2---------------------
+                # #---------------long term prediction method 2 (goal prediction with lstm)---------------------
                 # # maximize dissimilar goals from other goals
-                # #
-                # #
+                # # ############################################
+                # batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                # self.pred_obs[:], origin_pred_loss =\
+                #     self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+                #
+                # #_, origin_pred_loss = \
+                # #    self.long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
                 # #----------------------------------------------------------------
-                # self.pred_obs[:], origin_pred_loss = self.long_term_predictor.run_online_prediction(xs, goals)
 
+                # #-------------predictable prediction method 3 (not using lstm)------
+                # # calculate the distance between the lastest obs and all selective goals
+                # ######################################################################
+                batch_alternative_goals = [temp['alternative_goals'] for temp in infos]
+                import utils
+                origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+                # #------------------------------------------------------------------
+
+                # #-------------predictable prediction method 4 (using input of encoder)------
+                ######################################################################
+
+                #---------------------------------------------------------------------
 
                 predict_loss = pred_weight * origin_pred_loss
-                rewards -= predict_loss
+                rewards += predict_loss
 
                 #---for display---
                 # print("predict_loss: {}".format(predict_loss))
@@ -292,21 +316,24 @@ def learn(*, policy, env, nsteps, total_timesteps, ent_coef, lr,
     kl = 0.01
 
     #test weight parameter
-    print("current pred_weight")
-    print(pred_weight)
-    if pred_weight!=0:
-        loss = []
-        rew = []
-        print("finding best pred weight... this will take 2 epochs...")
-        for _ in tqdm(range(2)):
-            print("start finding...")
-            obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
-            loss.append(origin_ploss)
-            rew.append(origin_rew)
+    runner.pred_weight = pred_weight
+    print("current pred weight is: ", runner.pred_weight)
 
-        runner.pred_weight = np.mean(rew)/np.mean(loss) * (pred_weight)
-        print("current pred weight is: ")
-        print(runner.pred_weight)
+    # print("setting predict weight is: ", pred_weight)
+    # if pred_weight!=0:
+    #     loss = []
+    #     rew = []
+    #     print("finding best pred weight... this will take 2 epochs...")
+    #     for _ in tqdm(range(2)):
+    #         print("start finding...")
+    #         obs, returns, masks, actions, values, neglogpacs, states, origin_ploss, pred_loss, origin_rew, epinfos = runner.run()  # pylint: disable=E0632
+    #         loss.append(origin_ploss)
+    #         rew.append(origin_rew)
+    #
+    #     runner.pred_weight = abs(np.mean(rew))/abs(np.mean(loss)) * (pred_weight)
+    #     runner.pred_weight = 5
+    #     print("current pred weight is: ")
+    #     print(runner.pred_weight)
 
     # learning
     nupdates = total_timesteps//nbatch
@@ -472,6 +499,10 @@ def display(policy, env, nsteps, nminibatches, load_path):
 
     dataset_creator = RLDataCreator(nenv)
 
+    port = 8001                             # 端口和上面一致
+    host = "localhost"                      # 服务器IP，这里服务器和客户端IP同一个
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     def load(load_path):
         loaded_params = joblib.load(load_path)
         restores = []
@@ -491,39 +522,74 @@ def display(policy, env, nsteps, nminibatches, load_path):
         pred_result = [np.zeros(3) for _ in range(nenv)]
 
         score = 0
+        pred_rew = 0
         done = [False]
         state = agent.initial_state
         obs_list = None
         obs_list_3d = None
 
+        score_list = []
+        pred_rew_list = []
 
         traj = []
         env.render()
         time.sleep(0.5)
 
         while not done[0]:
-            env.render()
-            obs = np.concatenate((env_obs,pred_obs), axis=1)
-            act, state = agent.mean(obs, state, done)
-            env_obs, rew, done, info = env.step(act)
-            obs = np.concatenate((env_obs, pred_obs), axis=1)
+            # #----- edit obs, make it env_obs + pred_obs
+            # env.render()
+            # obs = np.concatenate((env_obs,pred_obs), axis=1)
+            # act, state = agent.mean(obs, state, done)
+            # env_obs, rew, done, info = env.step(act)
+            # # --------end extend obs------
 
-            # print("goal: ", obs[0][3:6])
-            # print("eef position:", obs[0][0:3])
+            env.render()
+            act, state = agent.mean(obs, state, done)
+            obs, rew, done, info = env.step(act)
+
+            #-------------------------------------------
 
             origin_obs = env.origin_obs
             traj.append(origin_obs[0][0:3])
 
             # print(pred_obs)
 
+            #---socket send data---#
+            eef_pos = origin_obs[0][0:3]
+            elbow_pos = info[0]['elbow_pos']
+            shoulder_pos = info[0]['shoulder_pos']
+            delta_dist = origin_obs[0][-3:]
+            alter_goals = info[0]['alternative_goals']
+            end_flag = np.array([1]) if info[0]['is_success'] or info[0]['is_collision'] else np.array([0])
 
-            xs, goals = dataset_creator.collect_online(origin_obs, done)
-            pred_obs[:], pred_result, origin_pred_loss = \
-                long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
+            now = datetime.now()
+            msg_time = str(now.minute*100+now.second+now.microsecond*1e-6)
+            data_send = np.array2string(np.concatenate([eef_pos, elbow_pos, shoulder_pos,delta_dist,alter_goals, end_flag]), precision=3, separator=',', suppress_small=True)
+            # print("data_send", data_send)
+            sock.sendto((data_send+"t:"+str(msg_time)).encode(),(host, port))
 
+            # # #---------------long sequence reward --------#
+            # xs, goals = dataset_creator.collect_online(origin_obs, done)
+            # pred_obs[:], pred_result, origin_pred_loss = \
+            #     long_term_predictor.run_online_prediction(xs, pred_obs, pred_result)
 
-            # origin_pred_loss = predictor.run_online_prediction(xs, goals)
+            # #----------long target reward-------------------#
+            # xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            # batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            # pred_obs[:], origin_pred_loss = \
+            #    long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # # _,origin_pred_loss= \
+            # #     long_term_predictor.run_online_prediction(xs, x_starts, goals, batch_alternative_goals)
+            # #----------------------------------------------------------
 
+            # # ----------long target reward  method3 (baseline, no lstm)-----------------#
+            xs, x_starts, goals = dataset_creator.collect_online(origin_obs, done)
+            batch_alternative_goals = [temp['alternative_goals'] for temp in info]
+            import utils
+            origin_pred_loss = utils.point_goal_reward(xs, x_starts, goals, batch_alternative_goals)
+            #----------------------------------------------------------------------
+
+            
 
             # #---- plot result ---
             #
@@ -535,19 +601,36 @@ def display(policy, env, nsteps, nminibatches, load_path):
             #
             # #--- end plot ---#
             score += rew[0]
+            pred_rew += origin_pred_loss[0]
+
+            # #--------for visualize result-------
+            # score_list.append(rew[0])
+            # pred_rew_list.append(origin_pred_loss[0])
+            # # print("step score is: {} and pred reward is: {} ".format(rew[0], origin_pred_loss[0]))
+            # visualize.plot_reward(score_list, pred_rew_list)
+            # #-------------------------------------
 
         #if done, save trajectory
         traj = np.asarray(traj)
         # if done, pause 2 s
         time.sleep(0.5)
-        return score, traj
+        return score, traj, pred_rew
 
 
-    for e in range(10000):
-        score, traj = run_episode(env, act_model)
-        print ('episode: {} | score: {}'.format(e, score))
-        # print("episode: {} traj: {}".format(e, traj))
-        # np.savetxt("/home/xuan/Videos/trajs/traj_ep_"+str(e)+".csv", traj, delimiter=",", fmt="%.3e")
+
+    for e in range(150):
+        score, traj, pred_rew = run_episode(env, act_model)
+        print('episode: {} | score: {}; predict reward: {} | precent of pred rew: {}'.\
+              format(e, score, pred_rew, pred_rew/score))
+
+        # print ('episode: {} | score: {}'.format(e, score))
+        # np.savetxt("/home/xuan/Videos/trajs/pred_cost.csv", np.asarray([e, score, pred_rew]), delimiter=",", fmt="%.3e")
+
+        with open('cost.csv', 'a', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',',
+                                     quoting=csv.QUOTE_MINIMAL)
+            spamwriter.writerow([e,score,pred_rew])
+
 
     env.close()
 

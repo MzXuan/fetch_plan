@@ -3,10 +3,10 @@ import os
 from datetime import datetime
 import tensorflow as tf
 
-num_units = 16
+num_units = 8
 num_layers = 2
-out_steps = 5
-in_timesteps_max = 8
+out_steps = 8
+in_timesteps_max = 10
 
 # model_name = "rl_{}_{}_{}_seq_tanh".format(num_units, num_layers, out_steps)
 model_name = "seq2seq"

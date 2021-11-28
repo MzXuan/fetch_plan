@@ -1,9 +1,15 @@
 import copy
+import time
 
 import numpy as np
 import mujoco_py
 from gym.envs.robotics import rotations, robot_env
 from gym_fetch import utils
+
+class L(list):
+    def append(self, item):
+        list.append(self, item)
+        if len(self) > 8: self[:1]=[]
 
 
 def goal_distance(goal_a, goal_b):
@@ -51,10 +57,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         self.last_qvel = np.zeros(7)
         self.last_qpos = np.zeros(7)
-        self.qvel_2 = np.zeros(7)
-        self.qpos_2 = np.zeros(7)
-        self.qpos_3 = np.zeros(7)
-        self.qvel_3 = np.zeros(7)
+
+        self.last_eef_pos = L()
 
         self.n_actions = n_actions
 
@@ -69,18 +73,20 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     # GoalEnv methods
     # ----------------------------
 
-    def compute_reward(self, achieved_goal, goal, info, predict_reward=0):
+    def compute_reward(self, achieved_goal, goal, info):
         # predict reward: a predict reward from LSTM prediction algorithm
         # Compute distance between goal and the achieved goal.
         if info["is_success"]:
-            return 100.0
+            return 300.0
         elif info["is_collision"]:
             return -30.0
         else:
             current_distance = goal_distance(achieved_goal, goal)
-            approaching_rew = 15.0 * (self.last_distance - current_distance)
+            approaching_rew = 0.0 * (self.last_distance - current_distance)
+            # approaching_rew = 20.0 * (self.last_distance - current_distance)
             self.last_distance = copy.deepcopy(current_distance)
             return approaching_rew
+
 
     def _reset_arm(self):
         collision_flag = True
@@ -137,18 +143,25 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
         for _ in range(3):
-            # self.sim.step()
+            self.sim.step()
             real_act = self._set_action(action)
             self._step_callback()
             obs = self._get_obs()
             done = False
 
         # self._contact_dection()
+        elbow_pos = self.sim.data.get_geom_xpos('robot0:elbow_flex_link')
+        shoulder_pos = self.sim.data.get_geom_xpos('robot0:shoulder_pan_link')
+
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
             'is_collision': self._contact_dection(),
-            'goal_label': self.goal_label
+            'goal_label': self.goal_label,
+            'alternative_goals':self.alternative_goals,
+            'elbow_pos':elbow_pos,
+            'shoulder_pos':shoulder_pos
         }
+
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         # energy_loss = 0.2 * np.linalg.norm(real_act - self.prev_act)
         # # print("approching_rew: {} | energy_loss: {}".format(reward, energy_loss))
@@ -185,7 +198,7 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
             # mujoco_py.functions.mj_contactForce(self.sim.model, self.sim.data, i, c_array)
             # print('c_array', c_array)
 
-        if self.sim.data.ncon > 1:
+        if self.sim.data.ncon > 2:
             return True
         else:
             return False
@@ -201,17 +214,9 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         assert action.shape == (7,)
         action = action.copy()
 
-        #-----------not use actuator, only self defined kinematics--------------------
-        if np.all(self.last_qvel==0) or np.all(self.last_qpos==0):
-            self.qvel_3 = self.qvel_2 = self.last_qvel = self.current_qvel
-            self.qpos_3 = self.qpos_2 = self.last_qpos = self.current_qpos
-        else:
-            self.qvel_3 = self.qvel_2
-            self.qpos_3 = self.qpos_2
-            self.qvel_2 = self.last_qvel
-            self.qpos_2 = self.last_qpos
-            self.last_qvel = self.current_qvel
-            self.last_qpos = self.current_qpos
+        #-----------not use actuator, only self defined kinematics-------------------
+        self.last_qvel = self.current_qvel
+        self.last_qpos = self.current_qpos
 
         delta_v = np.clip(action-self.last_qvel, -self.maxi_accerl, self.maxi_accerl)
         action_clip = delta_v+self.last_qvel
@@ -227,7 +232,6 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
     def _get_obs(self):
         # positions
-        # todo: add joint observation
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
         dt = self.sim.nsubsteps * self.sim.model.opt.timestep
         grip_velp = self.sim.data.get_site_xvelp('robot0:grip') * dt
@@ -244,10 +248,42 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         else:
             achieved_goal = np.squeeze(object_pos.copy())
 
+        #----------add site position to obs-------------
+        body_num = self.sim.model.body_name2id('target_plane')
+        site_body_list = self.sim.model.site_bodyid
+        index_site = np.where(site_body_list == body_num)[0]  # 1~number
+        goals = []
+        for site_id in index_site:
+            goals.append(self.sim.model.site_pos[site_id])
+        self.alternative_goals = np.asarray(goals).reshape(3*len(index_site))
+
+        #------ add last 10 steps to obs--------
+        self.last_eef_pos.append(achieved_goal)
+        eef_pos=self.last_eef_pos.copy()
+        while len(eef_pos) <8:
+            eef_pos.append(np.zeros(3,))
+
+        #---------------calculate distance-------------------
+        dist_lst = []
+        for g in goals:
+            dist_lst.append(np.linalg.norm(achieved_goal-g))
+
+        # obs = np.concatenate([
+        #     joint_angle, np.asarray(goals).flatten()
+        # ])
+
         obs = np.concatenate([
-            joint_angle, joint_vel
+            joint_angle, joint_vel, np.asarray(dist_lst)
         ])
 
+
+        # obs = np.concatenate([
+        #     joint_angle, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
+        # ])
+
+        # obs = np.concatenate([
+        #     joint_angle, joint_vel, np.asarray(eef_pos).flatten(), np.asarray(dist_lst)
+        # ])
 
         # obs = np.concatenate([
         #     joint_angle, joint_vel, self.prev_act
@@ -277,10 +313,13 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
-        self.viewer.cam.distance = 2.6
+        self.viewer.cam.distance = 0
         self.viewer.cam.azimuth = 180
-        self.viewer.cam.elevation = -20
-
+        self.viewer.cam.elevation = -10
+        
+        # self.viewer.cam.distance = 3.8
+        # self.viewer.cam.azimuth = 180
+        # self.viewer.cam.elevation = -20
 
     def _render_callback(self):
         # Visualize target.
@@ -293,8 +332,8 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
         # Randomize start position of object.
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
-            # print("initial gripper xpos:")
-            # print(self.initial_gripper_xpos)
+            print("initial gripper xpos:")
+            print(self.initial_gripper_xpos)
 
             while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 4.0:
                 object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
@@ -305,12 +344,12 @@ class FetchLSTMRewardEnv(robot_env.RobotEnv):
 
         self.last_qvel = np.zeros(7)
         self.last_qpos = np.zeros(7)
-        self.qvel_2 = np.zeros(7)
-        self.qpos_2 = np.zeros(7)
-        self.qvel_3 = np.zeros(7)
-        self.qpos_3 = np.zeros(7)
         self.current_qvel = np.zeros(7)
+
+        self.last_eef_pos = self.last_eef_pos = L()
+
         self.prev_act = np.zeros(self.n_actions)
+
 
         self.sim.forward()
         self.last_distance = 0
